@@ -191,18 +191,20 @@ function AtmosphereGlow() {
 
 function AnimatedEarthGroup({ active = true }: { active?: boolean }) {
   const groupRef = useRef<THREE.Group>(null!);
+  const lastFrameTime = useRef(0);
 
   useFrame((state) => {
     if (!active || !groupRef.current) return;
-    const t = state.clock.getElapsedTime();
 
-    // Baseline centered on India: [-0.95, -2.92, 0]
-    // Slow, serene sinusoidal oscillation loop: period ~40s
-    // Sweeps slowly and majestically across the Arabian Sea, India, and Bay of Bengal,
-    // ensuring India remains prominently centered and in view 100% of the time.
-    const swayY = Math.sin(t * 0.15) * 0.18;   // ~10.3° slow yaw sway across Indian Ocean
-    const swayX = Math.sin(t * 0.10) * 0.028;  // ~1.6° slow pitch nod
-    const swayZ = Math.cos(t * 0.12) * 0.014;  // ~0.8° slow gentle roll
+    // Throttle to ~30fps — for a slow decorative globe, imperceptible vs 60fps
+    const now = state.clock.getElapsedTime();
+    if (now - lastFrameTime.current < 0.033) return;
+    lastFrameTime.current = now;
+
+    const t = now;
+    const swayY = Math.sin(t * 0.15) * 0.18;
+    const swayX = Math.sin(t * 0.10) * 0.028;
+    const swayZ = Math.cos(t * 0.12) * 0.014;
 
     groupRef.current.rotation.y = -2.92 + swayY;
     groupRef.current.rotation.x = -0.95 + swayX;
@@ -252,11 +254,13 @@ function SceneLighting() {
 // ─── Responsive DPR Hook ──────────────────────────────────────────────────────
 
 function useResponsiveDpr(): [number, number] {
-  const [dpr, setDpr] = useState<[number, number]>([1, 2]);
+  const [dpr, setDpr] = useState<[number, number]>([1, 1.5]);
 
   useEffect(() => {
     const isMobile = window.innerWidth < 768;
-    setDpr(isMobile ? [1, 1] : [1, 2]);
+    // Cap at 1.5 on desktop (was 2) — cuts GPU fill work by ~44%
+    // Mobile stays at exactly 1
+    setDpr(isMobile ? [1, 1] : [1, 1.5]);
   }, []);
 
   return dpr;
@@ -328,9 +332,10 @@ export default function HeroGlobe({
         frameloop={shouldAnimate ? 'always' : 'never'}
         dpr={dpr}
         gl={{
-          antialias: true,
+          antialias: false,          // was true — huge GPU win, imperceptible at this size
           alpha: true,
           powerPreference: 'high-performance',
+          precision: 'mediump',      // mediump vs highp saves ~20% GPU on fragment shaders
         }}
         camera={{
           fov: CAMERA.fov,

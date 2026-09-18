@@ -37,10 +37,10 @@ export const CONTROLS = {
 /** Earth sphere */
 export const EARTH = {
   radius: 1,
-  segments: 128,
-  bumpScale: 0.02,
+  segments: 48,         // was 128 — cuts triangle count by ~86%
+  bumpScale: 0.018,
   /** How shiny the oceans are (Three.js shininess value) */
-  specularShininess: 45,
+  specularShininess: 30, // less GPU lighting work
   specularColor: '#00e5ff',
 } as const;
 
@@ -65,16 +65,16 @@ export const ATMOSPHERE = {
   outerPower: 1.15,
   corePower: 2.2,
   // Opacity levels
-  outerOpacity: 0.88,
-  coreOpacity: 0.98,
+  outerOpacity: 0.85,
+  coreOpacity: 0.95,
   // Radii: extends outwards into space
   outerRadiusOffset: 0.28,
   coreRadiusOffset: 0.09,
-  segments: 96,
+  segments: 40,         // was 96 — 3 atmosphere meshes × 40 segs is still smooth
   // Inner limb / Fresnel horizon glow
   rimColor: '#38bdf8',
   rimPower: 3.0,
-  rimOpacity: 0.7,
+  rimOpacity: 0.65,
 } as const;
 
 /** Subtle ocean data points */
