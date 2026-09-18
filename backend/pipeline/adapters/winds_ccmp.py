@@ -31,8 +31,11 @@ class CCMPAdapter:
         self.processor = processor
 
     def load(self) -> xr.Dataset:
-        # Load multiple granules if data_path is a directory
-        ds = xr.open_mfdataset(f"{self.data_path}/*.nc", chunks={"time": "auto"})
+        # Load the single subsetted NetCDF file or list of chunked files
+        if isinstance(self.data_path, list):
+            ds = xr.open_mfdataset(self.data_path, chunks={"time": "auto"})
+        else:
+            ds = xr.open_dataset(self.data_path, chunks={"time": "auto"})
 
         ds = self.processor.subset(ds, lat_name="latitude", lon_name="longitude")
         ds = self.processor.regrid(ds, lat_name="latitude", lon_name="longitude", method="linear")
