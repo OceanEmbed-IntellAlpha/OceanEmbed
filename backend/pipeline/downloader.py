@@ -190,7 +190,28 @@ class DataDownloader:
             # Download files locally to avoid slow network streaming
             temp_dir = self.raw_dir / f"temp_{product_key}_{year}"
             temp_dir.mkdir(parents=True, exist_ok=True)
-            downloaded_files = earthaccess.download(year_results, local_path=str(temp_dir))
+            
+            # Batch downloading into smaller chunks to prevent socket timeouts/ConnectionAbortedError
+            batch_size = 30
+            downloaded_files = []
+            
+            for i in range(0, len(year_results), batch_size):
+                batch = year_results[i:i + batch_size]
+                logger.info(f"Downloading batch {i//batch_size + 1}/{(len(year_results) + batch_size - 1)//batch_size} (granules {i} to {min(i+batch_size, len(year_results))})...")
+                
+                batch_retries = 3
+                for attempt in range(batch_retries):
+                    try:
+                        batch_files = earthaccess.download(batch, local_path=str(temp_dir))
+                        if batch_files:
+                            downloaded_files.extend(batch_files)
+                        break
+                    except Exception as e:
+                        if attempt == batch_retries - 1:
+                            logger.error(f"Failed to download batch after {batch_retries} attempts: {e}")
+                        else:
+                            logger.warning(f"Connection error downloading batch: {e}. Retrying ({attempt+1}/{batch_retries})...")
+                            time.sleep(5)
             
             # Filter out any None values (failed downloads)
             valid_files = [f for f in downloaded_files if f is not None]
