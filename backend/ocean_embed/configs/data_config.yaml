@@ -1,0 +1,81 @@
+# OceanEmbed — Data Configuration
+# configs/data_config.yaml
+
+# ── Chronological splits ───────────────────────────────────
+# Periods determined by GLORYS12V1 availability (1993–present)
+# Adjust once actual data is downloaded and availability confirmed.
+splits:
+  train:
+    start: "1993-01-01"
+    end: "2018-12-31"
+  validation:
+    start: "2019-01-01"
+    end: "2020-12-31"
+  test:
+    start: "2021-01-01"
+    end: "2022-12-31"
+  # ARGO validation is kept fully separate (independent profiles)
+  argo_validation:
+    start: "2019-01-01"
+    end: "2022-12-31"
+
+# ── Normalization ─────────────────────────────────────────
+# Statistics are computed from training data only.
+# Paths are populated by the preprocessing pipeline.
+normalization:
+  stats_file: "./data/interim/normalization_stats.yaml"
+  method: "standardize"  # standardize | minmax
+
+# ── Preprocessing ─────────────────────────────────────────
+preprocessing:
+  target_grid:
+    lat_min: 5.0
+    lat_max: 30.0
+    lon_min: 45.0
+    lon_max: 105.0
+    resolution: 0.25
+
+  # QC thresholds
+  qc:
+    sst_valid_range: [-2.5, 40.0]   # °C
+    sss_valid_range: [20.0, 42.0]   # PSU
+    ssh_valid_range: [-2.0, 2.0]    # m
+    wind_speed_max: 50.0             # m/s
+    subsurface_temp_valid: [-5.0, 40.0]  # °C
+
+  # Regridding method
+  regridding_method: "bilinear"  # bilinear | nearest
+  # Note: bilinear interpolation is chosen for spatial smoothness.
+  # Conservative regridding would require xESMF + ESMPy (not installed).
+
+  # Temporal harmonization
+  temporal:
+    target_frequency: "1D"         # Daily
+    aggregation_method: "mean"     # for wind, currents
+
+  # Dask chunk sizes (memory management)
+  dask_chunks:
+    time: 30
+    lat: 50
+    lon: 50
+
+# ── Sample generation ─────────────────────────────────────
+samples:
+  temporal_window: 3  # days: t-2, t-1, t
+  output_depths: [0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000]
+  # Samples saved as .zarr or .npz for efficient loading
+
+# ── Missing data simulation ───────────────────────────────
+missing_data_experiments:
+  - name: "all_available"
+    masks: {}
+  - name: "sss_missing"
+    masks: {sss: true}
+  - name: "ssh_missing"
+    masks: {ssh: true}
+  - name: "wind_missing"
+    masks: {wind_u: true, wind_v: true}
+  - name: "currents_missing"
+    masks: {current_u: true, current_v: true}
+  - name: "multi_missing"
+    masks: {sss: true, ssh: true, wind_u: true, wind_v: true}

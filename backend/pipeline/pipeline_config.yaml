@@ -1,0 +1,46 @@
+# ---------------------------------------------------------
+# ETL Pipeline Configuration for OceanEmbed (SIH26066)
+# ---------------------------------------------------------
+
+# The temporal range to download and process.
+# For development/testing, use a short range (e.g. 1 month).
+# For production training, extend to match data_config.yaml splits
+# (train: 1993–2018, val: 2019–2020, test: 2021–2022).
+time_range:
+  start_date: "2020-01-01"
+  end_date: "2020-01-31"
+
+# The spatial domain (North Indian Ocean)
+domain:
+  lat_min: 5.0
+  lat_max: 30.0
+  lon_min: 45.0
+  lon_max: 105.0
+  resolution: 0.25  # Standard 0.25 deg output resolution
+
+# Standard depths for GLORYS target (in meters)
+depths: [0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000]
+
+# Product IDs and dataset names for Copernicus Marine (CMEMS)
+cmems_products:
+  sst:
+    dataset_id: "METOFFICE-GLO-SST-L4-REP-OBS-SST"
+  sss:
+    dataset_id: "cmems_obs-mob_glo_phy-sss_my_multi_P1D"
+  ssh:
+    dataset_id: "c3s_obs-sl_glo_phy-ssh_my_twosat-l4-duacs-0.25deg_P1D"
+  target_glorys:
+    dataset_id: "cmems_mod_glo_phy_my_0.083deg_P1D-m"
+
+# PO.DAAC / NASA Earthdata Products
+podaac_products:
+  currents:
+    short_name: "OSCAR_L4_OC_FINAL_V2.0"
+  winds:
+    short_name: "CCMP_WINDS_10M6HR_L4_V3.1"
+
+# Argo validation data
+argo:
+  # Download from IFREMER GDAC via HTTPS
+  gdac_url: "https://data-argo.ifremer.fr/geo/indian_ocean"
+  local_dir: "argo_profiles"

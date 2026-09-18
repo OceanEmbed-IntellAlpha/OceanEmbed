@@ -1,0 +1,118 @@
+# OceanEmbed — Training Configuration
+# configs/training_config.yaml
+
+# ── Device ────────────────────────────────────────────────
+device: "cpu"   # "cuda" when GPU available; auto-detected at runtime
+mixed_precision: false  # Enable only if CUDA + AMP supported
+
+# ── Reproducibility ───────────────────────────────────────
+seed: 42
+
+# ── CPU-friendly development configuration ───────────────
+# Note: Small batch size selected because no GPU is available (CPU-only).
+# Increase batch_size and epochs when GPU is available.
+batch_size: 4
+val_batch_size: 8
+num_workers: 2  # DataLoader workers; keep low on CPU
+pin_memory: false
+
+# ── Epochs ────────────────────────────────────────────────
+max_epochs: 50
+early_stopping:
+  enabled: true
+  patience: 10
+  monitor: "val_rmse"
+  mode: "min"
+
+# ── Optimizer ─────────────────────────────────────────────
+optimizer:
+  name: "AdamW"
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+
+# ── Scheduler ─────────────────────────────────────────────
+scheduler:
+  name: "CosineAnnealingLR"
+  T_max: 50
+  eta_min: 1.0e-6
+
+# ── Checkpointing ─────────────────────────────────────────
+checkpointing:
+  save_dir: "./artifacts/checkpoints"
+  save_top_k: 3
+  monitor: "val_rmse"
+  mode: "min"
+  save_last: true
+
+# ── Logging ───────────────────────────────────────────────
+logging:
+  log_dir: "./logs"
+  log_every_n_steps: 10
+  val_every_n_epochs: 1
+
+# ── Loss weights ──────────────────────────────────────────
+loss:
+  primary: "mse"          # MSE or gaussian_nll for uncertainty model
+  thermocline_weight: 0.01
+  depth_smooth_weight: 0.001
+
+# ── Ablation experiments ──────────────────────────────────
+ablations:
+  - name: "baseline"
+    temporal: false
+    masks: false
+    uncertainty: false
+    continuous_depth: false
+    regional: false
+    physics: false
+  - name: "baseline_temporal"
+    temporal: true
+    masks: false
+    uncertainty: false
+    continuous_depth: false
+    regional: false
+    physics: false
+  - name: "baseline_masks"
+    temporal: false
+    masks: true
+    uncertainty: false
+    continuous_depth: false
+    regional: false
+    physics: false
+  - name: "baseline_uncertainty"
+    temporal: false
+    masks: false
+    uncertainty: true
+    continuous_depth: false
+    regional: false
+    physics: false
+  - name: "baseline_continuous_depth"
+    temporal: false
+    masks: false
+    uncertainty: false
+    continuous_depth: true
+    regional: false
+    physics: false
+  - name: "baseline_regional"
+    temporal: false
+    masks: false
+    uncertainty: false
+    continuous_depth: false
+    regional: true
+    physics: false
+  - name: "baseline_physics"
+    temporal: false
+    masks: false
+    uncertainty: false
+    continuous_depth: false
+    regional: false
+    physics: true
+  - name: "ocean_embed_full"
+    temporal: true
+    masks: true
+    uncertainty: true
+    continuous_depth: true
+    regional: true
+    physics: true

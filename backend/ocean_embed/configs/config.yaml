@@ -1,0 +1,93 @@
+# OceanEmbed — Global Configuration
+# configs/config.yaml
+
+project:
+  name: OceanEmbed
+  sih_id: SIH26066
+  version: "1.0.0-dev"
+  description: >
+    Continuous, Uncertainty-Aware and Missing-Data-Resilient
+    Subsurface Ocean Temperature Reconstruction
+  organization: Ministry of Earth Sciences / INCOIS
+  domain: Software / Space Technology
+
+# ── Domain ────────────────────────────────────────────────
+domain:
+  lat_min: 5.0
+  lat_max: 30.0
+  lon_min: 45.0
+  lon_max: 105.0
+  resolution: 0.25  # degrees
+
+# ── Depths (SIH standard + extended) ─────────────────────
+depths:
+  sih_standard: [0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000]
+  min_depth: 0
+  max_depth: 1000
+
+# ── Input channels ────────────────────────────────────────
+input_channels:
+  - name: sst
+    units: "°C"
+    description: Sea Surface Temperature
+  - name: sss
+    units: "PSU"
+    description: Sea Surface Salinity
+  - name: ssh
+    units: "m"
+    description: Sea Surface Height / SLA
+  - name: current_u
+    units: "m/s"
+    description: Surface current eastward
+  - name: current_v
+    units: "m/s"
+    description: Surface current northward
+  - name: wind_u
+    units: "m/s"
+    description: Surface wind eastward
+  - name: wind_v
+    units: "m/s"
+    description: Surface wind northward
+  - name: lat_coord
+    description: Latitude coordinate (normalized)
+  - name: lon_coord
+    description: Longitude coordinate (normalized)
+
+# ── Regions ───────────────────────────────────────────────
+regions:
+  arabian_sea:
+    lat_min: 5.0
+    lat_max: 27.0
+    lon_min: 45.0
+    lon_max: 78.0
+  bay_of_bengal:
+    lat_min: 5.0
+    lat_max: 23.0
+    lon_min: 80.0
+    lon_max: 100.0
+  open_ocean:
+    lat_min: 5.0
+    lat_max: 30.0
+    lon_min: 45.0
+    lon_max: 105.0
+
+# ── Paths ─────────────────────────────────────────────────
+paths:
+  data_root: "./data"
+  raw: "./data/raw"
+  interim: "./data/interim"
+  processed: "./data/processed"
+  artifacts: "./artifacts"
+  figures: "./artifacts/figures"
+  metrics: "./artifacts/metrics"
+  checkpoints: "./artifacts/checkpoints"
+  logs: "./logs"
+
+# ── Reproducibility ───────────────────────────────────────
+seed: 42
+demo_mode: true  # Set to false once real data/model available
+
+# ── Logging ───────────────────────────────────────────────
+logging:
+  level: INFO
+  format: "{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}"

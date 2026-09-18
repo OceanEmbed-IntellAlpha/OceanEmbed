@@ -1,0 +1,67 @@
+# OceanEmbed — Model Configuration
+# configs/model_config.yaml
+
+# ── Architecture ──────────────────────────────────────────
+architecture:
+  name: "OceanEmbedV5"  # Versioned per spec Section 9
+
+  # Surface encoder
+  encoder:
+    type: "unet"
+    in_channels: 9   # 7 surface vars + 2 coordinate channels
+    base_channels: 32
+    depth: 4
+    use_attention: true
+    dropout: 0.1
+
+  # Temporal context
+  temporal:
+    window: 3         # t-2, t-1, t
+    enabled: true
+
+  # Missing-data mask integration
+  masks:
+    enabled: true
+    # Concatenate mask channels (7 per timestep) with inputs
+
+  # Ocean latent embedding
+  latent_dim: 128
+
+  # Continuous depth decoder
+  depth_decoder:
+    enabled: true
+    depth_encoding: "fourier"
+    fourier_frequencies: 16
+    hidden_dims: [256, 256, 128]
+    activation: "gelu"
+
+  # Uncertainty head
+  uncertainty:
+    enabled: true
+    method: "heteroscedastic"  # mean + log_variance
+    loss: "gaussian_nll"
+
+  # Regional conditioning
+  regional:
+    enabled: true
+    regions: ["arabian_sea", "bay_of_bengal", "open_ocean"]
+    embedding_dim: 16
+
+  # Physics / thermocline regularization
+  physics:
+    thermocline_loss: true
+    thermocline_weight: 0.01  # Configurable; ablated in experiments
+    monotonic_below_thermocline: false  # Not imposed (spec §16)
+
+# ── Depths ────────────────────────────────────────────────
+sih_depths: [0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000]
+max_depth: 1000.0
+
+# ── Baseline (Version 1) ──────────────────────────────────
+baseline:
+  in_channels: 7
+  out_channels: 15  # one per SIH depth
+  base_channels: 32
+  encoder_depth: 4
+  use_batch_norm: true
+  activation: "relu"
