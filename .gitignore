@@ -1,0 +1,32 @@
+# Credentials — NEVER commit
+.env
+backend/.env
+
+# Data
+data/
+*.nc
+*.nc4
+*.zarr/
+*.npz
+*.h5
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
+
+# Training artifacts
+runs/
+checkpoints/
+artifacts/
+logs/
+*.pt
+*.pth
+*.ckpt
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/

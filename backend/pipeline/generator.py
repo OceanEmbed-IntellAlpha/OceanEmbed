@@ -34,8 +34,8 @@ class TensorGenerator:
         out_path = self.output_dir / "surface_features.zarr"
         logger.info(f"Saving merged tensor to {out_path}")
         
-        # Save to Zarr store (overwriting if exists)
-        merged_ds.to_zarr(out_path, mode="w")
+        # Save to Zarr store (overwriting if exists); zarr_format=2 avoids Windows locking issues with Zarr 3.x
+        merged_ds.to_zarr(out_path, mode="w", zarr_format=2)
         logger.info("Successfully generated surface_features.zarr")
         
         return merged_ds
@@ -50,7 +50,7 @@ class TensorGenerator:
         glorys_ds = glorys_ds.chunk({"time": 30, "depth": -1, "latitude": -1, "longitude": -1})
         
         logger.info(f"Saving target tensor to {out_path}")
-        glorys_ds.to_zarr(out_path, mode="w")
+        glorys_ds.to_zarr(out_path, mode="w", zarr_format=2)
         logger.info("Successfully generated target_glorys.zarr")
         
         return glorys_ds
