@@ -9,7 +9,7 @@ import type {
   DatasetCard
 } from './types';
 
-export const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+export const BASE_URL = ''; // process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 // ─── Surface Field Query ─────────────────────────────────────────────────────────────
 export function useSurfaceField(params: { variable: SurfaceVariable; date: string } | null) {

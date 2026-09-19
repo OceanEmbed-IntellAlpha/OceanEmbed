@@ -17,12 +17,14 @@ export function ProfilePanel() {
 
   if (!hasSelection) {
     return (
-      <div className="w-full h-full rounded-2xl p-6 flex flex-col items-center justify-center text-center bg-[#050A10]/60 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-biolume/5 via-[#050A10]/0 to-transparent pointer-events-none" />
+      <div className="w-full h-full p-6 flex flex-col items-center justify-center text-center glass-panel relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-biolume/10 via-[#050A10]/0 to-transparent pointer-events-none" />
         
-        <div className="w-16 h-16 rounded-full border border-dashed border-biolume/30 flex items-center justify-center mb-6 relative">
-          <div className="absolute inset-0 rounded-full border border-biolume/10 animate-[spin_4s_linear_infinite]" />
-          <Navigation2 className="text-biolume/50 animate-pulse" size={24} />
+        <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6 relative">
+          <div className="absolute inset-0 rounded-full border border-dashed border-biolume/50 animate-[spin_8s_linear_infinite]" />
+          <div className="absolute inset-2 rounded-full border border-biolume/20 animate-[spin_4s_linear_infinite_reverse]" />
+          <div className="absolute inset-0 bg-biolume/10 rounded-full blur-md animate-pulse-slow" />
+          <Navigation2 className="text-biolume relative z-10" size={28} />
         </div>
         <h3 className="text-sm font-mono text-white mb-2 tracking-widest uppercase drop-shadow-[0_0_8px_rgba(0,210,255,0.4)]">Awaiting Selection</h3>
         <p className="text-xs text-foam-dim max-w-[200px] leading-relaxed">Click anywhere on the Indian Ocean to extract a 15-level subsurface profile.</p>
@@ -31,15 +33,24 @@ export function ProfilePanel() {
   }
 
   // Transform data for chart (depth vs temp)
-  const chartData = profile?.depths.map((d, i) => ({
-    depth: -d, // negative for Y axis
-    temp: profile.temperature[i],
-    argoTemp: matchup ? matchup.argoTemp[i] : null
-  })) || [];
+  const chartData = profile?.depths.map((d, i) => {
+    let argoTemp = null;
+    if (matchup) {
+      const argoIdx = matchup.depths.indexOf(d);
+      if (argoIdx !== -1) {
+        argoTemp = matchup.argoTemp[argoIdx];
+      }
+    }
+    return {
+      depth: -d, // negative for Y axis
+      temp: profile.temperature[i],
+      argoTemp
+    };
+  }) || [];
 
   return (
-    <div className="w-full flex-grow min-h-0 rounded-2xl flex flex-col overflow-hidden bg-[#050A10]/60 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
-      <div className="p-5 border-b border-white/10 bg-black/40">
+    <div className="w-full flex-grow min-h-0 flex flex-col overflow-hidden glass-panel">
+      <div className="p-5 border-b border-white/5 bg-black/20">
         <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-white font-bold flex items-center gap-2">
           Vertical Profile
         </h2>

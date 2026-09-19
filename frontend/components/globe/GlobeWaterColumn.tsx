@@ -294,6 +294,66 @@ export default function GlobeWaterColumn({ viewer }: GlobeWaterColumnProps) {
     primitivesRef.current.push(topEdge);
 
     // ════════════════════════════════════════════════════════════════════════
+    // 3. 3D VOLUMETRIC COLUMN BODY
+    // ════════════════════════════════════════════════════════════════════════
+    // Translucent glowing block that extrudes down to the current animation depth
+    const bodyMat = new Cesium.Material({
+      fabric: {
+        type: 'Color',
+        uniforms: {
+          color: new Cesium.Color(0.1, 0.6, 0.7, 0.15) // Deep cyan, highly transparent
+        }
+      }
+    });
+    materialsRef.current.push(bodyMat);
+
+    const bodyGeom = new Cesium.GeometryInstance({
+      geometry: new Cesium.RectangleGeometry({
+        rectangle: Cesium.Rectangle.fromDegrees(west, south, east, north),
+        height: 0,
+        extrudedHeight: -extrusion,
+        vertexFormat: Cesium.MaterialAppearance.MaterialSupport.ALL.vertexFormat
+      })
+    });
+
+    const bodyPrim = v.scene.primitives.add(
+      new Cesium.Primitive({
+        geometryInstances: bodyGeom,
+        appearance: new Cesium.MaterialAppearance({
+          material: bodyMat,
+          translucent: true,
+          flat: true
+        }),
+        asynchronous: false
+      })
+    );
+    primitivesRef.current.push(bodyPrim);
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 4. VERTICAL GLOWING CORNER EDGES
+    // ════════════════════════════════════════════════════════════════════════
+    const corners = [
+      [west, south], [east, south], [east, north], [west, north]
+    ];
+    
+    corners.forEach(([cLon, cLat]) => {
+      const edge = v.entities.add({
+        polyline: {
+          positions: Cesium.Cartesian3.fromDegreesArrayHeights([
+            cLon, cLat, 0,
+            cLon, cLat, -extrusion
+          ]),
+          width: 3,
+          material: new Cesium.PolylineDashMaterialProperty({
+            color: edgeColor.withAlpha(0.6),
+            dashLength: 15
+          })
+        }
+      });
+      primitivesRef.current.push(edge);
+    });
+
+    // ════════════════════════════════════════════════════════════════════════
     // 7. SONAR PING RINGS
     // ════════════════════════════════════════════════════════════════════════
     const spawnPing = () => {

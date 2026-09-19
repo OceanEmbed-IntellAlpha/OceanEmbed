@@ -65,41 +65,56 @@ export default function HomePage() {
         <div className="absolute z-[2] left-1/2 -translate-x-1/2 bottom-0 w-[200%] h-[42%] bg-[radial-gradient(ellipse_at_50%_100%,rgba(0,229,255,0.22)_0%,rgba(14,165,233,0.12)_35%,transparent_70%)] pointer-events-none" />
         <div className="absolute z-[0] left-1/2 -translate-x-1/2 bottom-[-10%] w-[130vw] h-[55vh] bg-[radial-gradient(ellipse_at_50%_75%,rgba(0,210,255,0.18)_0%,rgba(6,78,119,0.10)_45%,transparent_75%)] blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 max-w-2xl lg:max-w-4xl mx-auto text-center flex flex-col items-center pt-24 sm:pt-28 md:pt-32 px-6 pb-16">
-          <div className="inline-flex items-center gap-2 font-mono text-[10px] md:text-xs font-semibold tracking-[0.2em] text-biolume uppercase mb-5 px-3.5 py-1.5 rounded-full border border-biolume/30 bg-black/40 backdrop-blur-md shadow-[0_0_15px_rgba(76,224,210,0.15)]">
+        <div className="relative z-10 max-w-2xl lg:max-w-5xl mx-auto text-center flex flex-col items-center pt-24 sm:pt-28 md:pt-32 px-6 pb-16">
+          <div className="inline-flex items-center gap-2 font-mono text-[10px] md:text-xs font-semibold tracking-[0.2em] text-biolume uppercase mb-6 px-4 py-1.5 rounded-full border border-biolume/40 bg-black/60 backdrop-blur-md shadow-[0_0_20px_rgba(76,224,210,0.25)] ring-1 ring-white/5">
             SIH 2026 · Problem Statement 26066
           </div>
           
-          <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-[4rem] font-extrabold tracking-tight text-white mb-4 leading-[1.08] drop-shadow-2xl">
-            See Beneath the Surface.
-            <span className="block mt-3 font-display text-[0.52em] font-normal text-foam/85 tracking-normal drop-shadow-lg max-w-2xl mx-auto leading-relaxed">
-              Reconstructing subsurface ocean temperature from satellite observations with deep learning.
-            </span>
-          </h1>
+          <div className="relative">
+            {/* Subtle glow behind text for contrast against bright globe */}
+            <div className="absolute inset-0 bg-black/40 blur-[80px] -z-10 rounded-[100%]" />
+            <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-[4.5rem] font-extrabold tracking-tight text-white mb-5 leading-[1.1] [text-shadow:_0_4px_40px_rgb(0_0_0_/_90%)]">
+              See Beneath the Surface.
+              <span className="block mt-4 font-display text-[0.45em] font-medium text-foam/90 tracking-normal [text-shadow:_0_2px_15px_rgb(0_0_0_/_80%)] max-w-3xl mx-auto leading-relaxed">
+                Reconstructing subsurface ocean temperature from satellite observations with deep learning.
+              </span>
+            </h1>
+          </div>
 
-          <p className="max-w-2xl text-xs sm:text-sm text-foam/65 leading-relaxed mb-8 drop-shadow-md font-mono">
-            NORTH INDIAN OCEAN · 45°E – 105°E · 5°S – 30°N · 0.25° × 0.25° DAILY GRID · 15 DEPTH LEVELS
-          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2 max-w-3xl mb-10 mt-2">
+            {[
+              "NORTH INDIAN OCEAN",
+              "45°E – 105°E · 5°S – 30°N",
+              "0.25° × 0.25° DAILY GRID",
+              "15 DEPTH LEVELS"
+            ].map((chip, i) => (
+              <span key={i} className="font-mono text-[10px] sm:text-xs font-medium text-foam/80 bg-deep-panel/80 border border-thermocline/40 backdrop-blur-md px-3 py-1 rounded-md shadow-sm">
+                {chip}
+              </span>
+            ))}
+          </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-5 w-full sm:w-auto">
             <Link 
               href="/explorer" 
               className="
-                group flex items-center justify-center gap-2.5 w-full sm:w-auto
-                px-8 py-3.5 rounded-full border border-biolume/80 bg-biolume/20 text-white font-display font-bold text-sm sm:text-base
-                hover:bg-biolume hover:text-black transition-all duration-300 transform hover:-translate-y-0.5
-                shadow-[0_0_25px_rgba(76,224,210,0.35)] backdrop-blur-md
+                group relative flex items-center justify-center gap-2.5 w-full sm:w-auto
+                px-8 py-3.5 rounded-full border border-biolume/50 bg-biolume/10 text-white font-display font-bold text-sm sm:text-base
+                hover:bg-biolume hover:text-deep-panel hover:border-biolume transition-all duration-500 transform hover:-translate-y-1
+                shadow-[0_0_20px_rgba(76,224,210,0.3)] hover:shadow-[0_0_40px_rgba(76,224,210,0.7)] backdrop-blur-xl overflow-hidden
               "
             >
-              Explore the Ocean
-              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+              <span className="relative z-10">Explore the Ocean</span>
+              <ArrowRight size={18} className="relative z-10 group-hover:translate-x-1 transition-transform" />
             </Link>
             <Link 
               href="#problem" 
               className="
                 flex items-center justify-center w-full sm:w-auto
-                px-7 py-3.5 rounded-full border border-white/20 text-white bg-black/30 backdrop-blur-md
-                font-display font-semibold text-sm sm:text-base hover:bg-white/10 hover:border-white/40 transition-all duration-300
+                px-8 py-3.5 rounded-full border border-white/20 text-foam bg-black/40 backdrop-blur-xl
+                font-display font-medium text-sm sm:text-base hover:bg-white/10 hover:border-white/50 hover:text-white transition-all duration-300
+                shadow-lg hover:shadow-white/10
               "
             >
               How It Works
@@ -133,7 +148,7 @@ export default function HomePage() {
       {/* ───────────────────────────────────────────────────────────────── */}
       {/* 6. PRODUCT PREVIEW SECTION (Section 16) */}
       {/* ───────────────────────────────────────────────────────────────── */}
-      <ProductPreview />
+      {/* <ProductPreview /> */}
 
       {/* ───────────────────────────────────────────────────────────────── */}
       {/* 7. ARGO VALIDATION SPOTLIGHT (Section 30 & 31) */}

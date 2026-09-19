@@ -41,8 +41,8 @@ export function LayerPanel() {
   );
 
   return (
-    <div className="w-full flex-grow min-h-0 rounded-2xl flex flex-col overflow-hidden bg-[#050A10]/60 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
-      <div className="p-5 border-b border-white/10 bg-black/40">
+    <div className="w-full flex-grow min-h-0 flex flex-col overflow-hidden glass-panel">
+      <div className="p-5 border-b border-white/5 bg-black/20">
         <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-biolume font-bold flex items-center gap-2 drop-shadow-[0_0_8px_rgba(0,210,255,0.4)]">
           <Layers size={14} /> Data Layers
         </h2>

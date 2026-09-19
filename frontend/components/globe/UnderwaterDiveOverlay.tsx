@@ -2,6 +2,8 @@
 
 import React, { useRef, useMemo, useEffect, useState, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { EffectComposer, Bloom, Vignette, Noise, ChromaticAberration } from '@react-three/postprocessing';
+import { BlendFunction } from 'postprocessing';
 import * as THREE from 'three';
 import { useExplorerStore } from '@/lib/store/useExplorerStore';
 import { useSubsurfaceProfile } from '@/lib/api/queries';
@@ -20,9 +22,9 @@ import {
 import { DEPTH_LEVELS, type DepthLevel } from '@/lib/api/types';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const MAX_SIM_DEPTH = 2000;
-// Map 0 - 2000m to scene units: Surface is Y = 0, Seabed is Y = -100
-const DEPTH_SCALE = 0.05; // 2000m * 0.05 = 100 units deep
+const MAX_SIM_DEPTH = 1000;
+// Map 0 - 1000m to scene units: Surface is Y = 0, Seabed is Y = -100
+const DEPTH_SCALE = 0.1; // 1000m * 0.1 = 100 units deep
 
 const snapToNearestDepth = (d: number): DepthLevel => {
   return DEPTH_LEVELS.reduce((prev, curr) =>
@@ -132,11 +134,14 @@ const OceanSurfaceShader = {
       // Snell's window effect when underwater
       vec3 color = baseWater;
       if (isUnderwater) {
-        // Looking up towards the sun
+        // Snell's window mask based on critical angle
+        float snellMask = smoothstep(0.55, 0.65, fresnel);
         float sunDot = max(dot(viewDir, uSunDirection), 0.0);
-        vec3 skylight = mix(uShallowColor, uSunColor, pow(sunDot, 6.0));
-        color = mix(skylight, uDeepColor * 0.6, fresnelFactor * 0.85);
-        color += uSunColor * specular;
+        vec3 skylight = mix(uShallowColor * 1.5, uSunColor * 1.2, pow(sunDot, 6.0));
+        vec3 internalReflection = uDeepColor * 0.2; // dark total internal reflection
+        
+        color = mix(internalReflection, skylight, snellMask);
+        color += uSunColor * specular * snellMask;
       } else {
         color = mix(baseWater, uShallowColor * 1.3, fresnelFactor);
         color += uSunColor * specular;
@@ -169,31 +174,16 @@ const GodRaysShader = {
     varying vec2 vUv;
     varying vec3 vPosition;
 
-    // Pseudo-random noise
-    float hash(vec2 p) {
-      return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-    }
-
-    float noise(vec2 p) {
-      vec2 i = floor(p);
-      vec2 f = fract(p);
-      vec2 u = f * f * (3.0 - 2.0 * f);
-      return mix(
-        mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), u.x),
-        mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
-        u.y
-      );
-    }
-
     void main() {
       // Shaft coordinates
       float y = vUv.y; // 0 at surface, 1 at bottom
       float x = vUv.x - 0.5;
 
-      // Animated caustic shimmer inside rays
-      float n1 = noise(vec2(x * 6.0 + sin(uTime * 0.4), y * 3.0 - uTime * 0.5));
-      float n2 = noise(vec2(x * 12.0 - cos(uTime * 0.3), y * 8.0 - uTime * 0.8));
-      float rayPattern = (n1 * 0.65 + n2 * 0.35);
+      // Fast trigonometric caustics instead of heavy FBM noise
+      float t = uTime * 1.5;
+      float c1 = sin(x * 12.0 + t) * cos(y * 8.0 - t * 0.8);
+      float c2 = sin(x * 8.0 - t * 1.1) * cos(y * 12.0 + t);
+      float rayPattern = (c1 + c2) * 0.25 + 0.5;
 
       // Cone shape falloff
       float coneWidth = mix(0.12, 0.48, y);
@@ -205,7 +195,7 @@ const GodRaysShader = {
       float verticalFalloff = pow(1.0 - y, 1.6) * depthFactor;
 
       float intensity = rayPattern * horizontalFalloff * verticalFalloff;
-      gl_FragColor = vec4(uColor, intensity * 0.55);
+      gl_FragColor = vec4(uColor, intensity * 0.95);
     }
   `,
 };
@@ -233,7 +223,7 @@ function OceanSurface() {
 
   return (
     <mesh ref={meshRef} position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[160, 160, 96, 96]} />
+      <planeGeometry args={[160, 160, 64, 64]} />
       <shaderMaterial
         vertexShader={OceanSurfaceShader.vertexShader}
         fragmentShader={OceanSurfaceShader.fragmentShader}
@@ -249,10 +239,10 @@ function OceanSurface() {
 function GodRaysGroup({ currentDepth }: { currentDepth: number }) {
   const rayAngles = useMemo(
     () => [
-      { pos: [0, -18, 0], rot: [0.1, 0.05, 0.15], scale: [22, 38, 22] },
-      { pos: [-6, -16, -4], rot: [-0.08, 0.12, -0.1], scale: [16, 34, 16] },
-      { pos: [8, -20, 5], rot: [0.15, -0.05, 0.22], scale: [26, 42, 26] },
-      { pos: [3, -15, -8], rot: [-0.05, -0.1, 0.08], scale: [18, 30, 18] },
+      { pos: [0, -18, 0], rot: [0.1, 0.05, 0.15], scale: [32, 48, 32] },
+      { pos: [-6, -16, -4], rot: [-0.08, 0.12, -0.1], scale: [24, 42, 24] },
+      { pos: [8, -20, 5], rot: [0.15, -0.05, 0.22], scale: [36, 55, 36] },
+      { pos: [3, -15, -8], rot: [-0.05, -0.1, 0.08], scale: [26, 38, 26] },
     ],
     []
   );
@@ -302,26 +292,71 @@ function GodRaysGroup({ currentDepth }: { currentDepth: number }) {
   );
 }
 
-// Marine Snow, Plankton, and Rising Bubbles
+// Marine Snow, Plankton, and Rising Bubbles (GPU Accelerated)
 function MarineParticles({ currentDepth }: { currentDepth: number }) {
   const count = 1800;
-  const pointsRef = useRef<THREE.Points>(null!);
+  
+  const ParticleShader = useMemo(() => ({
+    vertexShader: `
+      uniform float uTime;
+      attribute float aSpeed;
+      attribute float aPhase;
+      attribute float aType; // 0: bubble, 1: snow, 2: plankton
+      
+      varying float vType;
+      
+      void main() {
+        vType = aType;
+        vec3 pos = position;
+        
+        if (aType < 0.5) {
+          // Bubbles rise
+          float newY = pos.y + uTime * aSpeed * 2.2;
+          pos.y = mod(newY, 105.0) - 105.0; // wrap between 0 and -105
+          pos.x += sin(uTime * 1.5 + aPhase) * 0.5;
+        } else {
+          // Snow/plankton sink and drift
+          float newY = pos.y - uTime * aSpeed * 0.35;
+          pos.y = -mod(abs(newY), 110.0);
+          pos.x += cos(uTime * 0.6 + aPhase) * 0.8;
+          pos.z += sin(uTime * 0.5 + aPhase) * 0.8;
+        }
+        
+        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+        gl_PointSize = 45.0 * (1.0 / -mvPosition.z);
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D uTexture;
+      uniform vec3 uColor;
+      uniform float uOpacity;
+      
+      varying float vType;
+      
+      void main() {
+        vec4 texColor = texture2D(uTexture, gl_PointCoord);
+        if (texColor.a < 0.01) discard;
+        
+        gl_FragColor = vec4(uColor * texColor.rgb, texColor.a * uOpacity);
+      }
+    `
+  }), []);
 
   const [positions, speeds, phases, types] = useMemo(() => {
     const pos = new Float32Array(count * 3);
     const spd = new Float32Array(count);
     const phs = new Float32Array(count);
-    const typ = new Float32Array(count); // 0 = bubble, 1 = marine snow, 2 = bioluminescent plankton
+    const typ = new Float32Array(count); 
 
     for (let i = 0; i < count; i++) {
-      // Spread across a cylinder of radius 35, from surface (0) to abyss (-110)
       const r = Math.sqrt(Math.random()) * 35;
       const theta = Math.random() * Math.PI * 2;
       pos[i * 3] = Math.cos(theta) * r;
       pos[i * 3 + 1] = -(Math.random() * 110);
       pos[i * 3 + 2] = Math.sin(theta) * r;
 
-      spd[i] = 0.2 + Math.random() * 0.8;
+      spd[i] = 0.4 + Math.random() * 1.5;
       phs[i] = Math.random() * Math.PI * 2;
       typ[i] = Math.random() < 0.25 ? 0 : Math.random() < 0.7 ? 1 : 2;
     }
@@ -347,55 +382,36 @@ function MarineParticles({ currentDepth }: { currentDepth: number }) {
     return new THREE.CanvasTexture(canvas);
   }, []);
 
-  useFrame((state, delta) => {
-    if (!pointsRef.current) return;
-    const geom = pointsRef.current.geometry;
-    const posAttr = geom.attributes.position as THREE.BufferAttribute;
-    const arr = posAttr.array as Float32Array;
-    const t = state.clock.getElapsedTime();
+  const uniforms = useMemo(() => ({
+    uTime: { value: 0 },
+    uTexture: { value: particleTexture },
+    uColor: { value: new THREE.Color() },
+    uOpacity: { value: 1.0 }
+  }), [particleTexture]);
 
-    for (let i = 0; i < count; i++) {
-      const idx = i * 3;
-      const type = types[i];
-      const speed = speeds[i];
-      const phase = phases[i];
-
-      if (type === 0) {
-        // Bubbles rise upwards
-        arr[idx + 1] += delta * speed * 2.2;
-        arr[idx] += Math.sin(t * 1.5 + phase) * 0.015;
-        // If reached surface, wrap back down
-        if (arr[idx + 1] > 0) arr[idx + 1] = -105;
-      } else {
-        // Marine snow / Plankton drift gently downwards with current
-        arr[idx + 1] -= delta * speed * 0.35;
-        arr[idx] += Math.cos(t * 0.6 + phase) * 0.02;
-        arr[idx + 2] += Math.sin(t * 0.5 + phase) * 0.02;
-        // Wrap to top if fallen past seabed
-        if (arr[idx + 1] < -110) arr[idx + 1] = 0;
-      }
-    }
-    posAttr.needsUpdate = true;
+  useFrame((state) => {
+    uniforms.uTime.value = state.clock.getElapsedTime();
+    const isDeep = currentDepth > 1000;
+    // Push color intensity above 1.0 to trigger HDR Bloom
+    uniforms.uColor.value.set(isDeep ? '#4CE0D2' : '#ffffff').multiplyScalar(isDeep ? 4.5 : 1.5);
+    uniforms.uOpacity.value = isDeep ? 0.9 : 0.6;
   });
 
   return (
-    <points ref={pointsRef}>
+    <points>
       <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={count}
-          array={positions}
-          itemSize={3}
-        />
+        <bufferAttribute attach="attributes-position" count={count} array={positions} itemSize={3} />
+        <bufferAttribute attach="attributes-aSpeed" count={count} array={speeds} itemSize={1} />
+        <bufferAttribute attach="attributes-aPhase" count={count} array={phases} itemSize={1} />
+        <bufferAttribute attach="attributes-aType" count={count} array={types} itemSize={1} />
       </bufferGeometry>
-      <pointsMaterial
-        size={0.65}
-        map={particleTexture}
+      <shaderMaterial
+        vertexShader={ParticleShader.vertexShader}
+        fragmentShader={ParticleShader.fragmentShader}
+        uniforms={uniforms}
         transparent
         depthWrite={false}
         blending={THREE.AdditiveBlending}
-        color={currentDepth > 1000 ? '#4CE0D2' : '#cffafe'}
-        opacity={currentDepth > 1000 ? 0.85 : 0.65}
       />
     </points>
   );
@@ -420,18 +436,29 @@ function DepthScannerRing({ currentDepth, variable }: { currentDepth: number; va
 
   const accentColor = variable === 'temperature' ? '#ea641e' : '#8250dc';
 
+  // Multiply colors to push them into HDR range for the Bloom pass
+  const ringColor = useMemo(() => new THREE.Color('#4CE0D2').multiplyScalar(3.0), []);
+  const pulseColor = useMemo(() => new THREE.Color(accentColor).multiplyScalar(4.0), [accentColor]);
+  const beamColor = useMemo(() => new THREE.Color('#4CE0D2').multiplyScalar(1.5), []);
+
   return (
     <group ref={ringRef} position={[0, targetY, 0]}>
-      {/* Outer rotating telemetry circle */}
+      {/* Outer Torus scanner */}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[14, 14.15, 64]} />
-        <meshBasicMaterial color="#4CE0D2" transparent opacity={0.6} side={THREE.DoubleSide} />
+        <torusGeometry args={[14, 0.08, 16, 32]} />
+        <meshBasicMaterial color={ringColor} transparent opacity={0.8} blending={THREE.AdditiveBlending} />
       </mesh>
 
-      {/* Inner pulsing radar ring */}
+      {/* Inner pulsing radar Torus */}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[9.5, 9.7, 48]} />
-        <meshBasicMaterial color={accentColor} transparent opacity={0.75} side={THREE.DoubleSide} />
+        <torusGeometry args={[9.5, 0.15, 16, 32]} />
+        <meshBasicMaterial color={pulseColor} transparent opacity={0.9} blending={THREE.AdditiveBlending} />
+      </mesh>
+
+      {/* Glowing scanning laser cylinder */}
+      <mesh position={[0, -2, 0]}>
+        <cylinderGeometry args={[14, 14, 4, 64, 1, true]} />
+        <meshBasicMaterial color={beamColor} transparent opacity={0.15} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
 
       {/* Crosshair beams */}
@@ -527,45 +554,38 @@ function SceneAtmosphere({ currentDepth }: { currentDepth: number }) {
   const { scene } = useThree();
 
   useFrame(() => {
-    // Dynamic color gradation as user descends:
-    // Epipelagic (0 - 200m): Bright cyan/teal-tinted deep blue
-    // Mesopelagic (200 - 1000m): Rich indigo / twilight midnight
-    // Bathypelagic (1000 - 2000m): Abyssal near-pitch black
+    // Dynamic color gradation and exponential fog density as user descends
     let fogColorHex = '#031a29';
-    let fogNear = 8;
-    let fogFar = 70;
+    let fogDensity = 0.015;
 
     if (currentDepth <= 200) {
       const t = currentDepth / 200;
       fogColorHex = new THREE.Color('#022b42')
         .lerp(new THREE.Color('#041d33'), t)
         .getHexString();
-      fogNear = 12 - t * 4;
-      fogFar = 75 - t * 15;
+      fogDensity = 0.015 + t * 0.01;
     } else if (currentDepth <= 1000) {
       const t = (currentDepth - 200) / 800;
       fogColorHex = new THREE.Color('#041d33')
         .lerp(new THREE.Color('#030b18'), t)
         .getHexString();
-      fogNear = 8 - t * 4;
-      fogFar = 60 - t * 25;
+      fogDensity = 0.025 + t * 0.015;
     } else {
       const t = (currentDepth - 1000) / 1000;
       fogColorHex = new THREE.Color('#030b18')
         .lerp(new THREE.Color('#010408'), t)
         .getHexString();
-      fogNear = 4 - t * 2;
-      fogFar = 35 - t * 15;
+      fogDensity = 0.04 + t * 0.02;
     }
 
     const fogColor = new THREE.Color(`#${fogColorHex}`);
     scene.background = fogColor;
-    if (!scene.fog) {
-      scene.fog = new THREE.Fog(fogColor, fogNear, fogFar);
+    
+    if (!scene.fog || !(scene.fog as THREE.FogExp2).density) {
+      scene.fog = new THREE.FogExp2(fogColor, fogDensity);
     } else {
-      (scene.fog as THREE.Fog).color.copy(fogColor);
-      (scene.fog as THREE.Fog).near = fogNear;
-      (scene.fog as THREE.Fog).far = fogFar;
+      (scene.fog as THREE.FogExp2).color.copy(fogColor);
+      (scene.fog as THREE.FogExp2).density = fogDensity;
     }
   });
 
@@ -589,13 +609,22 @@ function DiveCameraController({
   // Target camera world Y based on depth
   const targetCamY = -(targetDepth * DEPTH_SCALE);
 
-  // Mouse wheel scroll to dive deeper / ascend
+  // Mouse wheel scroll to dive deeper / ascend through standard depth levels
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const step = (e.deltaY > 0 ? 1 : -1) * 35;
-      const next = Math.max(0, Math.min(MAX_SIM_DEPTH, targetDepth + step));
-      onDepthChange(Math.round(next));
+      const currentIdx = DEPTH_LEVELS.indexOf(targetDepth as DepthLevel) !== -1 
+        ? DEPTH_LEVELS.indexOf(targetDepth as DepthLevel)
+        : DEPTH_LEVELS.indexOf(snapToNearestDepth(targetDepth));
+        
+      let nextIdx = currentIdx;
+      if (e.deltaY > 0 && currentIdx < DEPTH_LEVELS.length - 1) {
+        nextIdx++;
+      } else if (e.deltaY < 0 && currentIdx > 0) {
+        nextIdx--;
+      }
+      
+      onDepthChange(DEPTH_LEVELS[nextIdx]);
     };
 
     window.addEventListener('wheel', handleWheel, { passive: false });
@@ -720,7 +749,19 @@ export default function UnderwaterDiveOverlay() {
             targetDepth={depth}
             onDepthChange={(d) => setDepth(snapToNearestDepth(d))}
           />
+
+          <EffectComposer multisampling={4}>
+            <Bloom luminanceThreshold={1.0} mipmapBlur intensity={1.5} />
+            <Noise opacity={0.065} blendFunction={BlendFunction.OVERLAY} />
+            <Vignette eskil={false} offset={0.15} darkness={1.2} />
+            <ChromaticAberration offset={new THREE.Vector2(0.0015, 0.0015)} radialModulation={false} modulationOffset={0} />
+          </EffectComposer>
         </Canvas>
+      </div>
+
+      {/* ── Immersive CRT / Scanline Overlay ───────────────────────────── */}
+      <div className="absolute inset-0 pointer-events-none z-35 overflow-hidden mix-blend-overlay opacity-[0.15]">
+        <div className="w-full h-full bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%]" />
       </div>
 
       {/* ── Submersible HUD Header & Telemetry ───────────────────────────── */}
@@ -728,11 +769,9 @@ export default function UnderwaterDiveOverlay() {
         <div className="absolute top-16 left-60 right-16 z-40 pointer-events-none flex items-start justify-between">
           {/* Left: Depth & Zone Badge */}
           <div
-            className="pointer-events-auto flex items-center gap-3 px-4 py-2.5 rounded-xl border backdrop-blur-xl transition-all"
+            className="pointer-events-auto flex items-center gap-3 px-5 py-3 border-l-2 border-r-2 glass-panel tech-corners transition-all"
             style={{
-              background: 'rgba(5, 11, 20, 0.75)',
-              borderColor: 'rgba(76, 224, 210, 0.25)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6), inset 0 0 16px rgba(76, 224, 210, 0.05)',
+              borderColor: 'rgba(76, 224, 210, 0.4)',
             }}
           >
             <div className="flex items-center gap-2">
@@ -785,29 +824,30 @@ export default function UnderwaterDiveOverlay() {
       {/* ── Interactive Depth Rail & Dive Depth Controller (Right side) ── */}
       <div className="absolute right-4 top-1/2 -translate-y-1/2 z-40 pointer-events-auto flex flex-col items-center gap-3">
         <button
-          onClick={() => setDepth(snapToNearestDepth(Math.max(0, depth - 100)))}
+          onClick={() => {
+            const idx = DEPTH_LEVELS.indexOf(depth as DepthLevel) !== -1 ? DEPTH_LEVELS.indexOf(depth as DepthLevel) : DEPTH_LEVELS.indexOf(snapToNearestDepth(depth));
+            if (idx > 0) setDepth(DEPTH_LEVELS[idx - 1]);
+          }}
           disabled={depth <= 0}
           className="w-8 h-8 rounded-full flex items-center justify-center bg-[#050B14]/80 border border-white/10 text-white/70 hover:text-[#4CE0D2] hover:border-[#4CE0D2]/50 disabled:opacity-30 disabled:pointer-events-none backdrop-blur-md transition-all"
-          title="Ascend 100m"
+          title="Ascend to previous depth level"
         >
           <ArrowUpCircle size={16} />
         </button>
 
         {/* Vertical Depth Visualizer */}
         <div
-          className="relative w-7 h-56 rounded-full p-1 flex flex-col items-center justify-between border"
+          className="relative w-10 h-72 rounded-full p-1.5 flex flex-col items-center justify-between glass-panel border"
           style={{
-            background: 'rgba(5, 11, 20, 0.85)',
-            borderColor: 'rgba(76, 224, 210, 0.2)',
-            backdropFilter: 'blur(16px)',
+            borderColor: 'rgba(76, 224, 210, 0.3)',
           }}
         >
           {/* Depth fill track */}
-          <div className="absolute inset-x-1 top-1 bottom-1 rounded-full bg-gradient-to-b from-[#4CE0D2]/40 via-[#1C5C6B]/40 to-[#050B14]" />
+          <div className="absolute inset-x-2 top-2 bottom-2 rounded-full bg-gradient-to-b from-[#4CE0D2]/30 via-[#1C5C6B]/40 to-[#050B14]/60 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]" />
 
           {/* Current depth indicator pip */}
           <div
-            className="absolute left-1 right-1 h-3 rounded-full bg-[#4CE0D2] shadow-[0_0_10px_#4CE0D2] transition-all duration-150"
+            className="absolute left-1 right-1 h-4 rounded-full bg-[#4CE0D2] shadow-[0_0_15px_#4CE0D2] transition-all duration-150 border border-white/50"
             style={{
               top: `${Math.min(94, (depth / MAX_SIM_DEPTH) * 94)}%`,
             }}
@@ -815,15 +855,18 @@ export default function UnderwaterDiveOverlay() {
 
           {/* Depth labels */}
           <span className="font-mono text-[0.55rem] text-white/60 relative z-10">0m</span>
+          <span className="font-mono text-[0.55rem] text-white/60 relative z-10">500m</span>
           <span className="font-mono text-[0.55rem] text-white/60 relative z-10">1000m</span>
-          <span className="font-mono text-[0.55rem] text-white/60 relative z-10">2000m</span>
         </div>
 
         <button
-          onClick={() => setDepth(snapToNearestDepth(Math.min(MAX_SIM_DEPTH, depth + 100)))}
+          onClick={() => {
+            const idx = DEPTH_LEVELS.indexOf(depth as DepthLevel) !== -1 ? DEPTH_LEVELS.indexOf(depth as DepthLevel) : DEPTH_LEVELS.indexOf(snapToNearestDepth(depth));
+            if (idx < DEPTH_LEVELS.length - 1) setDepth(DEPTH_LEVELS[idx + 1]);
+          }}
           disabled={depth >= MAX_SIM_DEPTH}
           className="w-8 h-8 rounded-full flex items-center justify-center bg-[#050B14]/80 border border-white/10 text-white/70 hover:text-[#4CE0D2] hover:border-[#4CE0D2]/50 disabled:opacity-30 disabled:pointer-events-none backdrop-blur-md transition-all"
-          title="Dive 100m"
+          title="Dive to next depth level"
         >
           <ArrowDownCircle size={16} />
         </button>
@@ -831,15 +874,28 @@ export default function UnderwaterDiveOverlay() {
 
       {/* ── Telemetry Bottom Status Bar ─────────────────────────────────── */}
       {!isCinematic && (
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-40 pointer-events-auto">
-          <div
-            className="flex items-center gap-6 px-6 py-2.5 rounded-full border backdrop-blur-2xl text-xs font-mono shadow-2xl"
-            style={{
-              background: 'rgba(5, 11, 20, 0.85)',
-              borderColor: 'rgba(76, 224, 210, 0.25)',
-              boxShadow: '0 12px 40px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(76, 224, 210, 0.05)',
-            }}
-          >
+        <>
+          {/* Central HUD Crosshair */}
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-30">
+            <div className="relative w-96 h-96 border border-biolume/20 rounded-full flex items-center justify-center">
+              <div className="w-full h-[1px] bg-biolume/20 absolute" />
+              <div className="h-full w-[1px] bg-biolume/20 absolute" />
+              <div className="w-6 h-6 border border-biolume/50 rounded-full" />
+              {/* Corner brackets */}
+              <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-biolume/50" />
+              <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-biolume/50" />
+              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-biolume/50" />
+              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-biolume/50" />
+            </div>
+          </div>
+          
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-40 pointer-events-auto">
+            <div
+              className="flex items-center gap-8 px-8 py-3.5 border-t-2 border-b-2 glass-panel tech-corners text-xs font-mono shadow-[0_0_30px_rgba(76,224,210,0.1)]"
+              style={{
+                borderColor: 'rgba(76, 224, 210, 0.4)',
+              }}
+            >
             <div className="flex items-center gap-2">
               <Compass size={13} className="text-[#4CE0D2]" />
               <span className="text-white/40 uppercase text-[0.6rem]">Bearing:</span>
@@ -872,6 +928,7 @@ export default function UnderwaterDiveOverlay() {
             </div>
           </div>
         </div>
+        </>
       )}
     </div>
   );
