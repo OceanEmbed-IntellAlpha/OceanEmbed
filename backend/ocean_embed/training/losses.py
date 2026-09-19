@@ -100,11 +100,17 @@ class ThermoclineLoss(nn.Module):
     - Included in ablations (see training_config.yaml)
 
     NOT hardcoded: weight comes from config.
+
+    NOTE: Uses soft-argmax (softmax-weighted expectation) instead of argmax
+    for differentiability. The original argmax implementation was non-differentiable
+    and produced zero gradients, making the loss functionally dead.
     """
 
-    def __init__(self, weight: float = 0.01):
+    def __init__(self, weight: float = 0.01, temperature: float = 1.0, use_soft_argmax: bool = True):
         super().__init__()
         self.weight = weight
+        self.temperature = temperature
+        self.use_soft_argmax = use_soft_argmax
 
     def compute_thermocline_depth(
         self,
@@ -117,6 +123,7 @@ class ThermoclineLoss(nn.Module):
         Args:
             temps:  (B, D, H, W) temperature at D depth levels
             depths: (D,) depth values in metres
+            max_search_depth: maximum depth to search for thermocline
 
         Returns:
             thermo_depth: (B, H, W) estimated thermocline depth in metres
@@ -135,9 +142,16 @@ class ThermoclineLoss(nn.Module):
         depth_mask = (depths[:-1] <= max_search_depth).float().view(1, -1, 1, 1)
         dtdz_mag = dtdz_mag * depth_mask + (1 - depth_mask) * (-1e6)
 
-        # Thermocline at depth of maximum gradient magnitude
-        idx = dtdz_mag.argmax(dim=1)  # (B, H, W)
-        thermo_depth = depths[:-1][idx]  # (B, H, W)
+        if self.use_soft_argmax:
+            # Soft-argmax: softmax-weighted expectation for differentiability
+            # weights = softmax(dtdz_mag * temperature) over depth dimension
+            weights = F.softmax(dtdz_mag * self.temperature, dim=1)  # (B, D-1, H, W)
+            # thermo_depth = sum(weights * depths[:-1]) over depth dimension
+            thermo_depth = (weights * depths[:-1].view(1, -1, 1, 1)).sum(dim=1)  # (B, H, W)
+        else:
+            # Original argmax (non-differentiable, produces zero gradients)
+            idx = dtdz_mag.argmax(dim=1)  # (B, H, W)
+            thermo_depth = depths[:-1][idx]  # (B, H, W)
 
         return thermo_depth
 
@@ -177,12 +191,18 @@ class OceanEmbedLoss(nn.Module):
         self,
         use_uncertainty: bool = True,
         thermocline_weight: float = 0.01,
+        thermocline_temperature: float = 1.0,
+        thermocline_use_soft_argmax: bool = True,
         depth_smooth_weight: float = 0.001,
     ):
         super().__init__()
         self.use_uncertainty = use_uncertainty
         self.primary_loss = GaussianNLLLoss() if use_uncertainty else MSELoss()
-        self.thermo_loss = ThermoclineLoss(weight=thermocline_weight)
+        self.thermo_loss = ThermoclineLoss(
+            weight=thermocline_weight,
+            temperature=thermocline_temperature,
+            use_soft_argmax=thermocline_use_soft_argmax
+        )
         self.depth_smooth_weight = depth_smooth_weight
 
     def forward(
