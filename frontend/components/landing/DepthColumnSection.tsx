@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Layers, Thermometer, Gauge, Sun, Moon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Layers, Gauge, Sun, Moon } from 'lucide-react';
 import Link from 'next/link';
 
 interface DepthPoint {
@@ -37,223 +38,210 @@ export function DepthColumnSection() {
   const current = DEPTH_DATA[selectedIdx];
 
   return (
-    <section id="depths" className="relative py-28 md:py-36 bg-[#02070D] border-t border-thermocline/15 overflow-hidden">
-      {/* Dynamic ambient ocean glow following the selected depth color */}
-      <div 
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full blur-[160px] opacity-15 pointer-events-none transition-colors duration-700"
-        style={{ backgroundColor: current.color }}
-      />
+    <section id="depths" className="relative py-32 bg-[#000205] border-t border-white/[0.02] overflow-hidden">
+      
+      {/* Immersive Background Glow - Shifts based on selected depth */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden transition-colors duration-1000">
+         <div 
+           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full blur-[180px] opacity-20 transition-colors duration-1000 mix-blend-screen"
+           style={{ backgroundColor: current.color }}
+         />
+      </div>
 
-      <div className="max-w-7xl mx-auto px-6 relative z-10">
+      <div className="max-w-[1200px] mx-auto px-6 relative z-10">
         
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto mb-20">
-          <div className="inline-flex items-center gap-2 font-mono text-xs font-bold tracking-[0.25em] text-biolume uppercase mb-4 px-4 py-1.5 rounded-full border border-biolume/30 bg-biolume/10 backdrop-blur-md shadow-[0_0_20px_rgba(76,224,210,0.15)]">
-            <Layers size={13} className="text-biolume" />
-            Full Water Column Reconstruction
-          </div>
-          <h2 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold text-white tracking-tight leading-[1.08] mb-6">
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="inline-flex items-center gap-2 font-mono text-[10px] font-bold tracking-[0.3em] text-white/60 uppercase mb-6 bg-white/[0.03] px-3 py-1.5 rounded-full border border-white/[0.05]"
+          >
+            <Layers size={12} className="text-white/60" />
+            Full Water Column
+          </motion.div>
+          
+          <motion.h2 
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="font-display text-4xl sm:text-5xl md:text-6xl font-medium text-white tracking-tight leading-[1.1] mb-6"
+          >
             15 Standard Depths.<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-biolume via-thermocline to-surfaceSignal">
+            <span className="text-white/30">
               From Surface Heat to Abyssal Cold.
             </span>
-          </h2>
-          <p className="text-foam-dim text-base md:text-lg leading-relaxed">
-            OceanEmbed decodes satellite boundary signals into 15 standard oceanographic depth levels, capturing the sharp thermocline inversion, mixed layer depth, and deep-ocean heat content down to 1000 metres.
-          </p>
+          </motion.h2>
         </div>
 
-        {/* Main Interactive Stage: Left Rail, Center Column, Right Telemetry Panel */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center bg-[#050D17]/80 rounded-[2.5rem] border border-white/10 p-6 md:p-10 backdrop-blur-2xl shadow-[0_30px_80px_rgba(0,0,0,0.7)]">
-          
-          {/* LEFT: 15-Depth Selector Rail (lg:col-span-5) */}
-          <div className="lg:col-span-5 flex flex-col gap-2">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10 text-xs font-mono text-foam-dim">
-              <span className="uppercase tracking-widest text-[11px]">Standard Depths</span>
-              <span className="text-biolume font-semibold">Select level to inspect</span>
-            </div>
+        {/* ── THE MASSIVE INTERACTIVE BENTO BOX ─────────────────── */}
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="relative bg-[#030812]/60 backdrop-blur-2xl border border-white/[0.05] rounded-[3rem] p-8 md:p-12 lg:p-16 shadow-[0_20px_80px_rgba(0,0,0,0.8)] overflow-hidden"
+        >
+          {/* Internal ambient aura */}
+          <div 
+             className="absolute -top-32 -right-32 w-96 h-96 rounded-full blur-[100px] opacity-20 pointer-events-none transition-colors duration-1000"
+             style={{ backgroundColor: current.color }}
+          />
 
-            <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-3 gap-2 pt-2">
-              {DEPTH_DATA.map((item, idx) => {
-                const isSelected = selectedIdx === idx;
-                return (
-                  <button
-                    key={item.depth}
-                    onClick={() => setSelectedIdx(idx)}
-                    className={`flex flex-col items-start p-3 rounded-xl border transition-all duration-300 text-left relative overflow-hidden group ${
-                      isSelected
-                        ? 'bg-white/10 border-white/30 shadow-[0_0_20px_rgba(76,224,210,0.2)] scale-[1.02]'
-                        : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.06] hover:border-white/15'
-                    }`}
-                  >
-                    {/* Left color swatch */}
-                    <div 
-                      className="absolute left-0 top-0 bottom-0 w-1 transition-all duration-300"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <div className="flex items-center justify-between w-full pl-1">
-                      <span className="font-mono text-sm font-bold text-white tracking-tight">
-                        {item.depth}m
-                      </span>
-                      <span 
-                        className="font-mono text-xs font-semibold"
-                        style={{ color: item.color }}
+          <div className="flex flex-col lg:flex-row gap-12 lg:gap-20 items-center">
+             
+             {/* LEFT: Interactive Depth Track (The Scrubber) */}
+             <div className="relative w-24 h-[400px] lg:h-[500px] flex-shrink-0 flex items-center justify-center group/track">
+                
+                {/* The vertical glass pill holding the track */}
+                <div className="absolute inset-y-0 w-16 bg-black/40 rounded-full border border-white/[0.03] shadow-inner" />
+                
+                {/* The gradient spectrum line representing the physical ocean */}
+                <div 
+                   className="absolute inset-y-8 w-1 rounded-full opacity-30"
+                   style={{ background: 'linear-gradient(to bottom, #dc2626 0%, #f97316 20%, #eab308 40%, #14b8a6 65%, #3b82f6 85%, #4338ca 100%)' }}
+                />
+
+                {/* The 15 interactive hitboxes layered on top */}
+                <div className="absolute inset-y-8 inset-x-0 flex flex-col justify-between z-20">
+                   {DEPTH_DATA.map((item, idx) => (
+                      <div 
+                         key={item.depth}
+                         onMouseEnter={() => setSelectedIdx(idx)}
+                         onClick={() => setSelectedIdx(idx)}
+                         className="flex-1 w-full cursor-pointer flex items-center justify-center group"
                       >
-                        {item.temp.toFixed(1)}°
+                         {/* Subtle dot for each depth level */}
+                         <div className="w-1.5 h-1.5 rounded-full bg-white/10 group-hover:bg-white/40 transition-colors" />
+                         
+                         {/* The Active Glowing Scrubber */}
+                         {selectedIdx === idx && (
+                            <motion.div 
+                               layoutId="activeScrubber"
+                               transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                               className="absolute w-12 h-12 rounded-full border-2 border-white/20 bg-black shadow-[0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center pointer-events-none"
+                            >
+                               <div 
+                                 className="w-4 h-4 rounded-full shadow-[0_0_15px_currentColor]" 
+                                 style={{ backgroundColor: item.color, color: item.color }} 
+                               />
+                            </motion.div>
+                         )}
+                      </div>
+                   ))}
+                </div>
+
+                {/* Depth Labels outside the pill */}
+                <span className="absolute -top-6 font-mono text-[9px] text-white/40 uppercase tracking-widest font-bold">Surface</span>
+                <span className="absolute -bottom-6 font-mono text-[9px] text-white/40 uppercase tracking-widest font-bold">Abyss</span>
+             </div>
+
+
+             {/* RIGHT: Massive Dynamic Telemetry Panel */}
+             <div className="flex-1 w-full relative z-10 flex flex-col">
+                
+                {/* Zone Badge */}
+                <div className="flex items-center gap-4 mb-10">
+                   <span 
+                     className="px-4 py-2 rounded-full text-xs font-mono font-bold tracking-widest uppercase border transition-colors duration-500"
+                     style={{ color: current.color, borderColor: `${current.color}40`, backgroundColor: `${current.color}10` }}
+                   >
+                      {current.zone} Zone
+                   </span>
+                   <span className="font-mono text-[10px] text-white/30 uppercase tracking-widest">
+                      Layer {selectedIdx + 1} of 15
+                   </span>
+                </div>
+
+                {/* Massive Typography for Depth & Temp */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-end gap-12 sm:gap-24 mb-12 border-b border-white/[0.05] pb-10">
+                   
+                   {/* Depth */}
+                   <div>
+                      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/40 block mb-3 font-bold">
+                         Depth
                       </span>
-                    </div>
-                    <span className="font-mono text-[9px] uppercase tracking-wider text-foam-dim pl-1 mt-1 truncate w-full">
-                      {item.zone}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+                      <AnimatePresence mode="wait">
+                         <motion.div 
+                           key={`depth-${current.depth}`}
+                           initial={{ opacity: 0, y: 10 }}
+                           animate={{ opacity: 1, y: 0 }}
+                           exit={{ opacity: 0, y: -10 }}
+                           transition={{ duration: 0.2 }}
+                           className="font-display text-7xl md:text-8xl lg:text-9xl font-medium text-white tracking-tighter tabular-nums leading-none"
+                         >
+                            {current.depth}<span className="text-4xl md:text-5xl text-white/20 ml-2">m</span>
+                         </motion.div>
+                      </AnimatePresence>
+                   </div>
 
-          {/* CENTER: Water Column Graphic (lg:col-span-2) */}
-          <div className="lg:col-span-2 flex flex-col items-center justify-center py-4">
-            <div className="relative w-12 h-[420px] rounded-full p-1.5 border border-white/15 bg-black/60 backdrop-blur-md flex flex-col justify-between items-center shadow-inner">
-              {/* Vertical scientific temperature gradient fill */}
-              <div 
-                className="absolute inset-x-1.5 top-1.5 bottom-1.5 rounded-full"
-                style={{
-                  background: 'linear-gradient(to bottom, #dc2626 0%, #f97316 20%, #eab308 40%, #14b8a6 65%, #3b82f6 85%, #4338ca 100%)'
-                }}
-              />
-
-              {/* Indicator Pip for selected depth */}
-              <div 
-                className="absolute left-0 right-0 h-4 -translate-y-1/2 flex items-center justify-center pointer-events-none transition-all duration-500 ease-out z-20"
-                style={{
-                  top: `${Math.min(94, Math.max(6, (selectedIdx / (DEPTH_DATA.length - 1)) * 92 + 4))}%`
-                }}
-              >
-                <div className="w-7 h-7 rounded-full bg-white border-2 border-[#02070D] shadow-[0_0_15px_#fff] flex items-center justify-center">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: current.color }} />
+                   {/* Temperature */}
+                   <div>
+                      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/40 block mb-3 font-bold">
+                         Predicted Temp
+                      </span>
+                      <AnimatePresence mode="wait">
+                         <motion.div 
+                           key={`temp-${current.temp}`}
+                           initial={{ opacity: 0, y: 10 }}
+                           animate={{ opacity: 1, y: 0 }}
+                           exit={{ opacity: 0, y: -10 }}
+                           transition={{ duration: 0.2 }}
+                           className="font-display text-7xl md:text-8xl lg:text-9xl font-medium tracking-tighter tabular-nums leading-none transition-colors duration-500"
+                           style={{ color: current.color, textShadow: `0 0 40px ${current.color}40` }}
+                         >
+                            {current.temp.toFixed(1)}<span className="text-4xl md:text-5xl opacity-30 ml-2">°</span>
+                         </motion.div>
+                      </AnimatePresence>
+                   </div>
                 </div>
-              </div>
 
-              {/* Depth Markers along column */}
-              <span className="relative z-10 font-mono text-[9px] font-bold text-white/90 drop-shadow">0m</span>
-              <span className="relative z-10 font-mono text-[9px] font-bold text-white/90 drop-shadow">200m</span>
-              <span className="relative z-10 font-mono text-[9px] font-bold text-white/90 drop-shadow">500m</span>
-              <span className="relative z-10 font-mono text-[9px] font-bold text-white/90 drop-shadow">1000m</span>
-            </div>
-            
-            <span className="font-mono text-[10px] text-foam-dim uppercase tracking-widest mt-3">
-              Thermocline Gradient
-            </span>
-          </div>
+                {/* Lower Environment Stats */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-10">
+                   <div className="flex items-center gap-4 group">
+                      <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center text-white/50 group-hover:bg-white/[0.05] transition-colors">
+                         <Gauge size={20} />
+                      </div>
+                      <div>
+                         <span className="text-white/40 text-[9px] uppercase tracking-widest block font-bold mb-1">Hydrostatic Pressure</span>
+                         <span className="text-white text-xl font-medium font-ui">{current.pressureAtm.toFixed(1)} atm</span>
+                      </div>
+                   </div>
 
-          {/* RIGHT: Detailed Telemetry Card (lg:col-span-5) */}
-          <div className="lg:col-span-5 flex flex-col justify-between h-full bg-[#030A13] border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
-            
-            {/* Ambient corner aura */}
-            <div 
-              className="absolute -top-12 -right-12 w-48 h-48 rounded-full blur-2xl opacity-20 pointer-events-none transition-colors duration-500"
-              style={{ backgroundColor: current.color }}
-            />
+                   <div className="flex items-center gap-4 group">
+                      <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center text-white/50 group-hover:bg-white/[0.05] transition-colors">
+                         {current.depth < 100 ? <Sun size={20} /> : <Moon size={20} />}
+                      </div>
+                      <div>
+                         <span className="text-white/40 text-[9px] uppercase tracking-widest block font-bold mb-1">Solar Penetration</span>
+                         <span className="text-white text-xl font-medium font-ui">{current.light}</span>
+                      </div>
+                   </div>
+                </div>
 
-            <div>
-              {/* Zone Pill */}
-              <div className="flex items-center justify-between mb-6">
-                <span 
-                  className="px-3 py-1 rounded-full text-xs font-mono font-bold tracking-widest uppercase border"
-                  style={{
-                    backgroundColor: `${current.color}15`,
-                    borderColor: `${current.color}40`,
-                    color: current.color,
-                  }}
-                >
-                  {current.zone} Zone
-                </span>
-                <span className="font-mono text-xs text-white/40 tracking-widest uppercase">
-                  Level #{selectedIdx + 1} of 15
-                </span>
-              </div>
-
-              {/* Primary Depth & Temp Hero */}
-              <div className="grid grid-cols-2 gap-6 pb-6 border-b border-white/10">
+                {/* Description */}
                 <div>
-                  <span className="font-mono text-xs uppercase tracking-widest text-foam-dim block mb-1">
-                    Sample Depth
-                  </span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="font-display text-4xl md:text-5xl font-bold text-white tracking-tight">
-                      {current.depth}
-                    </span>
-                    <span className="font-mono text-lg text-foam-dim">m</span>
-                  </div>
+                   <p className="font-ui text-base text-white/60 leading-relaxed max-w-2xl">
+                      {current.desc}
+                   </p>
+                </div>
+                
+                {/* CTA */}
+                <div className="mt-auto pt-10">
+                  <Link
+                    href="/explorer"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-black text-xs font-mono font-bold uppercase tracking-widest hover:scale-105 transition-transform"
+                  >
+                    View in Explorer →
+                  </Link>
                 </div>
 
-                <div>
-                  <span className="font-mono text-xs uppercase tracking-widest text-foam-dim block mb-1 flex items-center gap-1.5">
-                    <Thermometer size={14} style={{ color: current.color }} />
-                    Reconstructed Temp
-                  </span>
-                  <div className="flex items-baseline gap-1">
-                    <span 
-                      className="font-display text-4xl md:text-5xl font-bold tracking-tight"
-                      style={{ color: current.color }}
-                    >
-                      {current.temp.toFixed(1)}
-                    </span>
-                    <span className="font-mono text-lg text-foam-dim">°C</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Physical Environment Attributes */}
-              <div className="grid grid-cols-2 gap-4 py-6 border-b border-white/10 font-mono text-xs">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-biolume">
-                    <Gauge size={16} />
-                  </div>
-                  <div>
-                    <span className="text-foam-dim text-[10px] uppercase tracking-wider block">Hydrostatic Pressure</span>
-                    <span className="text-white font-semibold">{current.pressureAtm.toFixed(1)} atm</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-instrument-amber">
-                    {current.depth < 100 ? <Sun size={16} /> : <Moon size={16} />}
-                  </div>
-                  <div>
-                    <span className="text-foam-dim text-[10px] uppercase tracking-wider block">Solar Penetration</span>
-                    <span className="text-white font-semibold">{current.light}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Physical Process Description */}
-              <div className="pt-6">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-foam-dim block mb-2">
-                  Oceanographic Significance
-                </span>
-                <p className="font-ui text-sm text-foam/85 leading-relaxed">
-                  {current.desc}
-                </p>
-              </div>
-            </div>
-
-            {/* CTA to explore in 3D */}
-            <div className="mt-8 pt-4 border-t border-white/10 flex items-center justify-between">
-              <span className="text-xs text-foam-dim font-ui">
-                Predict this depth anywhere in the Indian Ocean.
-              </span>
-              <Link
-                href="/explorer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-biolume/10 border border-biolume/40 text-biolume text-xs font-mono font-semibold uppercase tracking-wider hover:bg-biolume hover:text-black transition-all"
-              >
-                Inspect in Explorer →
-              </Link>
-            </div>
+             </div>
 
           </div>
-
-        </div>
+        </motion.div>
 
       </div>
     </section>

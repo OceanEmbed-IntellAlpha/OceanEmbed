@@ -1,8 +1,7 @@
 'use client';
 
-import { ArrowRight, Thermometer, Waves, Ship, Target, BookOpen } from 'lucide-react';
-import { gsap, useGSAP } from '@/lib/gsap';
-import { useRef } from 'react';
+import { Thermometer, Waves, Ship, Target, BookOpen } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 // ─── Shared Card Wrapper ──────────────────────────────────────────────────────
 interface AppCardProps {
@@ -12,149 +11,172 @@ interface AppCardProps {
   icon: React.ReactNode;
   spanClass: string;
   children: React.ReactNode;
+  delay?: number;
 }
 
-function AppCard({ title, desc, tags, icon, spanClass, children }: AppCardProps) {
+function AppCard({ title, desc, tags, icon, spanClass, children, delay = 0 }: AppCardProps) {
   return (
-    <div className={`group/card relative ${spanClass} js-app-card rounded-[2rem] bg-white/5 p-2 ring-1 ring-white/10 transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-white/10 hover:ring-white/20 hover:shadow-2xl`}>
-      <div className="relative h-full flex flex-col p-8 md:p-10 bg-[#050A10]/95 backdrop-blur-2xl rounded-[calc(2rem-0.5rem)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] overflow-hidden">
+    <motion.div 
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.7, delay, ease: "easeOut" }}
+      className={`group/card relative ${spanClass} bg-[#030812]/50 backdrop-blur-xl border border-white/[0.05] rounded-[2.5rem] p-8 md:p-10 flex flex-col justify-between overflow-hidden hover:bg-[#050b18]/80 transition-colors duration-500 shadow-[0_8px_32px_rgba(0,0,0,0.4)]`}
+    >
+      {/* Decorative Visual Background Region */}
+      <div className="absolute inset-0 pointer-events-none opacity-30 group-hover/card:opacity-100 transition-opacity duration-700 z-0">
+        {children}
+      </div>
+
+      {/* Content Foreground */}
+      <div className="relative z-10 flex flex-col h-full justify-between gap-12 pointer-events-none">
         
-        {/* Decorative Visual Background Region */}
-        <div className="absolute inset-0 pointer-events-none opacity-30 group-hover/card:opacity-100 transition-opacity duration-700">
-          {children}
+        {/* Header */}
+        <div className="flex flex-col gap-6">
+          <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center text-white/40 group-hover/card:text-cyan-400 group-hover/card:border-cyan-400/30 group-hover/card:bg-cyan-950/30 transition-all duration-500 shadow-inner">
+            {icon}
+          </div>
+          <h3 className="font-display text-3xl md:text-4xl font-medium text-white tracking-tight">
+            {title}
+          </h3>
         </div>
 
-        {/* Content Foreground */}
-        <div className="relative z-10 flex flex-col h-full justify-between gap-12 pointer-events-none">
-          
-          {/* Header */}
-          <div className="flex justify-between items-start">
-            <div className="flex flex-col gap-6">
-              <div className="w-12 h-12 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-foam group-hover/card:text-biolume group-hover/card:border-biolume/30 group-hover/card:bg-biolume/10 transition-colors duration-700 shadow-lg">
-                {icon}
-              </div>
-              <h3 className="font-display text-3xl font-medium text-white tracking-tight">
-                {title}
-              </h3>
-            </div>
+        {/* Footer */}
+        <div className="flex flex-col gap-6">
+          <p className="font-ui text-white/60 text-sm md:text-base max-w-sm leading-relaxed">
+            {desc}
+          </p>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {tags.map((tag) => (
+              <span key={tag} className="font-mono text-[9px] tracking-[0.2em] text-white/40 uppercase border border-white/5 px-3 py-1.5 rounded-full bg-white/[0.02] group-hover/card:border-cyan-500/20 group-hover/card:text-cyan-400 group-hover/card:bg-cyan-950/10 transition-colors duration-500">
+                {tag}
+              </span>
+            ))}
           </div>
-
-          {/* Footer */}
-          <div className="flex flex-col gap-6">
-            <p className="font-ui text-foam-dim text-base max-w-sm leading-relaxed">
-              {desc}
-            </p>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {tags.map((tag) => (
-                <span key={tag} className="font-mono text-[9px] tracking-[0.2em] text-white/50 uppercase border border-white/10 px-3 py-1.5 rounded-full bg-white/5 group-hover/card:border-biolume/30 group-hover/card:text-biolume transition-colors duration-700">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
-          
         </div>
+        
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 
-// ─── Visual Motifs ────────────────────────────────────────────────────────────
+// ─── Hyper-Relevant Visual Motifs ──────────────────────────────────────────────
 
-// Motif 1: Ocean Forecasting (Animated Grid & Glow)
-function MotifForecasting() {
+// 1. Defense & Naval Operations (Acoustics & Sonar Refracting at Thermocline)
+function MotifDefense() {
   return (
-    <div className="absolute inset-0 overflow-hidden">
-      {/* Glowing orb that expands on hover */}
-      <div className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-1/2 w-96 h-96 rounded-full bg-biolume/10 blur-3xl group-hover/card:bg-biolume/30 group-hover/card:scale-150 transition-all duration-1000 ease-[cubic-bezier(0.32,0.72,0,1)]" />
-      
-      {/* Animated Data Grid */}
-      <div className="absolute inset-0 opacity-20 group-hover/card:opacity-50 transition-opacity duration-1000">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#4CE0D2_1px,transparent_1px),linear-gradient(to_bottom,#4CE0D2_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_100%,#000_40%,transparent_100%)] group-hover/card:-translate-y-4 transition-transform duration-1000 ease-out" />
-      </div>
-    </div>
-  );
-}
-
-// Motif 2: Disaster Management (Pulsing Hazard Vector)
-function MotifDisaster() {
-  return (
-    <div className="absolute inset-0 overflow-hidden">
-      {/* Pulsing red hazard region */}
-      <div className="absolute top-1/2 right-12 w-64 h-64 rounded-full bg-instrument-amber/5 blur-3xl group-hover/card:bg-instrument-amber/20 transition-colors duration-1000" />
-      <div className="absolute top-1/2 right-32 -translate-y-1/2 w-24 h-24 rounded-full border border-instrument-amber/20 opacity-0 group-hover/card:opacity-100 animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite] transition-opacity duration-500" />
-      
-      {/* Vector Field */}
-      <div className="absolute inset-0 flex items-center justify-center opacity-30 group-hover/card:opacity-80 transition-opacity duration-700">
-        <svg width="200" height="200" viewBox="0 0 200 200" className="translate-x-12">
-          <defs>
-            <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 0 L 10 5 L 0 10 z" className="fill-thermocline group-hover/card:fill-instrument-amber transition-colors duration-500" />
-            </marker>
-          </defs>
-          <path d="M 20 180 Q 80 120 140 100" fill="none" className="stroke-thermocline group-hover/card:stroke-instrument-amber transition-colors duration-500" strokeWidth="1.5" markerEnd="url(#arrow)" />
-          <path d="M 40 190 Q 90 140 160 110" fill="none" className="stroke-thermocline group-hover/card:stroke-instrument-amber transition-colors duration-500 delay-75" strokeWidth="1" markerEnd="url(#arrow)" />
-          <path d="M 10 150 Q 70 100 130 80" fill="none" className="stroke-thermocline group-hover/card:stroke-instrument-amber transition-colors duration-500 delay-150" strokeWidth="1" markerEnd="url(#arrow)" />
-        </svg>
-      </div>
-    </div>
-  );
-}
-
-// Motif 3: Search & Rescue (Radar sweep)
-function MotifSAR() {
-  return (
-    <div className="absolute inset-0 overflow-hidden flex justify-end items-end p-8">
-      {/* Radar sweep */}
-      <div className="absolute bottom-12 right-12 w-64 h-64 border border-white/5 rounded-full flex items-center justify-center opacity-20 group-hover/card:opacity-100 transition-opacity duration-1000 scale-90 group-hover/card:scale-100 ease-[cubic-bezier(0.32,0.72,0,1)]">
-        <div className="absolute w-full h-full border border-biolume/10 rounded-full" />
-        <div className="absolute w-2/3 h-2/3 border border-biolume/20 rounded-full" />
-        <div className="absolute w-1/3 h-1/3 border border-biolume/30 rounded-full" />
-        {/* Sweep */}
-        <div className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent_0deg,transparent_270deg,rgba(76,224,210,0.2)_360deg)] rounded-full animate-[spin_3s_linear_infinite]" />
-      </div>
-      
-      {/* Search Trajectory line */}
-      <svg width="200" height="200" viewBox="0 0 200 200" className="absolute opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 delay-300">
-        <path d="M 10 190 L 50 150 L 80 160 L 120 100 L 180 110" fill="none" className="stroke-biolume" strokeWidth="1.5" strokeDasharray="4 4" />
-        <circle cx="180" cy="110" r="4" className="fill-biolume animate-pulse" />
+    <div className="absolute inset-0 overflow-hidden flex items-center justify-center">
+      <svg width="100%" height="100%" viewBox="0 0 300 300" preserveAspectRatio="none" className="translate-y-12">
+        {/* Thermocline Layer */}
+        <line x1="0" y1="150" x2="300" y2="150" stroke="rgba(34,211,238,0.3)" strokeWidth="1" strokeDasharray="4 4" className="group-hover/card:stroke-cyan-400/60 transition-colors duration-500" />
+        <text x="150" y="140" fill="rgba(34,211,238,0.2)" fontSize="10" fontFamily="monospace" textAnchor="middle" letterSpacing="3" className="group-hover/card:fill-cyan-400/50 transition-colors duration-500">THERMOCLINE</text>
+        
+        {/* Sonar waves (curves) bending at the thermocline */}
+        <path d="M 150 20 Q 180 80 220 150 L 250 250" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1" className="group-hover/card:stroke-cyan-400 transition-colors duration-500" />
+        <path d="M 150 20 Q 120 80 80 150 L 50 250" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1" className="group-hover/card:stroke-cyan-400 transition-colors duration-500 delay-75" />
+        
+        {/* Ping origin */}
+        <circle cx="150" cy="20" r="4" fill="rgba(34,211,238,0.5)" className="group-hover/card:fill-cyan-400 transition-colors duration-500 animate-pulse" />
       </svg>
+      {/* Background Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-32 bg-cyan-500/5 blur-[50px] group-hover/card:bg-cyan-500/10 transition-colors duration-1000" />
     </div>
   );
 }
 
-// Motif 4: Offshore Operations (Depth layers)
+// 2. Marine Biology & Fisheries (Ocean Fronts & Potential Fishing Zones)
+function MotifBiology() {
+  return (
+    <div className="absolute inset-0 overflow-hidden flex items-center justify-center">
+      <svg width="100%" height="100%" viewBox="0 0 300 300" preserveAspectRatio="none">
+        {/* Topo contour lines representing temperature gradients */}
+        <path d="M -50 80 Q 100 150 150 100 T 350 150" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+        <path d="M -50 110 Q 100 180 150 130 T 350 180" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5" className="group-hover/card:stroke-amber-500/50 transition-colors duration-500" />
+        <path d="M -50 140 Q 100 210 150 160 T 350 210" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+        
+        {/* Target PFZ Hotspot */}
+        <circle cx="150" cy="130" r="3" fill="rgba(245,158,11,0.5)" className="group-hover/card:fill-amber-500 group-hover/card:shadow-[0_0_15px_orange] transition-all duration-500" />
+        <circle cx="150" cy="130" r="16" fill="none" stroke="rgba(245,158,11,0.5)" strokeDasharray="3 3" className="group-hover/card:stroke-amber-500 transition-colors duration-500 animate-[spin_6s_linear_infinite]" />
+      </svg>
+      {/* Hotspot Glow */}
+      <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full bg-amber-500/5 blur-[50px] group-hover/card:bg-amber-500/15 transition-colors duration-1000" />
+    </div>
+  );
+}
+
+// 3. Climate Science (Heatwaves & Ocean Heat Content)
+function MotifClimate() {
+  return (
+    <div className="absolute inset-0 overflow-hidden flex items-end justify-center pb-8">
+      <svg width="100%" height="150" viewBox="0 0 300 150" preserveAspectRatio="none">
+        {/* Heatwave time-series graph */}
+        <path d="M 0 150 L 30 140 L 70 145 L 120 80 L 170 90 L 220 30 L 260 40 L 300 15 L 300 150 Z" fill="url(#heatGradient)" opacity="0.3" className="group-hover/card:opacity-60 transition-opacity duration-1000" />
+        <path d="M 0 150 L 30 140 L 70 145 L 120 80 L 170 90 L 220 30 L 260 40 L 300 15" fill="none" stroke="rgba(239,68,68,0.5)" strokeWidth="2" className="group-hover/card:stroke-red-500 transition-colors duration-500" />
+        
+        <defs>
+          <linearGradient id="heatGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ef4444" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+      </svg>
+      {/* Grid lines */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:100%_20px]" />
+    </div>
+  );
+}
+
+// 4. Offshore Operations (Deepwater Platform & Safety Grid)
 function MotifOffshore() {
   return (
-    <div className="absolute inset-x-0 bottom-0 top-1/4 flex flex-col justify-end opacity-20 group-hover/card:opacity-80 transition-opacity duration-1000 translate-y-8 group-hover/card:translate-y-0 ease-[cubic-bezier(0.32,0.72,0,1)]">
-      <div className="h-16 w-full bg-gradient-to-t from-white/5 to-transparent border-t border-white/10" />
-      <div className="h-24 w-full bg-gradient-to-t from-biolume/10 to-transparent border-t border-biolume/20" />
-      <div className="h-32 w-full bg-gradient-to-t from-instrument-amber/10 to-transparent border-t border-instrument-amber/20" />
-      <div className="absolute bottom-16 right-12 font-mono text-[9px] text-biolume uppercase tracking-widest bg-[#050A10]/80 px-2 py-1 rounded backdrop-blur-md border border-biolume/30">
-        Platform Anchored
+    <div className="absolute inset-0 overflow-hidden flex flex-col items-center justify-end">
+      <svg width="100%" height="100%" viewBox="0 0 200 200" preserveAspectRatio="none">
+        {/* Sea Surface */}
+        <line x1="0" y1="40" x2="200" y2="40" stroke="rgba(34,211,238,0.3)" strokeWidth="1" strokeDasharray="3 3" />
+        
+        {/* Platform Legs */}
+        <line x1="85" y1="40" x2="65" y2="200" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5" className="group-hover/card:stroke-cyan-400 transition-colors duration-500" />
+        <line x1="115" y1="40" x2="135" y2="200" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5" className="group-hover/card:stroke-cyan-400 transition-colors duration-500" />
+        
+        {/* Crossbracing */}
+        <line x1="78" y1="90" x2="122" y2="90" stroke="rgba(255,255,255,0.05)" strokeWidth="1" className="group-hover/card:stroke-white/20 transition-colors duration-500" />
+        <line x1="72" y1="150" x2="128" y2="150" stroke="rgba(255,255,255,0.05)" strokeWidth="1" className="group-hover/card:stroke-white/20 transition-colors duration-500" />
+        <line x1="78" y1="90" x2="128" y2="150" stroke="rgba(255,255,255,0.05)" strokeWidth="1" className="group-hover/card:stroke-white/20 transition-colors duration-500" />
+        <line x1="122" y1="90" x2="72" y2="150" stroke="rgba(255,255,255,0.05)" strokeWidth="1" className="group-hover/card:stroke-white/20 transition-colors duration-500" />
+      </svg>
+      {/* Depth markers */}
+      <div className="absolute left-6 top-[60%] flex flex-col gap-6 font-mono text-[8px] text-white/20 group-hover/card:text-white/50 transition-colors duration-500">
+        <span>-100m</span>
+        <span>-500m</span>
+        <span className="text-cyan-400/50 group-hover/card:text-cyan-400 font-bold">-1000m</span>
       </div>
+      {/* Seabed glow */}
+      <div className="absolute bottom-0 w-full h-24 bg-cyan-500/5 blur-[40px] group-hover/card:bg-cyan-500/10 transition-colors duration-1000" />
     </div>
   );
 }
 
-// Motif 5: Education & Research (Data Visualization)
+// 5. Research & Education (Neural Analysis Graph)
 function MotifResearch() {
   return (
-    <div className="absolute inset-0 flex items-end justify-end p-8 opacity-20 group-hover/card:opacity-100 transition-opacity duration-700">
-      <div className="flex items-end gap-1.5 h-32 w-48">
-        {[40, 60, 45, 80, 55, 90, 65, 30, 20, 10].map((h, i) => (
-          <div 
-            key={i} 
-            className="w-full bg-white/10 group-hover/card:bg-biolume/40 transition-all duration-700 rounded-t-sm"
-            style={{ 
-              height: `${h}%`, 
-              transitionDelay: `${i * 30}ms` 
-            }}
-          />
-        ))}
-      </div>
-      <div className="absolute bottom-8 right-8 font-mono text-[9px] text-foam-dim tracking-widest uppercase border-l border-b border-white/20 w-48 h-32" />
+    <div className="absolute inset-0 overflow-hidden flex items-center justify-center">
+      <svg width="100%" height="100%" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" className="group-hover/card:scale-105 transition-transform duration-1000">
+        {/* Node Connections */}
+        <path d="M 80 150 L 180 110 L 280 190 L 380 130" fill="none" stroke="rgba(16,185,129,0.15)" strokeWidth="1.5" className="group-hover/card:stroke-emerald-400 transition-colors duration-500" />
+        <path d="M 180 110 L 230 60 L 380 130" fill="none" stroke="rgba(16,185,129,0.05)" strokeWidth="1" className="group-hover/card:stroke-emerald-400/40 transition-colors duration-500" />
+        <path d="M 80 150 L 130 260 L 280 190" fill="none" stroke="rgba(16,185,129,0.05)" strokeWidth="1" className="group-hover/card:stroke-emerald-400/40 transition-colors duration-500" />
+        
+        {/* Nodes */}
+        <circle cx="80" cy="150" r="4" fill="rgba(16,185,129,0.5)" className="group-hover/card:fill-emerald-400 transition-colors duration-500" />
+        <circle cx="180" cy="110" r="6" fill="rgba(16,185,129,0.5)" className="group-hover/card:fill-emerald-400 group-hover/card:shadow-[0_0_15px_#10b981] transition-colors duration-500 animate-pulse" />
+        <circle cx="230" cy="60" r="3" fill="rgba(16,185,129,0.3)" className="group-hover/card:fill-emerald-400 transition-colors duration-500" />
+        <circle cx="280" cy="190" r="5" fill="rgba(16,185,129,0.5)" className="group-hover/card:fill-emerald-400 transition-colors duration-500" />
+        <circle cx="130" cy="260" r="3" fill="rgba(16,185,129,0.3)" className="group-hover/card:fill-emerald-400 transition-colors duration-500" />
+        <circle cx="380" cy="130" r="4" fill="rgba(16,185,129,0.5)" className="group-hover/card:fill-emerald-400 transition-colors duration-500" />
+      </svg>
+      {/* Background radial */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-emerald-500/5 blur-[80px] group-hover/card:bg-emerald-500/10 transition-colors duration-1000" />
     </div>
   );
 }
@@ -163,49 +185,36 @@ function MotifResearch() {
 // ─── Main Section ─────────────────────────────────────────────────────────────
 
 export function ApplicationsSection() {
-  const sectionRef = useRef<HTMLElement>(null);
-
-  useGSAP(() => {
-    if (!sectionRef.current) return;
-    
-    const prefersReduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReduced) return;
-
-    gsap.fromTo(
-      sectionRef.current.querySelectorAll('.js-app-card'),
-      { opacity: 0, y: 40 },
-      { 
-        opacity: 1, 
-        y: 0, 
-        duration: 0.8, 
-        stagger: 0.1, 
-        ease: 'power3.out',
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top 75%',
-        }
-      }
-    );
-  }, { scope: sectionRef });
-
   return (
-    <section ref={sectionRef} id="applications" className="relative py-40 px-6 border-t border-white/5 bg-[#02050A]">
+    <section id="applications" className="relative py-32 px-6 border-t border-white/[0.02] bg-[#000205] overflow-hidden">
+      
       {/* ── Background Noise Texture ── */}
-      <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}></div>
+      <div className="absolute inset-0 z-0 pointer-events-none opacity-[0.02] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}></div>
 
-      <div className="max-w-7xl mx-auto relative z-10">
+      <div className="max-w-[1200px] mx-auto relative z-10">
         
         {/* Headline */}
         <div className="mb-24 text-center">
-          <div className="inline-block rounded-full border border-thermocline/30 bg-thermocline/5 px-4 py-1.5 mb-8 backdrop-blur-md">
-            <p className="font-mono text-[10px] tracking-[0.2em] text-thermocline uppercase font-medium">
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="inline-block rounded-full border border-indigo-500/30 bg-indigo-950/30 px-3 py-1.5 mb-6 backdrop-blur-md shadow-[0_0_20px_rgba(99,102,241,0.15)]"
+          >
+            <p className="font-mono text-[10px] tracking-[0.3em] text-indigo-400 uppercase font-bold">
               Impact & Utilization
             </p>
-          </div>
-          <h2 className="font-display text-5xl md:text-6xl lg:text-7xl font-semibold text-foam tracking-tight leading-[1.05] max-w-4xl mx-auto">
+          </motion.div>
+          <motion.h2 
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="font-display text-5xl md:text-6xl font-medium text-white tracking-tight leading-tight max-w-4xl mx-auto"
+          >
             From ocean science to <br />
-            <span className="text-foam/40 font-normal">operational decisions.</span>
-          </h2>
+            <span className="text-white/30">operational decisions.</span>
+          </motion.h2>
         </div>
         
         {/* Bento Matrix Grid */}
@@ -217,8 +226,9 @@ export function ApplicationsSection() {
             tags={['ACOUSTICS', 'SONAR', 'THERMOCLINE']}
             icon={<Waves size={20} />}
             spanClass="lg:col-span-5 lg:row-span-2 min-h-[400px]"
+            delay={0.1}
           >
-            <MotifForecasting />
+            <MotifDefense />
           </AppCard>
 
           <AppCard 
@@ -227,8 +237,9 @@ export function ApplicationsSection() {
             tags={['PFZ', 'HABITAT']}
             icon={<Thermometer size={20} />}
             spanClass="md:col-span-3 lg:col-span-4 min-h-[300px]"
+            delay={0.2}
           >
-            <MotifDisaster />
+            <MotifBiology />
           </AppCard>
 
           <AppCard 
@@ -237,8 +248,9 @@ export function ApplicationsSection() {
             tags={['OHC', 'HEATWAVES']}
             icon={<Target size={20} />}
             spanClass="md:col-span-3 lg:col-span-3 min-h-[300px]"
+            delay={0.3}
           >
-            <MotifSAR />
+            <MotifClimate />
           </AppCard>
 
           <AppCard 
@@ -247,6 +259,7 @@ export function ApplicationsSection() {
             tags={['HABITAT', 'SALINITY']}
             icon={<Ship size={20} />}
             spanClass="md:col-span-6 lg:col-span-7 min-h-[300px]"
+            delay={0.4}
           >
             <MotifOffshore />
           </AppCard>
@@ -257,6 +270,7 @@ export function ApplicationsSection() {
             tags={['ANALYSIS', 'PROFILES']}
             icon={<BookOpen size={20} />}
             spanClass="md:col-span-6 lg:col-span-12 xl:col-span-12 min-h-[250px]"
+            delay={0.5}
           >
             <MotifResearch />
           </AppCard>

@@ -63,45 +63,10 @@ export default function ResearchLabLandingPage() {
       </div>
       
       <div className="relative pt-40 z-10">
-        {/* Minimal Hero */}
-        <motion.section 
-          style={{ y: heroY, opacity: heroOpacity }}
-          className="flex flex-col items-center text-center gap-8 max-w-4xl mx-auto px-6"
-        >
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-            className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full border border-white/10 bg-white/[0.02]"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-foam-dim" />
-            <span className="font-mono text-[10px] tracking-[0.2em] text-white/50 uppercase">
-              The OceanEmbed Journal
-            </span>
-          </motion.div>
-          
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.2, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="font-display text-[clamp(3.5rem,7vw,7rem)] font-medium text-white tracking-tight leading-[1]"
-          >
-            Architecting <br className="hidden md:block" />
-            <span className="text-white/80">subsurface intelligence.</span>
-          </motion.h1>
-          
-          <motion.p 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1.2, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="text-foam-dim max-w-3xl text-[clamp(1rem,1.5vw,1.25rem)] leading-relaxed font-light mt-4"
-          >
-            OceanEmbed was not built by choosing an architecture first. We progressively tested the information content of surface observations, model capacity, spatial context, temporal context, and physical constraints — using experiments to determine what actually improved subsurface temperature reconstruction.
-          </motion.p>
-        </motion.section>
+
 
         {/* The Journey Overview */}
-        <section className="flex flex-col gap-12 mt-40 max-w-[1400px] mx-auto px-6">
+        <section className="flex flex-col gap-12 max-w-[1400px] mx-auto px-6">
           <div className="flex flex-col items-center gap-4">
             <h2 className="font-display text-2xl md:text-3xl text-white font-medium tracking-tight text-center">
               The Research Journey

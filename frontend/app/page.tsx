@@ -23,7 +23,7 @@ const HeroGlobe = dynamic(() => import('@/components/landing/HeroGlobe'), {
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-abyss text-foam selection:bg-biolume/30 font-ui relative overflow-x-hidden">
+    <main className="min-h-screen bg-abyss text-foam selection:bg-biolume/30 font-ui relative">
       <GlobalNav />
 
       {/* ───────────────────────────────────────────────────────────────── */}
@@ -150,10 +150,7 @@ export default function HomePage() {
       {/* ───────────────────────────────────────────────────────────────── */}
       {/* <ProductPreview /> */}
 
-      {/* ───────────────────────────────────────────────────────────────── */}
-      {/* 7. ARGO VALIDATION SPOTLIGHT (Section 30 & 31) */}
-      {/* ───────────────────────────────────────────────────────────────── */}
-      <ValidationSpotlight />
+
 
       {/* ───────────────────────────────────────────────────────────────── */}
       {/* 8. APPLICATIONS & MISSION USE CASES */}

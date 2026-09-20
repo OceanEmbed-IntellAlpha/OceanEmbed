@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { CheckCircle2, ShieldCheck, ArrowRight, BarChart3, Activity, GitCommit } from 'lucide-react';
+import { ShieldCheck, ArrowRight } from 'lucide-react';
 
 interface SampleMatchup {
   depth: number;
@@ -25,60 +26,88 @@ const SAMPLE_MATCHUP_DATA: SampleMatchup[] = [
 
 export function ValidationSpotlight() {
   const [activeRegion, setActiveRegion] = useState<'All' | 'BoB' | 'AS'>('All');
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const regionMetrics = {
-    All: { rmse: '0.84°C', bias: '+0.12°C', corr: '0.96', profiles: '1,420', status: 'Optimal' },
-    BoB: { rmse: '0.79°C', bias: '+0.09°C', corr: '0.97', profiles: '680', status: 'High Accuracy' },
-    AS: { rmse: '0.88°C', bias: '+0.14°C', corr: '0.95', profiles: '740', status: 'Optimal' },
+    All: { rmse: '0.84', bias: '+0.12', corr: '0.96', profiles: '1,420', status: 'Optimal' },
+    BoB: { rmse: '0.79', bias: '+0.09', corr: '0.97', profiles: '680', status: 'High Accuracy' },
+    AS: { rmse: '0.88', bias: '+0.14', corr: '0.95', profiles: '740', status: 'Optimal' },
   };
 
   const metrics = regionMetrics[activeRegion];
 
+  // SVG Chart Configuration
+  const width = 1000;
+  const height = 240;
+  const getX = (idx: number) => (idx / (SAMPLE_MATCHUP_DATA.length - 1)) * width;
+  const getY = (temp: number) => height - ((temp - 5) / 25) * height; // Maps 5C-30C
+
+  // Generate SVG Path strings
+  const modelPath = SAMPLE_MATCHUP_DATA.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(pt.model)}`).join(' ');
+  const argoPath = SAMPLE_MATCHUP_DATA.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(pt.argo)}`).join(' ');
+
   return (
-    <section id="validation" className="relative py-28 md:py-36 bg-[#030912] border-t border-thermocline/15 overflow-hidden">
+    <section id="validation" className="relative py-32 bg-[#000205] border-t border-white/[0.02] overflow-hidden">
       
       {/* Background radial highlight */}
-      <div className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-argoObs/5 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-emerald-500/5 rounded-full blur-[140px] pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto px-6 relative z-10">
+      <div className="max-w-[1200px] mx-auto px-6 relative z-10">
         
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
           <div>
-            <div className="inline-flex items-center gap-2 font-mono text-xs font-bold tracking-[0.25em] text-argoObs uppercase mb-3 px-4 py-1.5 rounded-full border border-argoObs/30 bg-argoObs/10 backdrop-blur-md">
-              <ShieldCheck size={14} className="text-argoObs" />
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="inline-flex items-center gap-2 font-mono text-[10px] font-bold tracking-[0.3em] text-emerald-400 uppercase mb-4 px-3 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-950/30 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.15)]"
+            >
+              <ShieldCheck size={14} className="text-emerald-400" />
               Empirical Holdout Verification
-            </div>
-            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight leading-tight">
+            </motion.div>
+            <motion.h2 
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="font-display text-4xl sm:text-5xl font-medium text-white tracking-tight leading-tight"
+            >
               Validated against independent <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-argoObs to-biolume">
+              <span className="text-white/30">
                 Argo Float Observations.
               </span>
-            </h2>
+            </motion.h2>
           </div>
           
-          <div className="flex items-center gap-2">
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="flex items-center gap-2"
+          >
             <Link
               href="/explorer/validation"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white font-mono text-xs uppercase tracking-wider transition-all"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-black font-mono text-xs font-bold uppercase tracking-widest hover:scale-105 transition-transform"
             >
               Open Full Validation Dashboard
               <ArrowRight size={14} />
             </Link>
-          </div>
+          </motion.div>
         </div>
 
-        {/* Region Switcher Pills */}
-        <div className="flex items-center gap-3 mb-10">
-          <span className="text-xs font-mono text-foam-dim uppercase tracking-wider">Region Focus:</span>
+        {/* Region Switcher */}
+        <div className="flex items-center gap-3 mb-10 overflow-x-auto pb-2 scrollbar-hide">
+          <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest font-bold whitespace-nowrap">Region Focus:</span>
           {(['All', 'BoB', 'AS'] as const).map((r) => (
             <button
               key={r}
               onClick={() => setActiveRegion(r)}
-              className={`px-3 py-1 rounded-lg text-xs font-mono tracking-wider uppercase transition-all ${
+              className={`px-4 py-1.5 rounded-full text-[10px] font-mono tracking-widest uppercase font-bold transition-all whitespace-nowrap ${
                 activeRegion === r
-                  ? 'bg-argoObs/20 border border-argoObs/60 text-argoObs font-bold shadow-[0_0_12px_rgba(52,211,153,0.3)]'
-                  : 'bg-white/5 border border-white/10 text-foam-dim hover:text-white'
+                  ? 'bg-emerald-500/20 border border-emerald-400 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+                  : 'bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10'
               }`}
             >
               {r === 'All' ? 'North Indian Ocean' : r === 'BoB' ? 'Bay of Bengal' : 'Arabian Sea'}
@@ -86,119 +115,151 @@ export function ValidationSpotlight() {
           ))}
         </div>
 
-        {/* 4 Quantitative Benchmark Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-          <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-xl flex flex-col justify-between">
-            <div className="flex items-center justify-between text-foam-dim font-mono text-xs uppercase mb-3">
-              <span>Overall RMSE</span>
-              <span className="text-argoObs">Target &lt; 1.0°C</span>
-            </div>
-            <div className="font-display text-3xl sm:text-4xl font-bold text-white tracking-tight">
-              {metrics.rmse}
-            </div>
-            <p className="text-[11px] text-foam-dim mt-2">Root Mean Square Error across all 15 depths</p>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-xl flex flex-col justify-between">
-            <div className="flex items-center justify-between text-foam-dim font-mono text-xs uppercase mb-3">
-              <span>Mean Bias</span>
-              <span className="text-biolume">Unbiased</span>
-            </div>
-            <div className="font-display text-3xl sm:text-4xl font-bold text-white tracking-tight">
-              {metrics.bias}
-            </div>
-            <p className="text-[11px] text-foam-dim mt-2">Average deviation from in-situ ground truth</p>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-xl flex flex-col justify-between">
-            <div className="flex items-center justify-between text-foam-dim font-mono text-xs uppercase mb-3">
-              <span>Pearson Correlation</span>
-              <span className="text-instrument-amber">r &gt; 0.95</span>
-            </div>
-            <div className="font-display text-3xl sm:text-4xl font-bold text-white tracking-tight">
-              {metrics.corr}
-            </div>
-            <p className="text-[11px] text-foam-dim mt-2">Linear correlation with autonomous sensors</p>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-xl flex flex-col justify-between">
-            <div className="flex items-center justify-between text-foam-dim font-mono text-xs uppercase mb-3">
-              <span>Holdout Profiles</span>
-              <span className="text-white/40">Tested</span>
-            </div>
-            <div className="font-display text-3xl sm:text-4xl font-bold text-white tracking-tight">
-              {metrics.profiles}
-            </div>
-            <p className="text-[11px] text-foam-dim mt-2">Independent profiles never seen in training</p>
-          </div>
-        </div>
-
-        {/* Interactive Matchup Visualizer */}
-        <div className="p-6 md:p-8 rounded-3xl bg-[#050D18] border border-white/10 backdrop-blur-2xl">
-          <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-white/10 gap-4">
-            <div>
-              <span className="font-mono text-xs uppercase tracking-widest text-argoObs block mb-1">
-                Sample Float Matchup: WMO-6903829 (Bay of Bengal)
-              </span>
-              <h3 className="font-display text-xl font-bold text-white">
-                Reconstructed Profile vs Physical Sensor Matchup
-              </h3>
-            </div>
-            
-            <div className="flex items-center gap-6 text-xs font-mono">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-instrument-amber shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
-                <span className="text-white">OceanEmbed Model</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-argoObs shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
-                <span className="text-white">Argo Sensor (In-situ)</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Data Table / Profile Comparison Strip */}
-          <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-3 pt-6">
-            {SAMPLE_MATCHUP_DATA.map((pt) => {
-              const absDelta = Math.abs(pt.delta);
-              const isMatch = absDelta <= 0.2;
-              return (
-                <div 
-                  key={pt.depth}
-                  className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col items-center text-center hover:border-white/20 transition-colors"
-                >
-                  <span className="font-mono text-xs font-bold text-white mb-2">
-                    {pt.depth}m
-                  </span>
-                  
-                  {/* Model Value */}
-                  <span className="font-mono text-xs text-instrument-amber font-semibold">
-                    {pt.model.toFixed(1)}°
-                  </span>
-
-                  {/* Argo Value */}
-                  <span className="font-mono text-xs text-argoObs font-semibold mt-0.5">
-                    {pt.argo.toFixed(1)}°
-                  </span>
-
-                  {/* Delta */}
-                  <div className={`mt-2 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${
-                    isMatch ? 'bg-argoObs/15 text-argoObs' : 'bg-instrument-amber/15 text-instrument-amber'
-                  }`}>
-                    {pt.delta > 0 ? `+${pt.delta}` : pt.delta}°
-                  </div>
+        {/* ── THE VALIDATION BENTO GRID ────────────────────────────── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          
+          {/* Metrics Row (Top 4 Cards) */}
+          {[
+             { title: 'Overall RMSE', value: metrics.rmse, suffix: '°C', target: 'Target < 1.0°C', color: 'text-white' },
+             { title: 'Mean Bias', value: metrics.bias, suffix: '°C', target: 'Unbiased', color: 'text-cyan-400' },
+             { title: 'Pearson Correlation', value: metrics.corr, suffix: '', target: 'r > 0.95', color: 'text-amber-400' },
+             { title: 'Holdout Profiles', value: metrics.profiles, suffix: '', target: 'Tested', color: 'text-emerald-400' }
+          ].map((metric, idx) => (
+             <motion.div 
+               key={metric.title}
+               initial={{ opacity: 0, y: 20 }}
+               whileInView={{ opacity: 1, y: 0 }}
+               viewport={{ once: true }}
+               transition={{ duration: 0.5, delay: idx * 0.1 }}
+               className="col-span-1 bg-[#030812]/50 backdrop-blur-xl border border-white/[0.05] rounded-[2rem] p-8 flex flex-col justify-between hover:bg-[#050b18]/80 transition-colors duration-500 shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+             >
+                <div className="flex items-center justify-between text-white/40 font-mono text-[9px] uppercase tracking-widest font-bold mb-6">
+                  <span>{metric.title}</span>
+                  <span className={metric.color}>{metric.target}</span>
                 </div>
-              );
-            })}
-          </div>
+                <div className="font-display text-5xl font-medium tracking-tighter text-white">
+                  {metric.value}<span className="text-2xl text-white/30 ml-1">{metric.suffix}</span>
+                </div>
+             </motion.div>
+          ))}
 
-          <div className="mt-6 pt-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between text-xs text-foam-dim font-mono gap-3">
-            <span>Spatial Matchup: Co-located within 25 km &amp; ±12 hours of satellite pass.</span>
-            <span className="text-argoObs flex items-center gap-1.5">
-              <CheckCircle2 size={13} />
-              Conforms to IOC/WMO Argo Quality Control Flag Level 1 (Good)
-            </span>
-          </div>
+
+          {/* The Massive Chart Card (Bottom Row) */}
+          <motion.div 
+             initial={{ opacity: 0, y: 20 }}
+             whileInView={{ opacity: 1, y: 0 }}
+             viewport={{ once: true }}
+             transition={{ duration: 0.7, delay: 0.4 }}
+             className="col-span-1 md:col-span-2 lg:col-span-4 bg-[#030812]/50 backdrop-blur-xl border border-white/[0.05] rounded-[2.5rem] p-8 lg:p-12 overflow-hidden relative shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+          >
+             {/* Header inside Chart Card */}
+             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-12 relative z-10">
+                <div>
+                  <h3 className="font-mono text-[10px] text-emerald-400 uppercase tracking-widest font-bold mb-1">Sample Float Matchup: WMO-6903829 (Bay of Bengal)</h3>
+                  <p className="font-ui text-sm text-white/60">Independent ground-truth comparison across 9 standard depths.</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-6 font-mono text-[10px] uppercase tracking-widest font-bold">
+                   <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_10px_orange]" />
+                      <span className="text-white">OceanEmbed Model</span>
+                   </div>
+                   <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_cyan]" />
+                      <span className="text-white">Argo Sensor (In-situ)</span>
+                   </div>
+                </div>
+             </div>
+
+             {/* The Interactive SVG Chart */}
+             <div className="relative w-full h-[280px]">
+                
+                {/* Y-Axis Grid Lines (Temperature) */}
+                <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                   {[30, 25, 20, 15, 10, 5].map(temp => (
+                      <div key={temp} className="w-full h-[1px] bg-white/[0.02] flex items-end">
+                         <span className="absolute -left-2 -translate-x-full -translate-y-1/2 font-mono text-[9px] text-white/20">{temp}°</span>
+                      </div>
+                   ))}
+                </div>
+
+                {/* SVG Lines Overlay */}
+                <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="absolute inset-0 w-full h-[240px] overflow-visible pointer-events-none z-10 mt-5">
+                   {/* Argo Path (Cyan - Ground Truth) */}
+                   <path d={argoPath} fill="none" stroke="rgba(34,211,238,0.5)" strokeWidth="3" strokeDasharray="6 6" className="drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
+                   {/* Model Path (Amber - Prediction) */}
+                   <motion.path 
+                     initial={{ pathLength: 0 }}
+                     whileInView={{ pathLength: 1 }}
+                     viewport={{ once: true }}
+                     transition={{ duration: 2, ease: "easeInOut" }}
+                     d={modelPath} 
+                     fill="none" 
+                     stroke="#f59e0b" 
+                     strokeWidth="3" 
+                     className="drop-shadow-[0_0_12px_rgba(245,158,11,0.6)]" 
+                   />
+                </svg>
+
+                {/* Interactive Hover Columns & X-Axis Labels */}
+                <div className="absolute inset-0 flex justify-between mt-5">
+                   {SAMPLE_MATCHUP_DATA.map((pt, idx) => (
+                      <div 
+                         key={pt.depth}
+                         className="relative h-full flex flex-col justify-end group cursor-crosshair"
+                         onMouseEnter={() => setActiveIndex(idx)}
+                         onMouseLeave={() => setActiveIndex(null)}
+                         style={{ width: `${100 / SAMPLE_MATCHUP_DATA.length}%` }}
+                      >
+                         {/* Depth Label (X-Axis) */}
+                         <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 font-mono text-[10px] text-white/40 group-hover:text-white transition-colors">
+                            {pt.depth}m
+                         </div>
+
+                         {/* Hover Scrubber Line */}
+                         <div className={`absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[1px] bg-white/20 transition-opacity duration-300 ${activeIndex === idx ? 'opacity-100' : 'opacity-0'}`} />
+
+                         {/* Hover Data Tooltip */}
+                         <AnimatePresence>
+                            {activeIndex === idx && (
+                               <motion.div 
+                                 initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                 animate={{ opacity: 1, y: 0, scale: 1 }}
+                                 exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                 className="absolute bottom-full mb-4 left-1/2 -translate-x-1/2 bg-black/90 backdrop-blur-md border border-white/10 rounded-xl p-3 min-w-[140px] shadow-2xl z-30 pointer-events-none"
+                               >
+                                  <div className="font-mono text-[9px] uppercase tracking-widest text-white/50 mb-2 font-bold text-center border-b border-white/10 pb-2">
+                                     Depth {pt.depth}m
+                                  </div>
+                                  <div className="flex items-center justify-between text-xs font-mono mb-1">
+                                     <span className="text-amber-500">Model</span>
+                                     <span className="text-white font-bold">{pt.model.toFixed(1)}°</span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-xs font-mono mb-2">
+                                     <span className="text-cyan-400">Sensor</span>
+                                     <span className="text-white font-bold">{pt.argo.toFixed(1)}°</span>
+                                  </div>
+                                  <div className={`text-[10px] font-mono font-bold text-center py-1 rounded bg-white/5 ${Math.abs(pt.delta) <= 0.2 ? 'text-emerald-400' : 'text-amber-500'}`}>
+                                     Δ {pt.delta > 0 ? '+' : ''}{pt.delta}°C
+                                  </div>
+                               </motion.div>
+                            )}
+                         </AnimatePresence>
+
+                         {/* Hover Points on the lines */}
+                         {activeIndex === idx && (
+                            <>
+                               {/* Argo Point */}
+                               <div className="absolute left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_15px_cyan] border-2 border-black z-20 pointer-events-none" style={{ top: `${(getY(pt.argo) / height) * 100}%` }} />
+                               {/* Model Point */}
+                               <div className="absolute left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-amber-500 shadow-[0_0_15px_orange] border-2 border-black z-20 pointer-events-none" style={{ top: `${(getY(pt.model) / height) * 100}%` }} />
+                            </>
+                         )}
+                      </div>
+                   ))}
+                </div>
+             </div>
+
+          </motion.div>
         </div>
 
       </div>

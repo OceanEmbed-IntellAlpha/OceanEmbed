@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 
-import { Search, RefreshCw, Waves, MapPin, ArrowLeft, Upload } from 'lucide-react';
+import { Search, RefreshCw, Waves, MapPin, ArrowLeft } from 'lucide-react';
 import { useExplorerStore } from '@/lib/store/useExplorerStore';
 import { LiveReadout } from './LiveReadout';
 
@@ -187,22 +187,6 @@ export function ExplorerTopBar({ onSearchLocation, onReset }: ExplorerTopBarProp
         )}
       </div>
 
-      {/* Upload Data */}
-      <Link
-        href="/upload"
-        className="
-          shrink-0 flex items-center justify-center gap-1.5 px-2.5 h-7 rounded
-          border border-thermocline/30 bg-white/5 text-foam-dim
-          hover:text-white hover:bg-biolume/20 hover:border-biolume/40
-          focus:outline-none focus:ring-2 focus:ring-biolume/40
-          transition-colors text-xs font-medium ml-2
-        "
-        aria-label="Upload custom NetCDF dataset"
-        title="Upload Dataset"
-      >
-        <Upload size={12} aria-hidden="true" />
-        <span className="hidden sm:inline">Upload Data</span>
-      </Link>
 
       {/* Reset view */}
       <button

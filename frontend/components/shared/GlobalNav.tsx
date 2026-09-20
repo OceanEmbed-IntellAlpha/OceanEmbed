@@ -40,14 +40,8 @@ export function GlobalNav() {
             <Link href="/" className="text-xs font-mono tracking-widest text-foam-dim hover:text-white uppercase transition-colors">
               Home
             </Link>
-            <Link href="/explorer" className="text-xs font-mono tracking-widest text-foam-dim hover:text-white uppercase transition-colors">
-              Explore
-            </Link>
             <Link href="/research-lab" className="text-xs font-mono tracking-widest text-foam-dim hover:text-white uppercase transition-colors">
               Research Lab
-            </Link>
-            <Link href="/about" className="text-xs font-mono tracking-widest text-foam-dim hover:text-white uppercase transition-colors">
-              About
             </Link>
           </div>
           
