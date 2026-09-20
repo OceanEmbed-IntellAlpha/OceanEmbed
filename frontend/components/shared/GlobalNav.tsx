@@ -21,7 +21,7 @@ export function GlobalNav() {
     <nav 
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         scrolled 
-          ? 'bg-abyss/70 backdrop-blur-xl border-b border-white/10 py-3' 
+          ? 'bg-[#050505]/95 backdrop-blur-2xl border-b border-white/10 py-3' 
           : 'bg-transparent border-b border-transparent py-5'
       }`}
     >
@@ -37,11 +37,17 @@ export function GlobalNav() {
         {/* Links & CTA */}
         <div className="flex items-center gap-8">
           <div className="hidden md:flex items-center gap-6">
-            <Link href="/methodology" className="text-xs font-mono tracking-widest text-foam-dim hover:text-white uppercase transition-colors">
-              Methodology
+            <Link href="/" className="text-xs font-mono tracking-widest text-foam-dim hover:text-white uppercase transition-colors">
+              Home
             </Link>
-            <Link href="/research" className="text-xs font-mono tracking-widest text-foam-dim hover:text-white uppercase transition-colors">
-              Research
+            <Link href="/explorer" className="text-xs font-mono tracking-widest text-foam-dim hover:text-white uppercase transition-colors">
+              Explore
+            </Link>
+            <Link href="/research-lab" className="text-xs font-mono tracking-widest text-foam-dim hover:text-white uppercase transition-colors">
+              Research Lab
+            </Link>
+            <Link href="/about" className="text-xs font-mono tracking-widest text-foam-dim hover:text-white uppercase transition-colors">
+              About
             </Link>
           </div>
           

@@ -19,17 +19,17 @@ export default function MethodologyPage() {
         
         {/* Header */}
         <div className="text-center mb-24 relative z-10">
-          <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-thermocline/30 bg-deep-panel/50 mb-6">
-            <div className="w-2 h-2 rounded-full bg-biolume animate-pulse shadow-[0_0_8px_rgba(76,224,210,0.8)]" />
-            <span className="font-mono text-[10px] tracking-[0.2em] text-thermocline uppercase">
+          <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-thermocline/40 bg-deep-panel/60 backdrop-blur-md mb-8 shadow-[0_4px_24px_rgba(76,224,210,0.15)] hover:bg-deep-panel/80 hover:border-thermocline/60 transition-all duration-300">
+            <div className="w-2.5 h-2.5 rounded-full bg-biolume animate-pulse shadow-[0_0_12px_rgba(76,224,210,1)]" />
+            <span className="font-mono text-[11px] font-bold tracking-[0.25em] text-transparent bg-clip-text bg-gradient-to-r from-biolume to-thermocline uppercase">
               How it works
             </span>
           </div>
-          <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-semibold text-white tracking-tighter leading-tight mb-6">
+          <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-semibold text-white tracking-tighter leading-tight mb-8 drop-shadow-lg">
             From Surface Signal <br/>
-            <span className="text-foam-dim/80 font-normal">to Latent Ocean State.</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-foam to-thermocline font-normal">to Latent Ocean State.</span>
           </h1>
-          <p className="text-foam/70 max-w-2xl mx-auto text-lg">
+          <p className="text-foam/80 max-w-3xl mx-auto text-xl leading-relaxed font-light">
             OceanEmbed treats the ocean as a unified system where surface dynamics are deeply coupled with subsurface thermal structure. Here is how we bridge the gap.
           </p>
         </div>
