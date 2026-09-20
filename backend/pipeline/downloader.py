@@ -5,17 +5,26 @@ Supports:
   - Copernicus Marine Service (CMEMS) — SST, SSS, SSH, GLORYS
   - NASA Earthdata / PO.DAAC — OSCAR currents, CCMP winds
   - IFREMER GDAC — Argo float profiles (for validation)
+  - INCOIS LAS/ERDDAP — Gridded Argo products
 
 All downloads are spatially subsetted to the North Indian Ocean domain
-and temporally filtered to the configured time range.
+and temporally filtered to the configured time range. Includes multithreading
+for faster file retrieval and robust resumability.
 """
 
 import os
 import time
 import yaml
 import logging
+import re
+import ssl
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
+from tqdm import tqdm
 
 # Optional imports for downloading
 try:
@@ -30,6 +39,10 @@ except ImportError:
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("Downloader")
+
+# Workaround for SSL certificate verification issues on some systems (e.g. INCOIS ERDDAP)
+if hasattr(ssl, '_create_unverified_context'):
+    ssl._create_default_https_context = ssl._create_unverified_context
 
 
 class DataDownloader:
@@ -92,8 +105,6 @@ class DataDownloader:
             kwargs["maximum_depth"] = float(config_entry["depth_max"])
 
         # Using copernicusmarine subset to only download the NIO domain + variables + depths
-        # For large datasets (like GLORYS), subsetting the whole time range in memory can freeze a 16GB RAM laptop.
-        # We process in 1-year chunks to keep memory usage low.
         start_year = int(time_range["start_date"].split("-")[0])
         end_year = int(time_range["end_date"].split("-")[0])
         
@@ -123,7 +134,6 @@ class DataDownloader:
                     logger.error(f"Failed to download chunk {year}: {e}")
                     
             logger.info(f"Finished downloading all yearly chunks for {product_key}.")
-            logger.info(f"NOTE: Data is saved as yearly chunks to prevent memory issues.")
         else:
             copernicusmarine.subset(**kwargs)
             logger.info(f"Successfully downloaded {product_key}.")
@@ -161,7 +171,7 @@ class DataDownloader:
         start_year = int(time_range["start_date"].split("-")[0])
         end_year = int(time_range["end_date"].split("-")[0])
 
-        logger.info(f"Downloading PO.DAAC data in {end_year - start_year + 1} yearly chunks to prevent massive disk space usage...")
+        logger.info(f"Downloading PO.DAAC data in {end_year - start_year + 1} yearly chunks...")
 
         for year in range(start_year, end_year + 1):
             year_start = max(f"{year}-01-01", time_range["start_date"])
@@ -185,20 +195,16 @@ class DataDownloader:
                 logger.warning(f"No granules found for {year}. Skipping.")
                 continue
                 
-            logger.info(f"Found {len(year_results)} granules for {year}. Downloading locally first for faster processing...")
+            logger.info(f"Found {len(year_results)} granules for {year}. Downloading locally first...")
 
-            # Download files locally to avoid slow network streaming
             temp_dir = self.raw_dir / f"temp_{product_key}_{year}"
             temp_dir.mkdir(parents=True, exist_ok=True)
             
-            # Batch downloading into smaller chunks to prevent socket timeouts/ConnectionAbortedError
             batch_size = 30
             downloaded_files = []
             
-            for i in range(0, len(year_results), batch_size):
+            for i in tqdm(range(0, len(year_results), batch_size), desc=f"Downloading {product_key} ({year})"):
                 batch = year_results[i:i + batch_size]
-                logger.info(f"Downloading batch {i//batch_size + 1}/{(len(year_results) + batch_size - 1)//batch_size} (granules {i} to {min(i+batch_size, len(year_results))})...")
-                
                 batch_retries = 3
                 for attempt in range(batch_retries):
                     try:
@@ -210,10 +216,8 @@ class DataDownloader:
                         if attempt == batch_retries - 1:
                             logger.error(f"Failed to download batch after {batch_retries} attempts: {e}")
                         else:
-                            logger.warning(f"Connection error downloading batch: {e}. Retrying ({attempt+1}/{batch_retries})...")
                             time.sleep(5)
             
-            # Filter out any None values (failed downloads)
             valid_files = [f for f in downloaded_files if f is not None]
             
             if not valid_files:
@@ -221,14 +225,11 @@ class DataDownloader:
                 continue
 
             logger.info(f"Opening {len(valid_files)} local datasets for {year}...")
-            # Open multi-file dataset lazily from local storage
             ds = xr.open_mfdataset(valid_files, chunks="auto")
             
-            # Spatial subset depending on variable names (OSCAR uses lat/lon, CCMP might use latitude/longitude)
             lat_col = "latitude" if "latitude" in ds.coords else "lat"
             lon_col = "longitude" if "longitude" in ds.coords else "lon"
             
-            # Crop to the bounding box
             ds = ds.sel(
                 {
                     lat_col: slice(domain["lat_min"], domain["lat_max"]),
@@ -237,11 +238,8 @@ class DataDownloader:
             )
             
             logger.info(f"Saving subsetted {product_key} for {year} to {chunk_path}...")
-            # Write only the sliced data to disk
             ds.to_netcdf(chunk_path)
             
-            # Clean up temporary files
-            logger.info(f"Cleaning up temporary downloaded global files for {year}...")
             ds.close()
             for f in valid_files:
                 try:
@@ -255,56 +253,220 @@ class DataDownloader:
             
             logger.info(f"Successfully processed chunk for {year}.")
 
-        logger.info(f"Finished processing all yearly chunks for {product_key}.")
-
-    def download_argo(self):
-        """Downloads Argo float profiles from IFREMER GDAC for validation.
-
-        Downloads all available profiles in the NIO domain.
-        Requires internet access to the IFREMER GDAC HTTPS server.
-        """
+    def download_argo(self, start_year: int = None, end_year: int = None):
+        """Orchestrates Argo downloads (IFREMER and INCOIS)."""
         argo_config = self.config.get("argo", {})
-        gdac_url = argo_config.get("gdac_url", "https://data-argo.ifremer.fr/geo/indian_ocean")
-        local_dir_name = argo_config.get("local_dir", "argo_profiles")
+        
+        # Override dates if provided
+        if start_year is None:
+            start_year = int(str(argo_config.get("start_date", "2010")).split("-")[0])
+        if end_year is None:
+            end_year = int(str(argo_config.get("end_date", "2023")).split("-")[0])
 
-        output_dir = self.raw_dir / local_dir_name
-        if output_dir.exists() and any(output_dir.glob("*.nc")):
-            logger.info(f"Argo profiles already exist in {output_dir}. Skipping.")
-            return
+        if argo_config.get("ifremer", {}).get("enabled", True):
+            self._download_ifremer_argo(start_year, end_year)
+            
+        if argo_config.get("incois", {}).get("enabled", True):
+            self._download_incois_argo(start_year, end_year)
 
+    def _download_ifremer_argo(self, start_year: int, end_year: int):
+        """Downloads raw Argo profiles from IFREMER GDAC using multithreading."""
+        argo_config = self.config.get("argo", {})
+        ifremer_config = argo_config.get("ifremer", {})
+        
+        gdac_url = ifremer_config.get("gdac_url", "https://data-argo.ifremer.fr/geo/indian_ocean")
+        local_dir = ifremer_config.get("local_dir", "argo_profiles/ifremer")
+        
+        output_dir = self.raw_dir / local_dir
         output_dir.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Downloading Argo profiles from {gdac_url} to {output_dir}")
+        
+        # Use a session with connection pooling and retries
+        session = requests.Session()
+        retries = Retry(total=3, backoff_factor=0.3, status_forcelist=[500, 502, 503, 504])
+        session.mount('https://', HTTPAdapter(max_retries=retries, pool_connections=20, pool_maxsize=20))
+        
+        logger.info(f"--- IFREMER GDAC Argo Downloader ---")
+        logger.info(f"Scraping IFREMER GDAC for years {start_year} to {end_year}...")
 
         try:
-            import urllib.request
-            import re
+            response = session.get(gdac_url)
+            html = response.text
+            available_years = re.findall(r'href="(\d{4}/)"', html)
 
-            # Fetch the index page to find .nc file links
-            response = urllib.request.urlopen(gdac_url)
-            html = response.read().decode("utf-8")
+            
+            target_years = [
+                y for y in sorted(available_years)
+                if start_year <= int(y.rstrip("/")) <= end_year
+            ]
 
-            # Parse links to .nc files
-            nc_links = re.findall(r'href="([^"]*\.nc)"', html)
-            logger.info(f"Found {len(nc_links)} Argo profile files.")
-
-            downloaded = 0
-            for link in nc_links[:100]:  # Limit to first 100 for validation
-                file_url = f"{gdac_url}/{link}" if not link.startswith("http") else link
-                dest = output_dir / Path(link).name
+            nc_links = []
+            
+            # Scrape file links
+            for year_dir in tqdm(target_years, desc="Scraping year directories"):
+                year_url = f"{gdac_url.rstrip('/')}/{year_dir}"
                 try:
-                    urllib.request.urlretrieve(file_url, str(dest))
-                    downloaded += 1
-                except Exception as e:
-                    logger.debug(f"Failed to download {link}: {e}")
+                    html_year = session.get(year_url).text
+                except Exception:
                     continue
 
-            logger.info(f"Successfully downloaded {downloaded} Argo profiles.")
+                available_months = re.findall(r'href="(\d{2}/)"', html_year)
+                for month_dir in sorted(available_months):
+                    month_url = f"{year_url}{month_dir}"
+                    try:
+                        html_month = session.get(month_url).text
+                        files = re.findall(r'href="([^"]*\.nc)"', html_month)
+                        for f in files:
+                            nc_links.append(f"{month_url}{f}")
+                    except Exception:
+                        continue
 
+            logger.info(f"Found {len(nc_links)} IFREMER Argo profile files.")
+            if not nc_links:
+                return
+
+            # Multithreaded download function
+            def fetch_file(file_url):
+                filename = file_url.split('/')[-1]
+                dest = output_dir / filename
+                
+                # Check for resumability
+                if dest.exists() and dest.stat().st_size > 0:
+                    return (True, filename)  # Already downloaded
+                    
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        # Stream the file using the persistent session
+                        with session.get(file_url, stream=True, timeout=15) as response:
+                            response.raise_for_status()
+                            with open(dest, 'wb') as out_file:
+                                for chunk in response.iter_content(chunk_size=1048576): # 1MB chunks
+                                    if chunk:
+                                        out_file.write(chunk)
+                        return (True, filename)
+                    except Exception as e:
+                        if attempt == max_retries - 1:
+                            # Delete partial file
+                            if dest.exists():
+                                dest.unlink()
+                            return (False, filename)
+                        time.sleep(1)
+                return (False, filename)
+
+            # Execute downloads concurrently
+            success_count = 0
+            failed_count = 0
+            
+            # Use max 20 workers to take advantage of high bandwidth + connection pool
+            max_workers = min(20, (os.cpu_count() or 4) * 2)
+            logger.info(f"Downloading with {max_workers} concurrent threads and HTTP Keep-Alive...")
+            
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = {executor.submit(fetch_file, url): url for url in nc_links}
+                
+                with tqdm(total=len(nc_links), desc="Downloading IFREMER Profiles") as pbar:
+                    for future in as_completed(futures):
+                        success, fname = future.result()
+                        if success:
+                            success_count += 1
+                        else:
+                            failed_count += 1
+                        pbar.update(1)
+
+            logger.info(f"IFREMER Download complete: {success_count} succeeded, {failed_count} failed.")
+            
         except Exception as e:
-            logger.warning(
-                f"Could not auto-download Argo profiles: {e}. "
-                f"Please manually place Argo .nc files in {output_dir}"
+            logger.warning(f"Could not scrape IFREMER GDAC: {e}")
+
+    def _download_incois_argo(self, start_year: int, end_year: int):
+        """Downloads INCOIS Gridded Argo products."""
+        argo_config = self.config.get("argo", {})
+        incois_config = argo_config.get("incois", {})
+        
+        erddap_base = incois_config.get("erddap_base_url", "https://erddap.incois.gov.in/erddap/griddap")
+        dataset_id = incois_config.get("dataset_id", "incois_argo_10d_VAM")
+        erddap_url = f"{erddap_base}/{dataset_id}.nc"
+        
+        local_dir = incois_config.get("local_dir", "argo_profiles/incois")
+        
+        output_dir = self.raw_dir / local_dir
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        logger.info(f"--- INCOIS Gridded Argo Downloader ({dataset_id}) ---")
+        
+        # INCOIS ERDDAP subsetting parameters based on config
+        lat_min = argo_config.get("lat_min", 5.0)
+        lat_max = argo_config.get("lat_max", 30.0)
+        lon_min = argo_config.get("lon_min", 45.0)
+        lon_max = argo_config.get("lon_max", 105.0)
+        
+        for year in range(start_year, end_year + 1):
+            dest = output_dir / f"{dataset_id}_{year}.nc"
+            if dest.exists() and dest.stat().st_size > 0:
+                logger.info(f"INCOIS file {dest.name} already exists. Skipping.")
+                continue
+                
+            # Construct ERDDAP subset URL
+            # Format: dataset.nc?var[(time)][(ZAX)][(latitude)][(longitude)]
+            time_start = f"{year}-01-01T00:00:00Z"
+            time_end = f"{year}-12-31T23:59:59Z"
+            
+            # Requesting TEMP and SAL. The depth dimension is ZAX, starting at 5.0m
+            z_min = 5.0
+            z_max = 2000.0
+            
+            subset_query = (
+                f"?TEMP[({time_start}):1:({time_end})][({z_min}):1:({z_max})]"
+                f"[({lat_min}):1:({lat_max})][({lon_min}):1:({lon_max})],"
+                f"SAL[({time_start}):1:({time_end})][({z_min}):1:({z_max})]"
+                f"[({lat_min}):1:({lat_max})][({lon_min}):1:({lon_max})]"
             )
+            download_url = f"{erddap_url}{subset_query}"
+            
+            logger.info(f"Attempting to download INCOIS data for {year}...")
+            logger.debug(f"ERDDAP URL: {download_url}")
+            
+            max_retries = 3
+            success = False
+            for attempt in range(max_retries):
+                try:
+                    with requests.get(download_url, stream=True, timeout=60, verify=False) as response:
+                        if response.status_code == 404:
+                            logger.warning(f"INCOIS dataset not found for {year} (HTTP 404). URL might have changed.")
+                            break
+                        response.raise_for_status()
+                        
+                        total_length = response.headers.get('content-length')
+                        
+                        with open(dest, 'wb') as out_file:
+                            if total_length is None:
+                                # No content length header
+                                for chunk in response.iter_content(chunk_size=1048576):
+                                    if chunk: out_file.write(chunk)
+                            else:
+                                total_length = int(total_length)
+                                with tqdm(total=total_length, unit='B', unit_scale=True, desc=f"Downloading {dest.name}") as pbar:
+                                    for chunk in response.iter_content(chunk_size=1048576): # 1MB chunk size
+                                        if chunk:
+                                            out_file.write(chunk)
+                                            pbar.update(len(chunk))
+                    success = True
+                    logger.info(f"Successfully downloaded INCOIS data for {year}.")
+                    break
+                except requests.exceptions.HTTPError as e:
+                    logger.warning(f"HTTP Error {e.response.status_code} for INCOIS {year}. Retrying...")
+                    time.sleep(2)
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        logger.error(f"Failed to download INCOIS data for {year}: {e}")
+                        if dest.exists():
+                            dest.unlink()
+                    else:
+                        logger.warning(f"Connection issue: {e}. Retrying...")
+                        time.sleep(5)
+            
+            if not success:
+                logger.warning(f"Could not download INCOIS data for {year}.")
 
 
 if __name__ == "__main__":
@@ -323,13 +485,24 @@ if __name__ == "__main__":
     print("  4. currents (PO.DAAC OSCAR)")
     print("  5. winds (PO.DAAC CCMP)")
     print("  6. target_glorys (Copernicus GLORYS12V1)")
-    print("  7. argo (Validation Profiles)")
+    print("  7. argo (Validation Profiles - IFREMER + INCOIS)")
     print("  8. all (Download all of the above)")
     print("  0. exit")
     print("="*50)
     
     choice = input("Enter the number or name of the dataset to download: ").strip().lower()
     
+    def prompt_years():
+        """Helper to prompt for custom years for Argo."""
+        print("\nArgo data supports interactive year selection (e.g., 2010 to 2023).")
+        print("Leave blank to use defaults from config.")
+        start = input("Enter start year [default: from config]: ").strip()
+        end = input("Enter end year [default: from config]: ").strip()
+        
+        s_year = int(start) if start.isdigit() else None
+        e_year = int(end) if end.isdigit() else None
+        return s_year, e_year
+
     if choice in ["1", "sst"]:
         downloader.download_cmems("sst")
     elif choice in ["2", "sss"]:
@@ -343,15 +516,17 @@ if __name__ == "__main__":
     elif choice in ["6", "target_glorys"]:
         downloader.download_cmems("target_glorys")
     elif choice in ["7", "argo"]:
-        downloader.download_argo()
+        s_year, e_year = prompt_years()
+        downloader.download_argo(start_year=s_year, end_year=e_year)
     elif choice in ["8", "all"]:
+        s_year, e_year = prompt_years()
         downloader.download_cmems("sst")
         downloader.download_cmems("sss")
         downloader.download_cmems("ssh")
         downloader.download_cmems("target_glorys")
         downloader.download_podaac("currents")
         downloader.download_podaac("winds")
-        downloader.download_argo()
+        downloader.download_argo(start_year=s_year, end_year=e_year)
     elif choice in ["0", "exit", "quit"]:
         print("Exiting.")
     else:

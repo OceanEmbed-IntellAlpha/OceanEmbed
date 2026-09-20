@@ -113,13 +113,30 @@ podaac_products:
 # Used ONLY for final evaluation (test period: 2022–2023).
 # Do NOT use for training or validation splits.
 argo:
-  gdac_url:  "https://data-argo.ifremer.fr/geo/indian_ocean"
-  local_dir: "argo_profiles"
   # Filter profiles to NIO domain
   lat_min: 5.0
   lat_max: 30.0
   lon_min: 45.0
   lon_max: 105.0
-  # Only download profiles within the test period
-  start_date: "2022-01-01"
+  # Default download period (can be overridden interactively in downloader.py)
+  start_date: "2010-01-01"
   end_date:   "2023-12-31"
+
+  # IFREMER GDAC (Raw profiles)
+  ifremer:
+    enabled: true
+    gdac_url:  "https://data-argo.ifremer.fr/geo/indian_ocean"
+    local_dir: "argo_profiles/ifremer"
+
+  # INCOIS Gridded Argo (Value-added product)
+  incois:
+    enabled: true
+    # For production, we use the 10-day datasets for better temporal resolution.
+    # Available datasets on INCOIS ERDDAP:
+    # - incois_argo_10d_VAM (Variational Analysis Method, 10-day)
+    # - incois_argo_10day_McCreary (Kessler-McCreary, 10-day)
+    # - incois_argo_mnt_VAM (VAM, Monthly)
+    # - incois_argo_mnt_McCreary (Kessler-McCreary, Monthly)
+    dataset_id: "incois_argo_10d_VAM"
+    erddap_base_url: "https://erddap.incois.gov.in/erddap/griddap"
+    local_dir: "argo_profiles/incois"
