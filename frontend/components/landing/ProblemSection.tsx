@@ -71,7 +71,7 @@ export function ProblemSection() {
                   Our AI acts as an <span className="text-transparent bg-clip-text bg-gradient-to-r from-biolume to-cyan-300">X-Ray for the ocean</span>.
                 </h2>
                 <p className="text-foam-dim text-lg md:text-xl leading-relaxed max-w-md">
-                  OceanEmbed uses Deep Learning to predict temperature at every depth level, instantly filling in the missing 99% with high accuracy.
+                  OceanEmbed&apos;s depth-conditioned neural network predicts temperature at every standard depth level, instantly filling in the missing 99% with high accuracy.
                 </p>
              </div>
 

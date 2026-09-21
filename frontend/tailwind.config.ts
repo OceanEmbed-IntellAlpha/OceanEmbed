@@ -27,8 +27,12 @@ const config: Config = {
         validationBad: '#EF4444',
       },
       fontFamily: {
-        display: ['Syne', 'Space Grotesk', 'sans-serif'],
-        ui: ['Syne', 'Inter', 'sans-serif'],
+        display: ['Outfit', 'Space Grotesk', 'sans-serif'],
+        outfit: ['Outfit', 'sans-serif'],
+        space: ['Space Grotesk', 'sans-serif'],
+        jakarta: ['Plus Jakarta Sans', 'sans-serif'],
+        syne: ['Syne', 'sans-serif'],
+        ui: ['Inter', 'sans-serif'],
         mono: ['IBM Plex Mono', 'monospace'],
       },
       fontSize: {

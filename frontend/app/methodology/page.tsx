@@ -56,16 +56,16 @@ export default function MethodologyPage() {
           <PipelineStep
             number="03"
             title="Embedding Engine"
-            description="A spatio-temporal deep learning architecture (incorporating CNN/ViT mechanics) processes the harmonized surface fields. The encoder compresses these coupled dynamics into a high-dimensional latent representation—the Ocean Embedding."
-            tags={['Encoder', 'CNN / ViT', 'Latent Space', 'Non-linear Dynamics']}
+            description="A 3-block Spatiotemporal Conv3D encoder processes the harmonized 7-day surface fields. The lightweight encoder compresses these coupled dynamics into a precise 384-dimensional latent representation—the Ocean Embedding."
+            tags={['Conv3D Encoder', 'Spatiotemporal', '~1.7M Params', 'Latent Space']}
             iconName="cpu"
           />
 
           <PipelineStep
             number="04"
             title="Reconstruction"
-            description="A depth-aware decoder projects the latent embedding down through the water column. It reconstructs the temperature profile at 15 standard oceanographic depths, trained against high-fidelity reanalysis targets (GLORYS12V1)."
-            tags={['Decoder', '15 Depth Levels', '0–1000m', 'GLORYS Target']}
+            description="A shared, depth-conditioned MLP decoder. By using Fourier features to encode depth as an input, a single lightweight network reconstructs temperature across all 15 levels without needing separate models for each depth."
+            tags={['Shared MLP Decoder', 'Fourier Depth Features', '15 Depth Levels', 'GLORYS Target']}
             iconName="layers"
           />
 

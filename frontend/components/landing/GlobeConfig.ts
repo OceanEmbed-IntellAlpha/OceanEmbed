@@ -1,125 +1,144 @@
 // ─── Hero Globe Configuration ───────────────────────────────────────────────
-// All tunable constants for the landing-page 3D Earth.
+// OceanEmbed: High-fidelity constants for 3D Earth, Satellite Scanning, Subsurface Depth Columns, and ARGO Floats.
 
-/** NASA Blue Marble textures served from the three-globe example CDN */
+/** NASA Blue Marble textures served from CDN */
 export const TEXTURE_URLS = {
   earth: 'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg',
   bump: 'https://unpkg.com/three-globe/example/img/earth-topology.png',
-  /** Used as a specular map — bright = shiny ocean, dark = matte land */
   specular: 'https://unpkg.com/three-globe/example/img/earth-water.png',
 } as const;
 
-/** Camera — creates the "looking at Earth from orbit" perspective */
+/** Camera — orbital perspective angled towards the North Indian Ocean */
 export const CAMERA = {
-  fov: 50,
+  fov: 46,
   near: 0.1,
   far: 100,
-  /** [x, y, z] — camera near Earth-level for dramatic horizon perspective */
-  position: [0, 1.4, 2.8] as [number, number, number],
+  position: [0, 1.25, 2.75] as [number, number, number],
 } as const;
 
 /** Orbit controls */
 export const CONTROLS = {
-  autoRotateSpeed: 0.15,
-  enableZoom: true,
+  autoRotateSpeed: 0.12,
+  enableZoom: false,
   minDistance: 2.2,
-  maxDistance: 4.5,
-  /** Damping for inertia */
+  maxDistance: 4.0,
   enableDamping: true,
-  dampingFactor: 0.06,
-  /** Limit vertical orbit so the viewer can't flip under the Earth */
-  minPolarAngle: Math.PI * 0.25,
-  maxPolarAngle: Math.PI * 0.75,
-  /** Time (ms) of inactivity before auto-rotate resumes */
-  idleTimeout: 3000,
+  dampingFactor: 0.05,
+  minPolarAngle: Math.PI * 0.28,
+  maxPolarAngle: Math.PI * 0.72,
+  idleTimeout: 2500,
 } as const;
 
-/** Earth sphere */
+/** Earth sphere dimensions */
 export const EARTH = {
   radius: 1,
-  segments: 48,         // was 128 — cuts triangle count by ~86%
-  bumpScale: 0.018,
-  /** How shiny the oceans are (Three.js shininess value) */
-  specularShininess: 30, // less GPU lighting work
-  specularColor: '#00e5ff',
+  segments: 64,
+  bumpScale: 0.015,
+  specularShininess: 45,
+  specularColor: '#00D2FF',
 } as const;
 
-/** Cloud layer (procedural — no external texture needed) */
-export const CLOUDS = {
-  radiusOffset: 0.004,
-  opacity: 0.12,
-  rotationSpeed: -0.06,
-  segments: 80,
-  color: '#ffffff',
-} as const;
-
-/** Atmosphere outward glow configuration
- * Radiates outward from the Earth's rim into space with intense, luminous cyan aura.
- */
+/** Atmosphere limb glow (Photorealistic edge Fresnel, crisp planetary limb) */
 export const ATMOSPHERE = {
-  // Broad outer glow radiating into space (electric ocean cyan)
-  color: '#00e5ff',
-  // Bright core highlight right along the horizon edge (white/cyan)
-  coreColor: '#e0f7ff',
-  // Falloff exponents (lower = reaches further into space)
-  outerPower: 1.15,
-  corePower: 2.2,
-  // Opacity levels
-  outerOpacity: 0.85,
-  coreOpacity: 0.95,
-  // Radii: extends outwards into space
-  outerRadiusOffset: 0.28,
-  coreRadiusOffset: 0.09,
-  segments: 40,         // was 96 — 3 atmosphere meshes × 40 segs is still smooth
-  // Inner limb / Fresnel horizon glow
-  rimColor: '#38bdf8',
-  rimPower: 3.0,
+  color: '#00D2FF',
+  coreColor: '#E0F7FF',
+  rimColor: '#38BDF8',
+  outerPower: 4.2,      // High power concentrates glow strictly to the horizon edge
+  corePower: 3.5,
+  rimPower: 2.8,
+  outerOpacity: 0.75,
+  coreOpacity: 0.85,
   rimOpacity: 0.65,
+  outerRadiusOffset: 0.14,
+  coreRadiusOffset: 0.04,
+  segments: 48,
 } as const;
 
-/** Subtle ocean data points */
-export const DATA_POINTS: Array<{ lat: number; lng: number }> = [
-  // Indian Ocean — primary focus
-  { lat: 15.0, lng: 73.0 },
-  { lat: 10.0, lng: 80.0 },
-  { lat: 5.0, lng: 75.0 },
-  { lat: -5.0, lng: 70.0 },
-  { lat: 12.0, lng: 90.0 },
-  { lat: 0.0, lng: 85.0 },
-  { lat: -10.0, lng: 60.0 },
-  { lat: 20.0, lng: 65.0 },
-  { lat: -15.0, lng: 80.0 },
-  { lat: 8.0, lng: 68.0 },
-  { lat: -8.0, lng: 55.0 },
-  { lat: 18.0, lng: 88.0 },
-  // Pacific
-  { lat: 25.0, lng: -140.0 },
-  { lat: -10.0, lng: -170.0 },
-  { lat: 35.0, lng: 160.0 },
-  { lat: -30.0, lng: -120.0 },
-  { lat: 0.0, lng: -150.0 },
-  { lat: 15.0, lng: 170.0 },
-  // Atlantic
-  { lat: 40.0, lng: -30.0 },
-  { lat: 10.0, lng: -25.0 },
-  { lat: -20.0, lng: -10.0 },
-  { lat: 55.0, lng: -20.0 },
-  { lat: -35.0, lng: 5.0 },
-  { lat: 25.0, lng: -50.0 },
-  // Southern Ocean
-  { lat: -50.0, lng: 30.0 },
-  { lat: -55.0, lng: -60.0 },
-  { lat: -45.0, lng: 120.0 },
-  // Arctic / North
-  { lat: 70.0, lng: 10.0 },
-  { lat: 65.0, lng: -40.0 },
-  // Scattered
-  { lat: -25.0, lng: 100.0 },
-  { lat: 30.0, lng: 130.0 },
-  { lat: -40.0, lng: -40.0 },
-  { lat: 5.0, lng: -90.0 },
-  { lat: -15.0, lng: 45.0 },
-  { lat: 45.0, lng: -60.0 },
+/** Standard Oceanographic Depth Levels (OceanEmbed 15-layer model) */
+export const DEPTH_LEVELS = [
+  { depth: 0,    label: '0m (SST)',        isMajor: true,  color: '#00D2FF' },
+  { depth: 50,   label: '50m (Mixed)',     isMajor: false, color: '#38BDF8' },
+  { depth: 100,  label: '100m (Sub-surf)', isMajor: true,  color: '#2DD4BF' },
+  { depth: 200,  label: '200m (Thermocline)', isMajor: true, color: '#F59E0B' },
+  { depth: 500,  label: '500m (Intermediate)', isMajor: true, color: '#818CF8' },
+  { depth: 1000, label: '1000m (Deep)',    isMajor: true,  color: '#6366F1' },
+  { depth: 2000, label: '2000m (Abyssal)', isMajor: true,  color: '#4338CA' },
+] as const;
+
+export interface SoundingStation {
+  id: string;
+  name: string;
+  region: string;
+  lat: number;
+  lng: number;
+  sst: number;
+  thermoclineDepth: number; // meters
+  temps: number[]; // [0m, 50m, 100m, 200m, 500m, 1000m, 2000m]
+}
+
+/** North Indian Ocean Subsurface Sounding Stations */
+export const SOUNDING_STATIONS: SoundingStation[] = [
+  {
+    id: 'STN-AS01',
+    name: 'Arabian Sea Upwelling',
+    region: 'Arabian Sea Basin',
+    lat: 14.8,
+    lng: 66.4,
+    sst: 28.6,
+    thermoclineDepth: 185,
+    temps: [28.6, 26.2, 22.4, 15.8, 9.1, 5.4, 3.8],
+  },
+  {
+    id: 'STN-BB02',
+    name: 'Bay of Bengal Freshening',
+    region: 'Central Bay of Bengal',
+    lat: 13.5,
+    lng: 88.2,
+    sst: 29.4,
+    thermoclineDepth: 160,
+    temps: [29.4, 27.8, 24.1, 16.9, 9.8, 5.8, 3.9],
+  },
+  {
+    id: 'STN-EQ03',
+    name: 'Equatorial Thermocline Ridge',
+    region: 'South Maldive Basin',
+    lat: 1.5,
+    lng: 76.8,
+    sst: 28.9,
+    thermoclineDepth: 140,
+    temps: [28.9, 26.9, 21.0, 14.5, 8.4, 5.0, 3.7],
+  },
+  {
+    id: 'STN-LS04',
+    name: 'Lakshadweep Sea Gyre',
+    region: 'Southeast Arabian Sea',
+    lat: 8.8,
+    lng: 72.5,
+    sst: 29.1,
+    thermoclineDepth: 175,
+    temps: [29.1, 27.2, 23.0, 16.2, 9.3, 5.5, 3.8],
+  },
+];
+
+export interface ArgoFloat {
+  id: string;
+  wmo: string;
+  name: string;
+  lat: number;
+  lng: number;
+  cycle: number;
+  battery: number;
+  depth: number; // current depth in meters
+  status: 'PROFILING' | 'SURFACE_TX' | 'PARKING';
+}
+
+/** In-Situ ARGO Autonomous Profiling Floats */
+export const ARGO_FLOATS: ArgoFloat[] = [
+  { id: 'FLT-01', wmo: '2902741', name: 'INCOIS-Argo #741', lat: 12.2, lng: 68.8, cycle: 142, battery: 94, depth: 15, status: 'SURFACE_TX' },
+  { id: 'FLT-02', wmo: '2903389', name: 'NIOT-Argo #389',   lat: 16.1, lng: 85.6, cycle: 88,  battery: 89, depth: 180, status: 'PROFILING' },
+  { id: 'FLT-03', wmo: '2901944', name: 'INCOIS-Argo #944', lat: -1.8, lng: 74.2, cycle: 210, battery: 91, depth: 850, status: 'PROFILING' },
+  { id: 'FLT-04', wmo: '2902105', name: 'Apex-Argo #105',   lat: 5.8,  lng: 81.5, cycle: 64,  battery: 96, depth: 0,   status: 'SURFACE_TX' },
+  { id: 'FLT-05', wmo: '2903420', name: 'INCOIS-Argo #420', lat: 18.5, lng: 69.2, cycle: 176, battery: 88, depth: 420, status: 'PROFILING' },
 ];
 
 /** Convert lat/lng to 3D position on a sphere of given radius */
@@ -135,3 +154,4 @@ export function latLngToVector3(
   const y = radius * Math.cos(phi);
   return [x, y, z];
 }
+
