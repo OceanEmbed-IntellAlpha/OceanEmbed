@@ -58,7 +58,7 @@ class GaussianNLLLoss(nn.Module):
         Deep Learning for Computer Vision?"
     """
 
-    def __init__(self, min_log_var: float = -10.0, max_log_var: float = 10.0):
+    def __init__(self, min_log_var: float = -4.0, max_log_var: float = 2.0):
         super().__init__()
         self.min_log_var = min_log_var
         self.max_log_var = max_log_var
@@ -83,6 +83,8 @@ class GaussianNLLLoss(nn.Module):
         valid = torch.isfinite(target)
 
         nll = 0.5 * (log_var + (target - mean) ** 2 * torch.exp(-log_var))
+        # Keep the uncertainty head away from extreme log variances.
+        nll = nll + 0.5 * log_var.pow(2)
         nll = nll * valid.float()
 
         n_valid = valid.float().sum().clamp(min=1)

@@ -7,8 +7,8 @@
 # For production training, extend to match data_config.yaml splits
 # (train: 1993–2018, val: 2019–2020, test: 2021–2022).
 time_range:
-  start_date: "2020-01-01"
-  end_date: "2020-01-05"
+  start_date: "2019-01-01"
+  end_date: "2020-12-31"
 
 # The spatial domain (North Indian Ocean)
 domain:

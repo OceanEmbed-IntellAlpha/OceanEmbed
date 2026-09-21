@@ -79,7 +79,7 @@ def main() -> None:
     )
     depths_t = torch.tensor(SIH_DEPTHS, dtype=torch.float32, device=device)
 
-    inputs, masks, lat_norm, lon_norm, doy_norm, target = batch_to_model_inputs(batch, 1, device)
+    inputs, masks, lat_norm, lon_norm, doy_norm, *_ = batch_to_model_inputs(batch, 1, device)
 
     torch.manual_seed(0)
     rand_inputs = torch.randn_like(inputs) * 0.5

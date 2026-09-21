@@ -30,3 +30,10 @@ logs/
 .DS_Store
 .vscode/
 .idea/
+
+# Carve-out: v1 frozen artifacts (no large .pt files)
+!runs/_final_v1/
+!runs/_final_v1/MANIFEST.md
+!runs/_final_v1/final_report_v1.json
+!runs/_final_v1/test_rmse_vs_depth_v1.png
+runs/_final_v1/*.pt

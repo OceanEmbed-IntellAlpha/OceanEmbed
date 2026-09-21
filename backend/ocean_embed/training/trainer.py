@@ -36,7 +36,7 @@ def batch_to_model_inputs(
     batch: Dict[str, torch.Tensor],
     temporal_window: int,
     device: torch.device,
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Collated dataset batch → model tensors with temporal dimension T."""
     inputs = batch["input"].unsqueeze(1)
     masks = batch["masks"].unsqueeze(1)
@@ -48,10 +48,14 @@ def batch_to_model_inputs(
     lat_norm = batch["lat_norm"].to(device, non_blocking=True)
     lon_norm = batch["lon_norm"].to(device, non_blocking=True)
     doy_norm = batch["doy_norm"].to(device, non_blocking=True)
-    target = batch["target"].to(device, non_blocking=True)
+    target_anom = batch["target"].to(device, non_blocking=True)
+    target_abs = batch.get("target_absolute", batch["target"]).to(device, non_blocking=True)
+    clim = batch.get("clim", torch.zeros_like(target_anom)).to(device, non_blocking=True)
+    target_mask = batch.get("target_mask", torch.ones_like(target_anom)).to(device, non_blocking=True)
+
     inputs = inputs.to(device, non_blocking=True)
     masks = masks.to(device, non_blocking=True)
-    return inputs, masks, lat_norm, lon_norm, doy_norm, target
+    return inputs, masks, lat_norm, lon_norm, doy_norm, target_anom, target_abs, clim, target_mask
 
 
 class Trainer:
@@ -91,6 +95,21 @@ class Trainer:
         self.checkpoint_every = int(config.get("checkpoint_every", 5))
         self.patience = int(config.get("early_stopping_patience", 10))
         self.use_amp = bool(config.get("mixed_precision", True)) and device.type == "cuda"
+        self.use_uncertainty = bool(config.get("loss", {}).get("use_uncertainty", True))
+        self.use_uncertainty_after_epoch = int(config.get("use_uncertainty_after_epoch", 0))
+        if not self.use_uncertainty:
+            self.use_uncertainty_after_epoch = 10**9
+        self.current_epoch = 0
+        self.max_epoch_seconds = float(config.get("max_epoch_minutes", 0)) * 60.0
+        self.stop_if_val_rmse_gt = config.get("stop_if_val_rmse_gt")
+        self.stop_if_val_rmse_epoch = int(config.get("stop_if_val_rmse_epoch", 5))
+
+        dropout = config.get("dropout")
+        if dropout is not None:
+            for module in self.model.modules():
+                if isinstance(module, (torch.nn.Dropout, torch.nn.Dropout2d)):
+                    module.p = float(dropout)
+            logger.info("Applied dropout=%.3f to model Dropout modules", float(dropout))
 
         self.scaler = GradScaler("cuda", enabled=self.use_amp)
         self.depths_tensor = torch.tensor(SIH_DEPTHS, dtype=torch.float32, device=device)
@@ -108,6 +127,7 @@ class Trainer:
 
         self.history: List[Dict[str, Any]] = []
         self.best_val_loss = float("inf")
+        self.best_val_rmse = float("inf")
         self.epochs_without_improvement = 0
         self.start_epoch = 0
         self.global_step = 0
@@ -123,8 +143,8 @@ class Trainer:
     def _forward_loss(
         self,
         batch: Dict[str, torch.Tensor],
-    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor, torch.Tensor]:
-        inputs, masks, lat_norm, lon_norm, doy_norm, target = batch_to_model_inputs(
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        inputs, masks, lat_norm, lon_norm, doy_norm, target_anom, target_abs, clim, target_mask = batch_to_model_inputs(
             batch, self.temporal_window, self.device
         )
         with autocast("cuda", enabled=self.use_amp):
@@ -136,44 +156,73 @@ class Trainer:
                 doy_norm=doy_norm,
                 depths=SIH_DEPTHS,
             )
-            loss_dict = self.loss_fn(
-                pred_mean=output["means"],
-                pred_log_var=output["log_vars"],
-                target=target,
-                depths=self.depths_tensor,
-            )
-        return loss_dict["total"], loss_dict, output["means"], target
+            if self.use_uncertainty and self.current_epoch >= self.use_uncertainty_after_epoch:
+                loss_dict = self.loss_fn(
+                    pred_mean=output["means"],
+                    pred_log_var=output["log_vars"],
+                    target=target_anom,
+                    depths=self.depths_tensor,
+                )
+            elif not self.use_uncertainty:
+                loss_dict = self.loss_fn(
+                    pred_mean=output["means"],
+                    pred_log_var=output["log_vars"],
+                    target=target_anom,
+                    depths=self.depths_tensor,
+                )
+            else:
+                mse = ((output["means"] - target_anom) ** 2).mean()
+                loss_dict = {
+                    "total": mse,
+                    "primary": mse,
+                    "thermo": torch.zeros((), device=target_anom.device),
+                    "smooth": torch.zeros((), device=target_anom.device),
+                }
+        return loss_dict["total"], loss_dict, output["means"], target_anom, target_abs, clim, target_mask, output["log_vars"]
 
     @staticmethod
     def _append_preds(
-        pred_list: List[np.ndarray],
-        targ_list: List[np.ndarray],
-        pred_norm: torch.Tensor,
-        targ_norm: torch.Tensor,
+        pred_anom_list: List[np.ndarray],
+        targ_abs_list: List[np.ndarray],
+        clim_list: List[np.ndarray],
+        mask_list: List[np.ndarray],
+        pred_anom: torch.Tensor,
+        targ_abs: torch.Tensor,
+        clim: torch.Tensor,
+        target_mask: torch.Tensor,
     ) -> None:
-        pred_list.append(pred_norm.detach().float().cpu().numpy())
-        targ_list.append(targ_norm.detach().float().cpu().numpy())
+        pred_anom_list.append(pred_anom.detach().float().cpu().numpy())
+        targ_abs_list.append(targ_abs.detach().float().cpu().numpy())
+        clim_list.append(clim.detach().float().cpu().numpy())
+        mask_list.append(target_mask.detach().float().cpu().numpy())
 
     def _metrics_from_accumulated(
         self,
-        pred_list: List[np.ndarray],
-        targ_list: List[np.ndarray],
+        pred_anom_list: List[np.ndarray],
+        targ_abs_list: List[np.ndarray],
+        clim_list: List[np.ndarray],
+        mask_list: List[np.ndarray],
     ) -> Dict[str, Any]:
-        if not pred_list:
+        if not pred_anom_list:
             return {"rmse": float("nan"), "mae": float("nan")}
 
-        pred = np.concatenate(pred_list, axis=0)
-        targ = np.concatenate(targ_list, axis=0)
-        pred_c = denormalize_target(pred, self.norm_stats)
-        targ_c = denormalize_target(targ, self.norm_stats)
-        overall = compute_all_metrics(pred_c, targ_c, stats=None)
+        pred_anom = np.concatenate(pred_anom_list, axis=0)
+        targ_abs = np.concatenate(targ_abs_list, axis=0)
+        clim = np.concatenate(clim_list, axis=0)
+        masks = np.concatenate(mask_list, axis=0)
+
+        pred_c = clim + pred_anom
+        targ_c = targ_abs
+        valid = (masks == 1.0) & np.isfinite(targ_c)
+
+        overall = compute_all_metrics(pred_c, targ_c, mask=valid, stats=None)
 
         rmse_per_depth: Dict[float, float] = {}
         for d_idx, z in enumerate(SIH_DEPTHS):
-            rmse_per_depth[float(z)] = rmse(
-                pred_c[:, d_idx].ravel(),
-                targ_c[:, d_idx].ravel(),
-            )
+            p_d = pred_c[:, d_idx]
+            t_d = targ_c[:, d_idx]
+            m_d = valid[:, d_idx]
+            rmse_per_depth[float(z)] = rmse(p_d, t_d, mask=m_d)
 
         val_depth_bands: Dict[str, Dict[str, float]] = {}
         depths_arr = np.array(SIH_DEPTHS, dtype=float)
@@ -182,8 +231,9 @@ class Trainer:
             if len(idx) == 0:
                 continue
             val_depth_bands[name] = compute_all_metrics(
-                pred_c[:, idx].ravel(),
-                targ_c[:, idx].ravel(),
+                pred_c[:, idx],
+                targ_c[:, idx],
+                mask=valid[:, idx],
                 stats=None,
             )
 
@@ -202,12 +252,15 @@ class Trainer:
         n_loss_steps = 0
         loss_start: Optional[float] = None
         loss_end: Optional[float] = None
-        pred_chunks: List[np.ndarray] = []
-        targ_chunks: List[np.ndarray] = []
+        pred_anom_chunks: List[np.ndarray] = []
+        targ_abs_chunks: List[np.ndarray] = []
+        clim_chunks: List[np.ndarray] = []
+        mask_chunks: List[np.ndarray] = []
+        log_var_chunks: List[np.ndarray] = []
 
         self.optimizer.zero_grad(set_to_none=True)
         for batch_idx, batch in enumerate(self.train_loader):
-            loss, _loss_dict, pred_mean, target = self._forward_loss(batch)
+            loss, _loss_dict, pred_mean, _target_anom, target_abs, clim, target_mask, log_vars = self._forward_loss(batch)
             if loss_start is None:
                 loss_start = loss.item()
             loss_end = loss.item()
@@ -216,7 +269,8 @@ class Trainer:
 
             running_loss += loss.item()
             n_loss_steps += 1
-            self._append_preds(pred_chunks, targ_chunks, pred_mean, target)
+            self._append_preds(pred_anom_chunks, targ_abs_chunks, clim_chunks, mask_chunks, pred_mean, target_abs, clim, target_mask)
+            log_var_chunks.append(log_vars.detach().float().cpu().numpy())
 
             step_done = (batch_idx + 1) % self.accum_steps == 0
             last_batch = batch_idx + 1 == len(self.train_loader)
@@ -247,7 +301,7 @@ class Trainer:
                         vram,
                     )
 
-        train_metrics = self._metrics_from_accumulated(pred_chunks, targ_chunks)
+        train_metrics = self._metrics_from_accumulated(pred_anom_chunks, targ_abs_chunks, clim_chunks, mask_chunks)
         mean_loss = running_loss / max(n_loss_steps, 1)
         return {
             "loss": mean_loss,
@@ -255,6 +309,13 @@ class Trainer:
             "loss_end": loss_end if loss_end is not None else mean_loss,
             "rmse": train_metrics["rmse"],
             "mae": train_metrics["mae"],
+            "loss_mode": (
+                "full_nll"
+                if self.use_uncertainty and self.current_epoch >= self.use_uncertainty_after_epoch
+                else "mse_combo"
+            ),
+            "log_var_mean": float(np.concatenate(log_var_chunks).mean()),
+            "log_var_std": float(np.concatenate(log_var_chunks).std()),
         }
 
     @torch.no_grad()
@@ -262,17 +323,23 @@ class Trainer:
         self.model.eval()
         running_loss = 0.0
         n_batches = 0
-        pred_chunks: List[np.ndarray] = []
-        targ_chunks: List[np.ndarray] = []
+        pred_anom_chunks: List[np.ndarray] = []
+        targ_abs_chunks: List[np.ndarray] = []
+        clim_chunks: List[np.ndarray] = []
+        mask_chunks: List[np.ndarray] = []
+        log_var_chunks: List[np.ndarray] = []
 
         for batch in self.val_loader:
-            loss, _, pred_mean, target = self._forward_loss(batch)
+            loss, _, pred_mean, _target_anom, target_abs, clim, target_mask, log_vars = self._forward_loss(batch)
             running_loss += loss.item()
             n_batches += 1
-            self._append_preds(pred_chunks, targ_chunks, pred_mean, target)
+            self._append_preds(pred_anom_chunks, targ_abs_chunks, clim_chunks, mask_chunks, pred_mean, target_abs, clim, target_mask)
+            log_var_chunks.append(log_vars.detach().float().cpu().numpy())
 
-        metrics = self._metrics_from_accumulated(pred_chunks, targ_chunks)
+        metrics = self._metrics_from_accumulated(pred_anom_chunks, targ_abs_chunks, clim_chunks, mask_chunks)
         metrics["loss"] = running_loss / max(n_batches, 1)
+        metrics["log_var_mean"] = float(np.concatenate(log_var_chunks).mean())
+        metrics["log_var_std"] = float(np.concatenate(log_var_chunks).std())
         return metrics
 
     def save_checkpoint(
@@ -345,20 +412,46 @@ class Trainer:
         plt.close(fig)
         logger.info("Wrote RMSE plot → %s", out)
 
+    def _rising_n(self, getter, n: int) -> bool:
+        if len(self.history) < n + 1:
+            return False
+        vals = [float(getter(r)) for r in self.history[-(n + 1) :]]
+        return all(vals[i] < vals[i + 1] for i in range(n))
+
+    def _append_epoch_csv(self, record: Dict[str, Any]) -> None:
+        path = self.run_dir / "epoch_table.csv"
+        header = "epoch,train_loss,val_loss,val_rmse,val_r2,lr,epoch_seconds\n"
+        line = (
+            f"{record['epoch']},{record['train']['loss']},{record['val']['loss']},"
+            f"{record['val']['rmse']},{record['val'].get('r2', float('nan'))},"
+            f"{record.get('lr', float('nan'))},{record.get('epoch_seconds', float('nan'))}\n"
+        )
+        if not path.exists():
+            path.write_text(header + line, encoding="utf-8")
+        else:
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(line)
+
     def fit(self, n_epochs: int) -> List[Dict[str, Any]]:
         t0 = time.perf_counter()
         if self.device.type == "cuda":
             torch.cuda.reset_peak_memory_stats()
 
         for epoch in range(self.start_epoch, n_epochs):
+            self.current_epoch = epoch
             epoch_t0 = time.perf_counter()
             train_m = self.train_epoch()
             val_m = self.validate()
+            epoch_s = time.perf_counter() - epoch_t0
             if self.scheduler is not None and self.global_step > 0:
                 self.scheduler.step()
+            lr_now = float(self.optimizer.param_groups[0]["lr"])
 
             record = {
                 "epoch": epoch,
+                "lr": lr_now,
+                "epoch_seconds": epoch_s,
+                "loss_mode": train_m["loss_mode"],
                 "train": train_m,
                 "val": {
                     "loss": val_m["loss"],
@@ -367,6 +460,8 @@ class Trainer:
                     "bias": val_m.get("bias"),
                     "pearson_r": val_m.get("pearson_r"),
                     "r2": val_m.get("r2"),
+                    "log_var_mean": val_m.get("log_var_mean"),
+                    "log_var_std": val_m.get("log_var_std"),
                     "val_depth_bands": val_m.get("val_depth_bands", {}),
                     "rmse_per_depth": val_m.get("rmse_per_depth", {}),
                 },
@@ -374,13 +469,15 @@ class Trainer:
             self.history.append(record)
 
             logger.info(
-                "epoch=%d train_loss=%.4f train_rmse=%.4f°C val_loss=%.4f val_rmse=%.4f°C (%.1fs)",
+                "epoch=%d mode=%s train_loss=%.4f val_loss=%.4f val_rmse=%.4f°C val_r2=%.4f lr=%.2e (%.1fs)",
                 epoch,
+                train_m["loss_mode"],
                 train_m["loss"],
-                train_m["rmse"],
                 val_m["loss"],
                 val_m["rmse"],
-                time.perf_counter() - epoch_t0,
+                val_m.get("r2", float("nan")),
+                lr_now,
+                epoch_s,
             )
             for band_name, band_m in val_m.get("val_depth_bands", {}).items():
                 logger.info("  val band %s: rmse=%.4f°C", band_name, band_m.get("rmse", float("nan")))
@@ -392,7 +489,9 @@ class Trainer:
                 tag="last",
             )
 
-            if val_m["loss"] < self.best_val_loss:
+            val_rmse = float(val_m["rmse"])
+            if val_rmse < getattr(self, "best_val_rmse", float("inf")):
+                self.best_val_rmse = val_rmse
                 self.best_val_loss = val_m["loss"]
                 self.epochs_without_improvement = 0
                 self.save_checkpoint(
@@ -413,6 +512,29 @@ class Trainer:
                 )
 
             self._save_metrics_json()
+            self._append_epoch_csv(record)
+
+            if self.max_epoch_seconds and epoch_s > self.max_epoch_seconds:
+                logger.error("STOP: epoch %d took %.1fs > %.0fs limit", epoch, epoch_s, self.max_epoch_seconds)
+                break
+            if (
+                self.stop_if_val_rmse_gt is not None
+                and (epoch + 1) == self.stop_if_val_rmse_epoch
+                and val_rmse > float(self.stop_if_val_rmse_gt)
+            ):
+                logger.error(
+                    "STOP: val RMSE %.3f°C > %.3f°C at epoch %d",
+                    val_rmse,
+                    float(self.stop_if_val_rmse_gt),
+                    epoch + 1,
+                )
+                break
+            if self._rising_n(lambda r: r["train"]["loss"], 3):
+                logger.error("STOP: train loss rose for 3 consecutive epochs")
+                break
+            if self._rising_n(lambda r: r["val"]["rmse"], 3):
+                logger.error("STOP: val RMSE rose for 3 consecutive epochs")
+                break
 
             if self.epochs_without_improvement >= self.patience:
                 logger.info("Early stopping at epoch %d (patience=%d)", epoch, self.patience)

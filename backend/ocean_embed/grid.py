@@ -28,8 +28,12 @@ NIO_LON_MIN = DOMAIN["lon_min"]
 NIO_LON_MAX = DOMAIN["lon_max"]
 GRID_SHAPE = (101, 241)  # (n_lat, n_lon) at 0.25 deg resolution
 
+# Native GLORYS vertical levels present in target_glorys.zarr (not SIH round numbers).
+# Last level is 902.34 m — do NOT relabel as 1000/1062.
 SIH_DEPTHS: list[float] = [
-    0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000
+    0.49, 5.08, 9.57, 18.50, 29.44,
+    47.37, 77.85, 92.33, 130.67, 155.85,
+    186.13, 318.13, 541.09, 643.57, 902.34,
 ]
 
 REGIONS = {

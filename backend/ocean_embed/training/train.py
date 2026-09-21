@@ -26,7 +26,8 @@ _BACKEND = Path(__file__).resolve().parents[2]
 if str(_BACKEND) not in sys.path:
     sys.path.insert(0, str(_BACKEND))
 
-from ocean_embed.data import OceanEmbedDataset, load_normalization_stats, make_temporal_split
+from ocean_embed.data import OceanEmbedDataset, load_normalization_stats
+from ocean_embed.data.splits import config_driven_split, make_date_range_split, make_temporal_split
 from ocean_embed.models.ocean_embed import OceanEmbedModel
 from ocean_embed.training.losses import OceanEmbedLoss
 from ocean_embed.training.trainer import Trainer
@@ -120,7 +121,7 @@ def build_model_from_config(cfg: Dict[str, Any]) -> OceanEmbedModel:
         decoder_hidden=tuple(dec.get("hidden_dims", [256, 256, 128])),
         n_regions=len(reg.get("regions", ["arabian_sea", "bay_of_bengal", "open_ocean"])),
         region_embed_dim=reg.get("embedding_dim", 16),
-        dropout=enc.get("dropout", 0.1),
+        dropout=float(cfg.get("dropout", enc.get("dropout", 0.1))),
         max_depth=float(model_cfg.get("max_depth", 1000.0)),
     )
 
@@ -131,7 +132,7 @@ def dry_run_forward(model: OceanEmbedModel, batch: Dict[str, torch.Tensor], devi
 
     model.eval()
     with torch.no_grad():
-        inputs, masks, lat_norm, lon_norm, doy_norm, _ = batch_to_model_inputs(
+        inputs, masks, lat_norm, lon_norm, doy_norm, *_ = batch_to_model_inputs(
             batch, tw, device
         )
         out = model(
@@ -183,16 +184,53 @@ def main() -> int:
     times = sf.time.values
     sf.close()
 
-    splits = make_temporal_split(
-        times,
-        train_frac=float(data_cfg.get("train_frac", 0.70)),
-        val_frac=float(data_cfg.get("val_frac", 0.15)),
-        test_frac=float(data_cfg.get("test_frac", 0.15)),
-    )
+    split_method = data_cfg.get("split_method", "fraction")
+    if split_method == "date_range":
+        data_config_path = data_cfg.get("data_config_path", "backend/ocean_embed/configs/data_config.yaml")
+        dc_path = Path(data_config_path)
+        if not dc_path.is_absolute():
+            dc_path = project_root / dc_path
+        with open(dc_path, encoding="utf-8") as f:
+            dc = yaml.safe_load(f)
+        sc = dc.get("splits", {})
+        splits = make_date_range_split(
+            times,
+            sc["train_range"],
+            sc["val_range"],
+            sc["test_range"],
+        )
+    elif split_method == "config":
+        dc_path = data_cfg.get("data_config_path")
+        splits = config_driven_split(times, config_path=project_root / dc_path if dc_path else None)
+    else:
+        splits = make_temporal_split(
+            times,
+            train_frac=float(data_cfg.get("train_frac", 0.70)),
+            val_frac=float(data_cfg.get("val_frac", 0.15)),
+            test_frac=float(data_cfg.get("test_frac", 0.15)),
+        )
 
-    train_ds = OceanEmbedDataset(surface_zarr, target_zarr, stats_path, indices=splits["train"])
-    val_ds = OceanEmbedDataset(surface_zarr, target_zarr, stats_path, indices=splits["val"])
-    logger.info("Dataset sizes: train=%d val=%d", len(train_ds), len(val_ds))
+    train_ds = OceanEmbedDataset(
+        surface_zarr,
+        target_zarr,
+        stats_path,
+        indices=splits["train"],
+        mode="train",
+        crop_size=(51, 121),
+    )
+    val_ds = OceanEmbedDataset(
+        surface_zarr,
+        target_zarr,
+        stats_path,
+        indices=splits["val"],
+        mode="eval",
+    )
+    logger.info(
+        "Dataset sizes: train=%d val=%d test=%d",
+        len(train_ds),
+        len(val_ds),
+        len(splits["test"]),
+    )
 
     batch_size = int(cfg.get("batch_size", 2))
     val_batch_size = int(cfg.get("val_batch_size", batch_size))
@@ -205,7 +243,8 @@ def main() -> int:
         shuffle=True,
         num_workers=num_workers,
         pin_memory=pin_memory,
-        persistent_workers=False,
+        persistent_workers=num_workers > 0,
+        prefetch_factor=2 if num_workers > 0 else None,
     )
 
     steps_per_epoch = max(1, len(train_loader))
@@ -224,7 +263,8 @@ def main() -> int:
         shuffle=False,
         num_workers=num_workers,
         pin_memory=pin_memory,
-        persistent_workers=False,
+        persistent_workers=num_workers > 0,
+        prefetch_factor=2 if num_workers > 0 else None,
     )
 
     model = build_model_from_config(cfg).to(device)
@@ -254,11 +294,29 @@ def main() -> int:
     )
 
     sched_cfg = cfg.get("scheduler", {})
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+    eta_min = float(sched_cfg.get("eta_min", cfg.get("min_lr", 1e-6)))
+    warmup_epochs = int(cfg.get("warmup_epochs", 0))
+    cosine_t = max(1, n_epochs - warmup_epochs)
+    cosine = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer,
-        T_max=n_epochs,
-        eta_min=float(sched_cfg.get("eta_min", 1e-6)),
+        T_max=cosine_t,
+        eta_min=eta_min,
     )
+    if warmup_epochs > 0:
+        warmup = torch.optim.lr_scheduler.LinearLR(
+            optimizer,
+            start_factor=0.01,
+            end_factor=1.0,
+            total_iters=warmup_epochs,
+        )
+        scheduler = torch.optim.lr_scheduler.SequentialLR(
+            optimizer,
+            schedulers=[warmup, cosine],
+            milestones=[warmup_epochs],
+        )
+        logger.info("Scheduler: Linear warmup %d epochs then cosine T_max=%d eta_min=%s", warmup_epochs, cosine_t, eta_min)
+    else:
+        scheduler = cosine
 
     norm_stats = load_normalization_stats(stats_path)
     run_dir = project_root / "runs" / cfg.get("run_name", "default_run")
