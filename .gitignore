@@ -1,6 +1,7 @@
 # Credentials — NEVER commit
 .env
 backend/.env
+frontend/.env
 
 # Data
 data/
