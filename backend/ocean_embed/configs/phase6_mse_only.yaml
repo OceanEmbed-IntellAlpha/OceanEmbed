@@ -1,0 +1,60 @@
+# Phase 6.1 — Loss ablation: MSE-only (no thermocline, no depth-smoothness)
+# Identical to phase4_anomaly except loss weights are zeroed out.
+# Purpose: isolate whether auxiliary losses caused v1's underperformance vs U-Net baseline.
+
+batch_size: 2
+checkpoint_every: 1
+data:
+  data_config_path: backend/ocean_embed/configs/data_config.yaml
+  split_method: date_range
+  stats_path: data/processed/normalization_stats_v3.json
+  surface_zarr: data/processed/surface_features.zarr
+  target_zarr: data/processed/target_glorys.zarr
+dropout: 0.2
+early_stopping_patience: 10
+gradient_accumulation_steps: 4
+learning_rate: 0.0005
+log_every_steps: 50
+loss:
+  use_uncertainty: false
+  thermocline_weight: 0.0        # was 0.01 in phase4_anomaly
+  thermocline_temperature: 1.0
+  thermocline_use_soft_argmax: true
+  depth_smooth_weight: 0.0       # was 0.001 in phase4_anomaly
+max_epoch_minutes: 15
+max_grad_norm: 1.0
+min_lr: 1.0e-06
+mixed_precision: true
+model:
+  config_path: model_config.yaml
+n_epochs: 30
+num_workers: 0
+optimizer:
+  betas:
+  - 0.9
+  - 0.999
+  eps: 1.0e-08
+  name: AdamW
+pin_memory: true
+run_name: phase6_mse_only
+scheduler:
+  eta_min: 1.0e-06
+  name: cosine
+seed: 42
+stop_if_val_rmse_epoch: 20
+stop_if_val_rmse_gt: 1.2
+temporal_window: 1
+use_uncertainty_after_epoch: 9999
+val_batch_size: 2
+val_depth_bands:
+  ML_0-50m:
+  - 0
+  - 50
+  deep_200-1000m:
+  - 200
+  - 1000
+  thermocline_50-200m:
+  - 50
+  - 200
+warmup_epochs: 3
+weight_decay: 0.0003
