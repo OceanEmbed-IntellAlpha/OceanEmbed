@@ -36,6 +36,30 @@
       "sourceType": "github",
       "skillPath": "skills/premium-frontend-ui/SKILL.md",
       "computedHash": "e7f3d02a0233beafdd6fe5335427388109b9699ebcdc6a8782a8bada2826d916"
+    },
+    "threejs-lighting": {
+      "source": "cloudai-x/threejs-skills",
+      "sourceType": "github",
+      "skillPath": "skills/threejs-lighting/SKILL.md",
+      "computedHash": "7adc319af73a15ce16b94c83aafe0bcca7b8ef17d9fb263d75a937b9670f1772"
+    },
+    "threejs-materials": {
+      "source": "cloudai-x/threejs-skills",
+      "sourceType": "github",
+      "skillPath": "skills/threejs-materials/SKILL.md",
+      "computedHash": "4d181db0b35213b772bf20eff5fe6f72f1c84bdc03294db96d1f712dd9047443"
+    },
+    "threejs-shaders": {
+      "source": "cloudai-x/threejs-skills",
+      "sourceType": "github",
+      "skillPath": "skills/threejs-shaders/SKILL.md",
+      "computedHash": "d95f7e19b4aa4992d3d5dfbdbfeec0d21affd251dc2006dc0d4d4d1a317f1b04"
+    },
+    "threejs-textures": {
+      "source": "cloudai-x/threejs-skills",
+      "sourceType": "github",
+      "skillPath": "skills/threejs-textures/SKILL.md",
+      "computedHash": "5afbbaa048507fcbb76adca76cdc2fa58f7edb68383c0c48785756fecb68a2d0"
     }
   }
 }

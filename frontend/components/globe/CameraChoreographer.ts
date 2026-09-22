@@ -209,11 +209,57 @@ export class CameraChoreographer {
     });
   }
 
-  resetToIndianOcean(): void {
+  /**
+   * zoomToOceanPoint — single-phase, high-performance cinematic dive onto clicked ocean coordinates.
+   * Smoothly eases from orbital view down to 65km altitude at a dramatic -75° pitch,
+   * filling the viewport with deep ocean water without triggering heavy micro-tile downloads.
+   */
+  zoomToOceanPoint(lat: number, lon: number, onComplete?: () => void): void {
+    if (this.reducedMotion) {
+      onComplete?.();
+      return;
+    }
+
     import('cesium').then((Cesium) => {
       const viewer = this.viewer as {
         camera: { flyTo: (opts: unknown) => void };
         scene: {
+          fog: { density: number };
+          screenSpaceCameraController: { enableZoom: boolean; enableTilt: boolean };
+        };
+      };
+
+      // Disable user input during the cinematic
+      viewer.scene.screenSpaceCameraController.enableZoom = false;
+      viewer.scene.screenSpaceCameraController.enableTilt = false;
+
+      // Single smooth dive to 65km altitude (clean ocean view, zero tile-stall lag)
+      const targetAlt = 65_000;
+      const targetPitch = Cesium.Math.toRadians(-75);
+      const targetHeading = Cesium.Math.toRadians(6);
+      const groundDist = targetAlt / Math.tan(Math.abs(targetPitch));
+      const latOff = (groundDist / 111_320) * Math.cos(targetHeading);
+      const lonOff = (groundDist / (111_320 * Math.cos((lat * Math.PI) / 180))) * Math.sin(targetHeading);
+
+      viewer.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(lon - lonOff, lat - latOff, targetAlt),
+        orientation: { heading: targetHeading, pitch: targetPitch, roll: 0 },
+        duration: 1.1,
+        easingFunction: Cesium.EasingFunction.CUBIC_IN_OUT,
+        complete: () => {
+          viewer.scene.fog.density = 0.0006;
+          onComplete?.();
+        },
+      });
+    });
+  }
+
+  resetToIndianOcean(onComplete?: () => void): void {
+    import('cesium').then((Cesium) => {
+      const viewer = this.viewer as {
+        camera: { flyTo: (opts: unknown) => void };
+        scene: {
+          fog: { density: number };
           screenSpaceCameraController: {
             enableZoom: boolean;
             enableTilt: boolean;
@@ -221,9 +267,10 @@ export class CameraChoreographer {
         };
       };
 
-      // Lock camera controls back for the overview
-      viewer.scene.screenSpaceCameraController.enableZoom = false;
-      viewer.scene.screenSpaceCameraController.enableTilt = false;
+      // Re-enable camera controls now that the globe is back
+      viewer.scene.screenSpaceCameraController.enableZoom = true;
+      viewer.scene.screenSpaceCameraController.enableTilt = true;
+      viewer.scene.fog.density = 0.0001;
 
       viewer.camera.flyTo({
         destination: Cesium.Cartesian3.fromDegrees(80, 10, 8000000),
@@ -233,6 +280,7 @@ export class CameraChoreographer {
           roll: 0,
         },
         duration: this.reducedMotion ? 0 : 1.5,
+        complete: onComplete,
       });
     });
   }
