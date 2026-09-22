@@ -208,7 +208,35 @@ class ArgoService:
 
     def get_regional_stats(self) -> List[Dict]:
         """Return pre-computed regional validation statistics."""
-        return self._regional_stats
+        # Transform nested structure to flat list for API compatibility
+        if not self._regional_stats:
+            return []
+        
+        # Handle both old flat format and new nested format
+        if isinstance(self._regional_stats, list):
+            return self._regional_stats
+        
+        # New format: nested under "regions" key
+        if isinstance(self._regional_stats, dict) and "regions" in self._regional_stats:
+            regions_data = self._regional_stats["regions"]
+            result = []
+            for region_key, region_data in regions_data.items():
+                # Transform to match RegionalValidation schema
+                transformed = {
+                    "region": region_key,
+                    "nProfiles": region_data.get("n_profiles", 0),
+                    "rmse": region_data.get("rmse", 0.0),
+                    "bias": region_data.get("bias", 0.0),
+                    "correlation": region_data.get("correlation", 0.0),
+                    "rmseByDepth": [
+                        {"depth": d["depth_m"], "rmse": d["rmse"]}
+                        for d in region_data.get("rmse_by_depth", [])
+                    ]
+                }
+                result.append(transformed)
+            return result
+        
+        return []
 
     def get_all_seasonal_stats(self) -> Dict:
         """Return seasonal validation breakdowns across all 4 seasons."""
