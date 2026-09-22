@@ -311,3 +311,64 @@ def test_validation_regional(client: TestClient):
             assert "nProfiles" in region
             assert "rmse" in region
             assert "rmseByDepth" in region
+
+
+# ── Seasonal & Monsoon Validation Tests (Phase 7) ───────────────────────────
+
+def test_validation_seasonal(client: TestClient):
+    # Test both v1 endpoint and frontend alias
+    for path in ["/api/v1/validation/seasonal", "/api/validation/seasonal"]:
+        res = client.get(path)
+        assert res.status_code in (200, 503), f"Unexpected status: {res.status_code}"
+        if res.status_code == 200:
+            data = res.json()
+            assert "seasons" in data
+            assert len(data["seasons"]) == 4  # V1: returns 4 seasons
+            season_names = [s["season"] for s in data["seasons"]]
+            assert "pre_monsoon" in season_names
+            assert "monsoon" in season_names
+            assert "post_monsoon" in season_names
+            assert "winter" in season_names
+            for s in data["seasons"]:
+                assert s["n_profiles"] > 0
+                assert 0.4 <= s["rmse"] <= 1.0  # V5: range within [0.4, 1.0]
+                assert "rmse_by_band" in s
+                assert "rmse_by_depth" in s
+
+
+def test_validation_monsoon(client: TestClient):
+    # Test both v1 endpoint and frontend alias
+    for path in ["/api/v1/validation/monsoon", "/api/validation/monsoon"]:
+        res = client.get(path)
+        assert res.status_code in (200, 503), f"Unexpected status: {res.status_code}"
+        if res.status_code == 200:
+            data = res.json()
+            assert "regimes" in data
+            assert len(data["regimes"]) == 2  # V2: returns 2 regimes
+            regime_names = [r["regime"] for r in data["regimes"]]
+            assert "monsoon" in regime_names
+            assert "non_monsoon" in regime_names
+            for r in data["regimes"]:
+                assert r["n_profiles"] > 0
+                assert 0.4 <= r["rmse"] <= 1.0
+
+
+def test_validation_region_season_matrix(client: TestClient):
+    # Test both v1 endpoint and frontend alias
+    for path in ["/api/v1/validation/region_season_matrix", "/api/validation/region_season_matrix"]:
+        res = client.get(path)
+        assert res.status_code in (200, 503), f"Unexpected status: {res.status_code}"
+        if res.status_code == 200:
+            data = res.json()
+            assert "regions" in data
+            assert "seasons" in data
+            assert "matrix" in data
+            # V3: Region x season grid has all cells filled
+            for r in data["regions"]:
+                assert r in data["matrix"]
+                for s in data["seasons"]:
+                    assert s in data["matrix"][r]
+                    cell = data["matrix"][r][s]
+                    assert cell["n_profiles"] > 0
+                    assert 0.4 <= cell["rmse"] <= 1.0
+

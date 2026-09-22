@@ -56,7 +56,7 @@ def _interp_to_model_depths(
     argo_temps: List[float],
     target_depths: List[float] = MODEL_DEPTHS,
 ) -> List[float]:
-    """Linearly interpolate Argo profile to model depth levels."""
+    """Linearly interpolate Argo profile to model depth levels with NaN outside observed range."""
     if len(argo_depths) < 2:
         return [float("nan")] * len(target_depths)
 
@@ -68,7 +68,7 @@ def _interp_to_model_depths(
     arr_d = arr_d[sort_idx]
     arr_t = arr_t[sort_idx]
 
-    return list(np.interp(target_depths, arr_d, arr_t))
+    return list(np.interp(target_depths, arr_d, arr_t, left=np.nan, right=np.nan))
 
 
 class ArgoService:
@@ -80,6 +80,9 @@ class ArgoService:
         self._profiles_2022: List[Dict] = []
         self._profiles_all: List[Dict] = []
         self._regional_stats: List[Dict] = []
+        self._seasonal_stats: Dict = {}
+        self._monsoon_stats: Dict = {}
+        self._regional_seasonal_grid: Dict = {}
         self._profile_index: Dict[str, Dict] = {}  # floatId -> profile
         self._available = False
         self._load()
@@ -119,6 +122,24 @@ class ArgoService:
                 with open(regional_stats_path) as f:
                     self._regional_stats = json.load(f)
                 logger.info(f"Loaded {len(self._regional_stats)} regional stats")
+
+            seasonal_path = ARGO_DIR / "seasonal_stats.json"
+            if seasonal_path.exists():
+                with open(seasonal_path) as f:
+                    self._seasonal_stats = json.load(f)
+                logger.info("Loaded seasonal validation statistics")
+
+            monsoon_path = ARGO_DIR / "monsoon_stats.json"
+            if monsoon_path.exists():
+                with open(monsoon_path) as f:
+                    self._monsoon_stats = json.load(f)
+                logger.info("Loaded monsoon regime validation statistics")
+
+            grid_path = ARGO_DIR / "regional_seasonal_grid.json"
+            if grid_path.exists():
+                with open(grid_path) as f:
+                    self._regional_seasonal_grid = json.load(f)
+                logger.info("Loaded regional-seasonal matrix")
 
             # Build index for O(1) profile lookup
             for p in self._profiles_all:
@@ -188,6 +209,26 @@ class ArgoService:
     def get_regional_stats(self) -> List[Dict]:
         """Return pre-computed regional validation statistics."""
         return self._regional_stats
+
+    def get_all_seasonal_stats(self) -> Dict:
+        """Return seasonal validation breakdowns across all 4 seasons."""
+        return self._seasonal_stats
+
+    def get_seasonal_stats(self, season: str) -> Optional[Dict]:
+        """Return validation stats for a specific season ('pre_monsoon', 'monsoon', 'post_monsoon', 'winter')."""
+        seasons_list = self._seasonal_stats.get("seasons", [])
+        for s in seasons_list:
+            if s.get("season") == season:
+                return s
+        return None
+
+    def get_monsoon_stats(self) -> Dict:
+        """Return monsoon vs non-monsoon regime validation stats."""
+        return self._monsoon_stats
+
+    def get_regional_seasonal_grid(self) -> Dict:
+        """Return 3x4 Region x Season validation matrix."""
+        return self._regional_seasonal_grid
 
     def compute_validation_matchup(
         self,

@@ -313,3 +313,34 @@ async def get_experiments_alias():
     from backend.api.routes.experiments import get_experiments
     return await get_experiments()
 
+
+@router.get(
+    "/validation/seasonal",
+    summary="Seasonal validation summary",
+    description="Returns performance across Pre-monsoon, Monsoon, Post-monsoon, and Winter.",
+)
+async def get_seasonal_validation_alias(argo: ArgoService = Depends(get_argo_service)):
+    from backend.api.routes.validation import get_seasonal_validation
+    return await get_seasonal_validation(argo=argo)
+
+
+@router.get(
+    "/validation/monsoon",
+    summary="Monsoon regime validation summary",
+    description="Returns performance comparison for Monsoon (Jun-Sep) vs Non-monsoon (Oct-May).",
+)
+async def get_monsoon_validation_alias(argo: ArgoService = Depends(get_argo_service)):
+    from backend.api.routes.validation import get_monsoon_validation
+    return await get_monsoon_validation(argo=argo)
+
+
+@router.get(
+    "/validation/region_season_matrix",
+    summary="Region x Season validation matrix",
+    description="Returns 3x4 matrix across Arabian Sea, Bay of Bengal, and NIO for 4 seasons.",
+)
+async def get_region_season_matrix_alias(argo: ArgoService = Depends(get_argo_service)):
+    from backend.api.routes.validation import get_region_season_matrix
+    return await get_region_season_matrix(argo=argo)
+
+

@@ -17,7 +17,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
-from backend.api.routes import experiments, frontend_aliases, model_info, reconstruct
+from backend.api.routes import experiments, frontend_aliases, model_info, reconstruct, validation
 from backend.api.schemas.common import HealthResponse
 from backend.api.services.model_service import ModelService
 from backend.api.services.argo_service import ArgoService
@@ -109,6 +109,7 @@ async def log_requests_middleware(request: Request, call_next) -> Response:
 app.include_router(model_info.router)
 app.include_router(reconstruct.router)
 app.include_router(experiments.router)
+app.include_router(validation.router)
 
 # Frontend Compatibility Aliases
 app.include_router(frontend_aliases.router)
