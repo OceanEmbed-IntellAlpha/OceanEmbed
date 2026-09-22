@@ -226,6 +226,17 @@ def test_frontend_datasets_alias(client: TestClient):
     assert any(d["id"] == "ostia-sst" for d in data)
 
 
+def test_frontend_experiments_alias(client: TestClient):
+    res = client.get("/api/experiments")
+    assert res.status_code == 200
+    data = res.json()
+    assert "experiments" in data
+    assert "variable_ablation" in data
+    assert "key_findings" in data
+    assert len(data["experiments"]) >= 5
+
+
+
 # ── Argo & Validation Endpoints (Phase 8C) ──────────────────────────────────
 
 def test_argo_nearby(client: TestClient):

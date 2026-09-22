@@ -302,3 +302,14 @@ async def get_regional_validation(
     except Exception as e:
         logger.error(f"Regional validation error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Regional stats error: {str(e)}")
+
+
+@router.get(
+    "/experiments",
+    summary="Research Lab experiments summary",
+    description="Returns benchmarked model architectures and variable ablations.",
+)
+async def get_experiments_alias():
+    from backend.api.routes.experiments import get_experiments
+    return await get_experiments()
+

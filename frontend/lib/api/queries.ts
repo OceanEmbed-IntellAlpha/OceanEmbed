@@ -6,7 +6,8 @@ import type {
   ArgoProfile,
   ValidationMatchup,
   RegionalValidation,
-  DatasetCard
+  DatasetCard,
+  ExperimentsResponse
 } from './types';
 
 export const BASE_URL = ''; // process.env.NEXT_PUBLIC_API_BASE_URL || '';
@@ -133,3 +134,17 @@ export function useDatasets() {
     staleTime: 1000 * 60 * 60, // 1 hour
   });
 }
+
+// ─── Experiments Query ─────────────────────────────────────────────────────────────
+export function useExperiments() {
+  return useQuery<ExperimentsResponse, Error>({
+    queryKey: ['experiments'],
+    queryFn: async () => {
+      const res = await fetch(`${BASE_URL}/api/experiments`);
+      if (!res.ok) throw new Error(`Experiments fetch failed: ${res.status}`);
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
+}
+

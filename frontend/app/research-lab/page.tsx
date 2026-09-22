@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { GlobalNav } from '@/components/shared/GlobalNav';
 import { ResearchBand } from '@/components/research-lab/ResearchBand';
+import { LiveBenchmarksBand } from '@/components/research-lab/LiveBenchmarksBand';
 import { ArchitectureBand } from '@/components/research-lab/ArchitectureBand';
 import { ExperimentModal } from '@/components/research-lab/ExperimentModal';
 import { Experiment, ExperimentCategory } from '@/lib/api/research-types';
@@ -118,6 +119,9 @@ export default function ResearchLabPage() {
           activeCategory={activeCategory}
           onCategoryChange={cat => setActiveCategory(cat)}
         />
+
+        {/* MIDDLE SECTION: Live Model Telemetry & Variable Ablations from API */}
+        <LiveBenchmarksBand />
 
         {/* LOWER SECTION: Architecture Deep Dive */}
         <ArchitectureBand />
