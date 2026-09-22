@@ -1,0 +1,158 @@
+{
+  "_provenance": "computed from 8883 collocated Argo profiles via date-grouped ModelService.predict_full_3d and nearest-cell extraction on 2026-09-22 19:33:38",
+  "overall_profiles": 8883,
+  "regimes": [
+    {
+      "n_profiles": 3033,
+      "rmse": 1.6134,
+      "bias": -0.3182,
+      "correlation": 0.9794,
+      "rmse_by_band": {
+        "mixed_layer": 1.2777,
+        "thermocline": 1.2717,
+        "deep": 2.2962
+      },
+      "rmse_by_depth": [
+        {
+          "depth": 0.49,
+          "rmse": 0.3889
+        },
+        {
+          "depth": 5.08,
+          "rmse": 0.7066
+        },
+        {
+          "depth": 14.19,
+          "rmse": 0.9795
+        },
+        {
+          "depth": 26.84,
+          "rmse": 1.5109
+        },
+        {
+          "depth": 42.55,
+          "rmse": 1.6874
+        },
+        {
+          "depth": 59.81,
+          "rmse": 1.4746
+        },
+        {
+          "depth": 78.49,
+          "rmse": 1.155
+        },
+        {
+          "depth": 99.45,
+          "rmse": 1.4835
+        },
+        {
+          "depth": 123.94,
+          "rmse": 1.2637
+        },
+        {
+          "depth": 153.08,
+          "rmse": 1.1457
+        },
+        {
+          "depth": 188.5,
+          "rmse": 1.0358
+        },
+        {
+          "depth": 233.07,
+          "rmse": 2.2654
+        },
+        {
+          "depth": 290.24,
+          "rmse": 2.9758
+        },
+        {
+          "depth": 365.13,
+          "rmse": 2.4692
+        },
+        {
+          "depth": 902.34,
+          "rmse": 0.2466
+        }
+      ],
+      "regime": "monsoon",
+      "name": "Monsoon",
+      "period": "Jun-Sep"
+    },
+    {
+      "n_profiles": 5850,
+      "rmse": 1.5502,
+      "bias": -0.2882,
+      "correlation": 0.9798,
+      "rmse_by_band": {
+        "mixed_layer": 1.1242,
+        "thermocline": 1.2615,
+        "deep": 2.2086
+      },
+      "rmse_by_depth": [
+        {
+          "depth": 0.49,
+          "rmse": 1.6981
+        },
+        {
+          "depth": 5.08,
+          "rmse": 0.8539
+        },
+        {
+          "depth": 14.19,
+          "rmse": 0.92
+        },
+        {
+          "depth": 26.84,
+          "rmse": 1.138
+        },
+        {
+          "depth": 42.55,
+          "rmse": 1.3662
+        },
+        {
+          "depth": 59.81,
+          "rmse": 1.4462
+        },
+        {
+          "depth": 78.49,
+          "rmse": 1.2067
+        },
+        {
+          "depth": 99.45,
+          "rmse": 1.6244
+        },
+        {
+          "depth": 123.94,
+          "rmse": 1.2331
+        },
+        {
+          "depth": 153.08,
+          "rmse": 1.0308
+        },
+        {
+          "depth": 188.5,
+          "rmse": 0.8795
+        },
+        {
+          "depth": 233.07,
+          "rmse": 2.0393
+        },
+        {
+          "depth": 290.24,
+          "rmse": 2.9051
+        },
+        {
+          "depth": 365.13,
+          "rmse": 2.4783
+        },
+        {
+          "depth": 902.34,
+          "rmse": 0.323
+        }
+      ],
+      "regime": "non_monsoon",
+      "name": "Non-monsoon",
+      "period": "Oct-May"
+    }
+  ]
+}

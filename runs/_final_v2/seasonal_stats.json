@@ -1,0 +1,313 @@
+{
+  "_provenance": "computed from 8883 collocated Argo profiles via date-grouped ModelService.predict_full_3d and nearest-cell extraction on 2026-09-22 19:33:38",
+  "overall_profiles": 8883,
+  "overall_rmse": 1.5719,
+  "overall_bias": -0.2984,
+  "overall_correlation": 0.9796,
+  "seasons": [
+    {
+      "n_profiles": 2261,
+      "rmse": 1.6346,
+      "bias": -0.2326,
+      "correlation": 0.979,
+      "rmse_by_band": {
+        "mixed_layer": 1.3494,
+        "thermocline": 1.278,
+        "deep": 2.2774
+      },
+      "rmse_by_depth": [
+        {
+          "depth": 0.49,
+          "rmse": 2.2951
+        },
+        {
+          "depth": 5.08,
+          "rmse": 1.2407
+        },
+        {
+          "depth": 14.19,
+          "rmse": 1.1668
+        },
+        {
+          "depth": 26.84,
+          "rmse": 1.4067
+        },
+        {
+          "depth": 42.55,
+          "rmse": 1.3525
+        },
+        {
+          "depth": 59.81,
+          "rmse": 1.1822
+        },
+        {
+          "depth": 78.49,
+          "rmse": 1.1526
+        },
+        {
+          "depth": 99.45,
+          "rmse": 1.7479
+        },
+        {
+          "depth": 123.94,
+          "rmse": 1.3481
+        },
+        {
+          "depth": 153.08,
+          "rmse": 1.1468
+        },
+        {
+          "depth": 188.5,
+          "rmse": 0.9391
+        },
+        {
+          "depth": 233.07,
+          "rmse": 2.1799
+        },
+        {
+          "depth": 290.24,
+          "rmse": 3.0117
+        },
+        {
+          "depth": 365.13,
+          "rmse": 2.4841
+        },
+        {
+          "depth": 902.34,
+          "rmse": 0.4095
+        }
+      ],
+      "season": "pre_monsoon",
+      "name": "Pre-monsoon",
+      "period": "Mar-May"
+    },
+    {
+      "n_profiles": 3033,
+      "rmse": 1.6134,
+      "bias": -0.3182,
+      "correlation": 0.9794,
+      "rmse_by_band": {
+        "mixed_layer": 1.2777,
+        "thermocline": 1.2717,
+        "deep": 2.2962
+      },
+      "rmse_by_depth": [
+        {
+          "depth": 0.49,
+          "rmse": 0.3889
+        },
+        {
+          "depth": 5.08,
+          "rmse": 0.7066
+        },
+        {
+          "depth": 14.19,
+          "rmse": 0.9795
+        },
+        {
+          "depth": 26.84,
+          "rmse": 1.5109
+        },
+        {
+          "depth": 42.55,
+          "rmse": 1.6874
+        },
+        {
+          "depth": 59.81,
+          "rmse": 1.4746
+        },
+        {
+          "depth": 78.49,
+          "rmse": 1.155
+        },
+        {
+          "depth": 99.45,
+          "rmse": 1.4835
+        },
+        {
+          "depth": 123.94,
+          "rmse": 1.2637
+        },
+        {
+          "depth": 153.08,
+          "rmse": 1.1457
+        },
+        {
+          "depth": 188.5,
+          "rmse": 1.0358
+        },
+        {
+          "depth": 233.07,
+          "rmse": 2.2654
+        },
+        {
+          "depth": 290.24,
+          "rmse": 2.9758
+        },
+        {
+          "depth": 365.13,
+          "rmse": 2.4692
+        },
+        {
+          "depth": 902.34,
+          "rmse": 0.2466
+        }
+      ],
+      "season": "monsoon",
+      "name": "Monsoon",
+      "period": "Jun-Sep"
+    },
+    {
+      "n_profiles": 2146,
+      "rmse": 1.5785,
+      "bias": -0.2702,
+      "correlation": 0.9786,
+      "rmse_by_band": {
+        "mixed_layer": 1.1029,
+        "thermocline": 1.3155,
+        "deep": 2.2555
+      },
+      "rmse_by_depth": [
+        {
+          "depth": 0.49,
+          "rmse": 0.4023
+        },
+        {
+          "depth": 5.08,
+          "rmse": 0.4895
+        },
+        {
+          "depth": 14.19,
+          "rmse": 0.6397
+        },
+        {
+          "depth": 26.84,
+          "rmse": 1.1302
+        },
+        {
+          "depth": 42.55,
+          "rmse": 1.7175
+        },
+        {
+          "depth": 59.81,
+          "rmse": 1.9297
+        },
+        {
+          "depth": 78.49,
+          "rmse": 1.2747
+        },
+        {
+          "depth": 99.45,
+          "rmse": 1.4705
+        },
+        {
+          "depth": 123.94,
+          "rmse": 1.1374
+        },
+        {
+          "depth": 153.08,
+          "rmse": 0.9389
+        },
+        {
+          "depth": 188.5,
+          "rmse": 0.8272
+        },
+        {
+          "depth": 233.07,
+          "rmse": 1.9771
+        },
+        {
+          "depth": 290.24,
+          "rmse": 2.9541
+        },
+        {
+          "depth": 365.13,
+          "rmse": 2.5706
+        },
+        {
+          "depth": 902.34,
+          "rmse": 0.2259
+        }
+      ],
+      "season": "post_monsoon",
+      "name": "Post-monsoon",
+      "period": "Oct-Dec"
+    },
+    {
+      "n_profiles": 1443,
+      "rmse": 1.3616,
+      "bias": -0.4012,
+      "correlation": 0.9831,
+      "rmse_by_band": {
+        "mixed_layer": 0.6843,
+        "thermocline": 1.1483,
+        "deep": 2.0257
+      },
+      "rmse_by_depth": [
+        {
+          "depth": 0.49,
+          "rmse": 1.7184
+        },
+        {
+          "depth": 5.08,
+          "rmse": 0.4768
+        },
+        {
+          "depth": 14.19,
+          "rmse": 0.8396
+        },
+        {
+          "depth": 26.84,
+          "rmse": 0.4996
+        },
+        {
+          "depth": 42.55,
+          "rmse": 0.553
+        },
+        {
+          "depth": 59.81,
+          "rmse": 0.8611
+        },
+        {
+          "depth": 78.49,
+          "rmse": 1.1851
+        },
+        {
+          "depth": 99.45,
+          "rmse": 1.6418
+        },
+        {
+          "depth": 123.94,
+          "rmse": 1.1806
+        },
+        {
+          "depth": 153.08,
+          "rmse": 0.9673
+        },
+        {
+          "depth": 188.5,
+          "rmse": 0.8579
+        },
+        {
+          "depth": 233.07,
+          "rmse": 1.8987
+        },
+        {
+          "depth": 290.24,
+          "rmse": 2.651
+        },
+        {
+          "depth": 365.13,
+          "rmse": 2.3255
+        },
+        {
+          "depth": 902.34,
+          "rmse": 0.278
+        }
+      ],
+      "season": "winter",
+      "name": "Winter",
+      "period": "Jan-Feb"
+    }
+  ]
+}

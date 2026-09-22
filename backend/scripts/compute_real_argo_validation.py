@@ -228,7 +228,10 @@ def main():
     logger.info(f"Completed collocation on {len(evaluated_profiles)} profiles in {elapsed:.2f}s ({1000*elapsed/len(evaluated_profiles):.2f}ms/profile)")
 
     now_iso = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    provenance_str = f"computed from {len(evaluated_profiles)} collocated Argo profiles via ModelService.predict_profile on {now_iso}"
+    provenance_str = (
+        f"computed from {len(evaluated_profiles)} collocated Argo profiles via "
+        f"date-grouped ModelService.predict_full_3d and nearest-cell extraction on {now_iso}"
+    )
 
     # 1. Overall Basin Metrics
     overall_pairs = [(m, a) for (_, m, a) in evaluated_profiles]

@@ -12,7 +12,10 @@ Run once:
 Outputs:
     data/argo/argo_nio_2022.json   # 2022 test-year profiles (primary)
     data/argo/argo_nio_all.json    # 2020-2022 profiles (for regional stats)
-    data/argo/regional_stats.json  # Pre-computed regional validation stats
+
+Regional model-validation statistics are intentionally not produced here.
+Run ``backend/scripts/compute_real_regional_argo.py`` after ingestion; it
+performs real ModelService/Argo collocation and records provenance.
 """
 
 from __future__ import annotations
@@ -190,67 +193,6 @@ def fetch_year(year: int, months: Optional[List[int]] = None) -> List[Dict]:
 
 # ── Regional Stats ────────────────────────────────────────────────────────────
 
-REGIONS = {
-    "north_indian_ocean": {"lat": (5, 30), "lon": (45, 105)},
-    "bay_of_bengal": {"lat": (8, 23), "lon": (78, 98)},
-    "arabian_sea": {"lat": (8, 26), "lon": (50, 77)},
-}
-
-
-def compute_regional_stats(profiles: List[Dict]) -> List[Dict]:
-    """Compute per-region stats based on Argo temperature profiles."""
-    import numpy as np
-
-    depth_targets = [10, 50, 100, 150, 200, 300, 500, 750, 1000]
-    # Model RMSE by depth band (from Phase 6.2 test results)
-    rmse_by_band = {
-        "surface": 0.4429,    # 0-50m
-        "thermocline": 0.7331, # 50-200m
-        "deep": 0.2565,        # 200m+
-    }
-
-    regional_stats = []
-    for region_name, bounds in REGIONS.items():
-        lat_min, lat_max = bounds["lat"]
-        lon_min, lon_max = bounds["lon"]
-
-        region_profiles = [
-            p for p in profiles
-            if lat_min <= p["lat"] <= lat_max and lon_min <= p["lon"] <= lon_max
-        ]
-
-        if len(region_profiles) < 5:
-            continue
-
-        depth_rmse = []
-        for target_depth in depth_targets:
-            if target_depth <= 50:
-                base_rmse = rmse_by_band["surface"]
-            elif target_depth <= 200:
-                base_rmse = rmse_by_band["thermocline"]
-            else:
-                base_rmse = rmse_by_band["deep"]
-
-            # Small random regional variation
-            rmse = base_rmse * (0.95 + 0.1 * np.random.rand())
-            depth_rmse.append({"depth": float(target_depth), "rmse": round(float(rmse), 4)})
-
-        overall_rmse = 0.5246 * (0.95 + 0.1 * np.random.rand())
-        overall_bias = float(np.random.normal(0, 0.04))
-        overall_corr = 0.975 + 0.02 * np.random.rand()
-
-        regional_stats.append({
-            "region": region_name,
-            "nProfiles": len(region_profiles),
-            "rmse": round(float(overall_rmse), 4),
-            "bias": round(float(overall_bias), 4),
-            "correlation": round(float(overall_corr), 4),
-            "rmseByDepth": depth_rmse,
-        })
-
-    return regional_stats
-
-
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -289,16 +231,13 @@ def main() -> None:
             json.dump(profiles_all, f, separators=(",", ":"))
         logger.info(f"Saved {len(profiles_all)} profiles to {out_all}")
 
-    # 3. Compute regional validation stats
-    out_stats = OUTPUT_DIR / "regional_stats.json"
-    logger.info("Computing regional validation statistics...")
-    regional_stats = compute_regional_stats(profiles_all)
-    with open(out_stats, "w") as f:
-        json.dump(regional_stats, f, indent=2)
-    logger.info(f"Saved regional stats to {out_stats}")
+    logger.info(
+        "Profile ingestion complete. Run backend/scripts/compute_real_regional_argo.py "
+        "to create provenance-backed regional model validation metrics."
+    )
 
     logger.info("=" * 60)
-    logger.info(f"Done! 2022: {len(profiles_2022)} | All: {len(profiles_all)} | Regions: {len(regional_stats)}")
+    logger.info(f"Done! 2022: {len(profiles_2022)} | All: {len(profiles_all)}")
     logger.info("=" * 60)
 
 
