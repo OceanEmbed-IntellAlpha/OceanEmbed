@@ -5,10 +5,10 @@ Ensures zero-friction integration with existing frontend hooks in lib/api/querie
   - POST /api/predict               -> SubsurfaceProfile
   - GET  /api/field                 -> SurfaceField
   - GET  /api/datasets              -> DatasetCard[]
-  - GET  /api/argo/nearby           -> 503 (Coming in Phase 8C)
-  - GET  /api/argo/profile/:id      -> 503 (Coming in Phase 8C)
-  - GET  /api/validation/matchup    -> 503 (Coming in Phase 8C)
-  - GET  /api/validation/regional   -> 503 (Coming in Phase 8C)
+  - GET  /api/argo/nearby           -> ArgoProfile[] (live Argo data)
+  - GET  /api/argo/profile/:id      -> ArgoProfile (live Argo data)
+  - GET  /api/validation/matchup    -> ValidationMatchup (model vs Argo)
+  - GET  /api/validation/regional   -> RegionalValidation[] (basin-wide stats)
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ from backend.api.schemas.map import FrontendSurfaceField
 from backend.api.schemas.datasets import DatasetCard
 from backend.api.schemas.argo_validation import ArgoProfile, RegionalValidation, ValidationMatchup
 from backend.api.services.model_service import ModelService
+from backend.api.services.argo_service import ArgoService
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,10 @@ router = APIRouter(prefix="/api", tags=["Frontend Compatibility"])
 
 def get_model_service(request: Request) -> ModelService:
     return request.app.state.model_service
+
+
+def get_argo_service() -> ArgoService:
+    return ArgoService.get_instance()
 
 
 class PredictRequestBody(BaseModel):
@@ -152,67 +157,148 @@ async def get_datasets() -> List[DatasetCard]:
     ]
 
 
-# ── Argo & Validation Matchup 503 Service Unavailable Endpoints ─────────────
-
-ARGO_UNAVAILABLE_MSG = "Argo validation data not yet available. Coming in Phase 8C."
-
+# ── Argo & Validation Endpoints (Phase 8C — Live Data) ───────────────────────
 
 @router.get(
     "/argo/nearby",
     response_model=List[ArgoProfile],
-    summary="Argo nearby profiles (Phase 8C)",
-    description="Returns independent in-situ Argo float profiles near a coordinate. Currently 503 until Phase 8C ingestion.",
+    summary="Nearby Argo float profiles",
+    description=(
+        "Returns independent in-situ Argo float profiles near a coordinate. "
+        "Data sourced from ArgoVis (argovis-api.colorado.edu). "
+        "Searches within radius_km over ±30 days of the given date."
+    ),
 )
 async def get_nearby_argo(
-    lat: float = Query(...),
-    lon: float = Query(...),
+    lat: float = Query(..., ge=5.0, le=30.0),
+    lon: float = Query(..., ge=45.0, le=105.0),
     date: str = Query(...),
-    radius_km: float = Query(200.0),
-):
-    raise HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail=ARGO_UNAVAILABLE_MSG,
-    )
+    radius_km: float = Query(200.0, ge=10.0, le=1000.0),
+    argo: ArgoService = Depends(get_argo_service),
+) -> List[ArgoProfile]:
+    if not argo.is_available:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Argo data cache not yet populated. "
+                "Run: python backend/scripts/ingest_argo.py"
+            ),
+        )
+
+    try:
+        profiles = argo.get_nearby(lat=lat, lon=lon, date_str=date, radius_km=radius_km)
+        return [ArgoProfile(**p) for p in profiles]
+    except Exception as e:
+        logger.error(f"Argo nearby error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Argo query error: {str(e)}")
 
 
 @router.get(
     "/argo/profile/{float_id}",
     response_model=ArgoProfile,
-    summary="Argo profile by float ID (Phase 8C)",
-    description="Returns detailed observation profile for a specific float. Currently 503 until Phase 8C ingestion.",
+    summary="Argo profile by float ID",
+    description="Returns full observation profile for a specific Argo float cycle ID.",
 )
-async def get_argo_profile_by_id(float_id: str):
-    raise HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail=ARGO_UNAVAILABLE_MSG,
-    )
+async def get_argo_profile_by_id(
+    float_id: str,
+    argo: ArgoService = Depends(get_argo_service),
+) -> ArgoProfile:
+    if not argo.is_available:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Argo data cache not yet populated. Run: python backend/scripts/ingest_argo.py",
+        )
+
+    profile = argo.get_profile(float_id)
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Argo profile '{float_id}' not found in cache.",
+        )
+
+    return ArgoProfile(**profile)
 
 
 @router.get(
     "/validation/matchup",
     response_model=ValidationMatchup,
-    summary="Validation matchup model vs observation (Phase 8C)",
-    description="Returns paired point-by-point validation metrics. Currently 503 until Phase 8C ingestion.",
+    summary="Model vs Argo validation matchup",
+    description=(
+        "Runs model inference at (lat, lon, date), finds the nearest Argo float "
+        "profile within 200 km and 30 days, and returns paired comparison metrics."
+    ),
 )
 async def get_validation_matchup(
-    lat: float = Query(...),
-    lon: float = Query(...),
+    lat: float = Query(..., ge=5.0, le=30.0),
+    lon: float = Query(..., ge=45.0, le=105.0),
     date: str = Query(...),
-):
-    raise HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail=ARGO_UNAVAILABLE_MSG,
-    )
+    model_svc: ModelService = Depends(get_model_service),
+    argo: ArgoService = Depends(get_argo_service),
+) -> ValidationMatchup:
+    if not argo.is_available:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Argo data cache not yet populated. Run: python backend/scripts/ingest_argo.py",
+        )
+
+    try:
+        # Run model inference to get predicted temperatures at the 15 model depth levels
+        result = model_svc.predict_profile(lat=lat, lon=lon, date_str=date)
+        model_temps = [point["temperature_c"] for point in result["profile"]]
+        model_depths_m = [point["depth_m"] for point in result["profile"]]
+
+        # Find nearest Argo profile and compute matchup
+        matchup = argo.compute_validation_matchup(
+            lat=lat,
+            lon=lon,
+            date_str=date,
+            model_temps=model_temps,
+            model_depths=model_depths_m,
+        )
+
+        if matchup is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No Argo profile found near ({lat}, {lon}) on {date} within 200 km / 30 days.",
+            )
+
+        return ValidationMatchup(**matchup)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Validation matchup error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Matchup error: {str(e)}")
 
 
 @router.get(
     "/validation/regional",
     response_model=List[RegionalValidation],
-    summary="Regional validation summary (Phase 8C)",
-    description="Returns basin-wide validation statistics across all Argo floats. Currently 503 until Phase 8C ingestion.",
+    summary="Regional validation summary",
+    description=(
+        "Returns basin-wide validation statistics across all Argo floats "
+        "for the North Indian Ocean, Bay of Bengal, and Arabian Sea."
+    ),
 )
-async def get_regional_validation():
-    raise HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail=ARGO_UNAVAILABLE_MSG,
-    )
+async def get_regional_validation(
+    argo: ArgoService = Depends(get_argo_service),
+) -> List[RegionalValidation]:
+    if not argo.is_available:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Argo data cache not yet populated. Run: python backend/scripts/ingest_argo.py",
+        )
+
+    try:
+        stats = argo.get_regional_stats()
+        if not stats:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Regional stats not yet computed. Re-run backend/scripts/ingest_argo.py.",
+            )
+        return [RegionalValidation(**s) for s in stats]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Regional validation error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Regional stats error: {str(e)}")

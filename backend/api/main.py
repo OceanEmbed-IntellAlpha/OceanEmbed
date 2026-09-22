@@ -20,6 +20,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from backend.api.routes import experiments, frontend_aliases, model_info, reconstruct
 from backend.api.schemas.common import HealthResponse
 from backend.api.services.model_service import ModelService
+from backend.api.services.argo_service import ArgoService
 
 logging.basicConfig(
     level=logging.INFO,
@@ -36,7 +37,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     
     # Initialize singleton and assign to app.state
     app.state.model_service = ModelService.get_instance()
-    
+
+    # Initialize Argo service (loads cached profiles from data/argo/)
+    app.state.argo_service = ArgoService.get_instance()
+
     init_time = time.perf_counter() - t0
     logger.info(f"OceanEmbed API ready to serve requests! (Startup time: {init_time:.2f}s)")
     yield

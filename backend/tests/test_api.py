@@ -226,27 +226,61 @@ def test_frontend_datasets_alias(client: TestClient):
     assert any(d["id"] == "ostia-sst" for d in data)
 
 
-# ── 503 Unavailable Endpoints (Phase 8C placeholders) ───────────────────────
+# ── Argo & Validation Endpoints (Phase 8C) ──────────────────────────────────
 
-def test_argo_nearby_unavailable(client: TestClient):
-    res = client.get("/api/argo/nearby?lat=15.5&lon=68.0&date=2022-06-15")
-    assert res.status_code == 503
-    assert "Argo validation data not yet available" in res.json()["detail"]
+def test_argo_nearby(client: TestClient):
+    res = client.get("/api/argo/nearby?lat=15.5&lon=68.0&date=2022-06-15&radius_km=200")
+    # 200 if Argo cache is populated, 503 if not yet ingested
+    assert res.status_code in (200, 503), f"Unexpected status: {res.status_code}"
+    if res.status_code == 200:
+        data = res.json()
+        assert isinstance(data, list)
+        for p in data:
+            assert "floatId" in p
+            assert "lat" in p
+            assert "lon" in p
+            assert "temperature" in p
 
 
-def test_argo_profile_unavailable(client: TestClient):
-    res = client.get("/api/argo/profile/2902088")
-    assert res.status_code == 503
-    assert "Argo validation data not yet available" in res.json()["detail"]
+def test_argo_profile_by_id(client: TestClient):
+    # First get a nearby profile to find a valid ID
+    res_nearby = client.get("/api/argo/nearby?lat=15.5&lon=68.0&date=2022-06-15&radius_km=500")
+    if res_nearby.status_code == 503:
+        pytest.skip("Argo cache not yet populated")
+
+    nearby = res_nearby.json()
+    if not nearby:
+        pytest.skip("No Argo profiles near (15.5, 68.0) in 2022 test set")
+
+    float_id = nearby[0]["floatId"]
+    res = client.get(f"/api/argo/profile/{float_id}")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["floatId"] == float_id
+    assert "depths" in data and "temperature" in data
 
 
-def test_validation_matchup_unavailable(client: TestClient):
+def test_validation_matchup(client: TestClient):
     res = client.get("/api/validation/matchup?lat=15.5&lon=68.0&date=2022-06-15")
-    assert res.status_code == 503
-    assert "Argo validation data not yet available" in res.json()["detail"]
+    # 200 if match found, 404 if no nearby Argo, 503 if cache absent
+    assert res.status_code in (200, 404, 503), f"Unexpected status: {res.status_code}"
+    if res.status_code == 200:
+        data = res.json()
+        assert "modelTemp" in data
+        assert "argoTemp" in data
+        assert "rmse" in data
+        assert "bias" in data
+        assert data["rmse"] >= 0.0
 
 
-def test_validation_regional_unavailable(client: TestClient):
+def test_validation_regional(client: TestClient):
     res = client.get("/api/validation/regional")
-    assert res.status_code == 503
-    assert "Argo validation data not yet available" in res.json()["detail"]
+    assert res.status_code in (200, 503), f"Unexpected status: {res.status_code}"
+    if res.status_code == 200:
+        data = res.json()
+        assert isinstance(data, list)
+        for region in data:
+            assert "region" in region
+            assert "nProfiles" in region
+            assert "rmse" in region
+            assert "rmseByDepth" in region

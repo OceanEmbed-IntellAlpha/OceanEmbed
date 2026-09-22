@@ -15,8 +15,8 @@ class ArgoProfile(BaseModel):
     lon: float
     date: str
     depths: List[float]
-    temperature: List[float]
-    salinity: Optional[List[float]] = None
+    temperature: List[Optional[float]]
+    salinity: Optional[List[Optional[float]]] = None
     qc: List[str] = Field(..., description="'good' | 'probably_good' | 'bad'")
     source: str = "argo"
 
