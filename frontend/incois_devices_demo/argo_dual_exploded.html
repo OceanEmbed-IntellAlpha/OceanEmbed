@@ -1,0 +1,1095 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Argo Profiling Float — Dual Exploded View & Hydraulic Engine Deep-Dive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Blueprint Paper Theme (Matching the technical reference drawing) */
+  --bg: #f8fafc;
+  --bg-panel: rgba(255, 255, 255, 0.94);
+  --border: rgba(15, 42, 66, 0.22);
+  --border-active: #0284c7;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-dim: #64748b;
+  --accent: #d97706; /* Argo Technical Safety Gold */
+  --accent-glow: rgba(217, 119, 6, 0.22);
+  --grid-line: rgba(15, 42, 66, 0.08);
+  --grid-major: rgba(15, 42, 66, 0.16);
+  --line-color: #334155;
+  --line-highlight: #d97706;
+  --hydraulic-blue: #0284c7;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+body.theme-dark {
+  --bg: #070e17;
+  --bg-panel: rgba(11, 23, 38, 0.94);
+  --border: rgba(56, 189, 248, 0.22);
+  --border-active: #38bdf8;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --accent: #f59e0b;
+  --accent-glow: rgba(245, 158, 11, 0.28);
+  --grid-line: rgba(56, 189, 248, 0.06);
+  --grid-major: rgba(56, 189, 248, 0.14);
+  --line-color: #64748b;
+  --line-highlight: #f59e0b;
+  --hydraulic-blue: #38bdf8;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background-color: var(--bg);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  user-select: none;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Authentic Engineering Graph Paper Grid */
+.engineering-grid {
+  position: fixed; inset: 0; pointer-events: none; z-index: 2;
+  background-size: 28px 28px;
+  background-image: 
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+}
+.engineering-grid::after {
+  content: ''; position: absolute; inset: 0;
+  background-size: 140px 140px;
+  background-image: 
+    linear-gradient(to right, var(--grid-major) 1.5px, transparent 1.5px),
+    linear-gradient(to bottom, var(--grid-major) 1.5px, transparent 1.5px);
+}
+
+/* Outer Blueprint Technical Border */
+.drawing-frame {
+  position: fixed; inset: 12px; pointer-events: none; z-index: 5;
+  border: 1.5px solid var(--border);
+  box-shadow: inset 0 0 0 1px var(--grid-line);
+}
+
+#canvas-container {
+  position: fixed; inset: 0; z-index: 1;
+}
+
+#svgLayer {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 10; overflow: visible;
+}
+
+/* HUD Overlay & Panels */
+.hud-overlay {
+  position: fixed; inset: 0; pointer-events: none; z-index: 20;
+}
+.hud-panel {
+  pointer-events: auto;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(16px);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Top Technical Header Banner */
+.header-bar {
+  position: absolute; top: 20px; left: 24px; right: 24px;
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+}
+.title-block {
+  padding: 8px 18px; display: flex; align-items: center; gap: 16px;
+}
+.drawing-title {
+  font-family: var(--font-sans); font-size: 13.5px; font-weight: 800;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-main);
+}
+.drawing-subtitle {
+  font-family: var(--font-mono); font-size: 8.5px; font-weight: 600;
+  color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px;
+}
+.nav-links {
+  display: flex; align-items: center; gap: 6px; margin-left: 8px;
+}
+.nav-link-btn {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  color: var(--text-muted); text-decoration: none; padding: 4px 9px;
+  border: 1px solid var(--border); border-radius: 5px; background: rgba(0,0,0,0.03);
+  transition: all 0.15s;
+}
+.nav-link-btn:hover {
+  color: var(--accent); border-color: var(--accent); background: var(--accent-glow);
+}
+
+/* Center Mode Nav */
+.mode-nav {
+  display: flex; gap: 4px; padding: 5px;
+}
+.btn-mode {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  padding: 6px 14px; border-radius: 6px; border: 1px solid transparent;
+  background: transparent; color: var(--text-muted); cursor: pointer;
+  transition: all 0.15s ease; text-transform: uppercase; letter-spacing: 0.04em;
+  display: flex; align-items: center; gap: 6px;
+}
+.btn-mode:hover {
+  color: var(--text-main); background: var(--accent-glow);
+}
+.btn-mode.active {
+  background: var(--accent); color: #ffffff; border-color: var(--accent);
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+.btn-mode.active-hydraulic {
+  background: #0284c7; color: #ffffff; border-color: #0284c7;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+}
+
+/* Header Utilities */
+.header-actions {
+  display: flex; align-items: center; gap: 8px; padding: 5px;
+}
+.btn-action {
+  width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-main); cursor: pointer;
+  display: grid; place-items: center; font-size: 13px; transition: all 0.15s;
+}
+.btn-action:hover {
+  border-color: var(--accent); background: var(--accent-glow);
+}
+
+/* Hydraulic Engine Active Telemetry Deck (Bottom Left) */
+.hydraulic-deck {
+  position: absolute; bottom: 24px; left: 26px; width: 340px;
+  padding: 14px 18px; display: flex; flex-direction: column; gap: 10px;
+  transition: all 0.25s ease;
+}
+.hydraulic-title {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.hydraulic-badge {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 800;
+  color: var(--hydraulic-blue); letter-spacing: 0.14em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 6px;
+}
+.pulse-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: #22c55e;
+  box-shadow: 0 0 8px #22c55e; animation: pulse 1.4s infinite;
+}
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.6; }
+}
+.hydraulic-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+.h-stat {
+  padding: 6px 10px; background: rgba(0,0,0,0.03); border-radius: 5px;
+  border: 1px solid var(--border);
+}
+.h-label {
+  font-family: var(--font-mono); font-size: 8px; color: var(--text-dim); text-transform: uppercase;
+}
+.h-val {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 800; color: var(--text-main); margin-top: 2px;
+}
+.piston-track-box {
+  display: flex; flex-direction: column; gap: 4px; margin-top: 2px;
+}
+.piston-track-bar {
+  width: 100%; height: 6px; background: rgba(0,0,0,0.08); border-radius: 3px; overflow: hidden; position: relative;
+}
+.piston-indicator {
+  height: 100%; width: 24px; background: var(--hydraulic-blue); border-radius: 3px;
+  position: absolute; left: 50%; transform: translateX(-50%); transition: left 0.05s linear;
+}
+
+/* Scale Bar & Miniature Inset (Bottom Right) */
+.scale-inset-box {
+  position: absolute; bottom: 24px; right: 26px; padding: 12px 16px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+}
+.scale-bar-graphic {
+  display: flex; align-items: center; width: 140px; height: 8px;
+  border: 1px solid var(--text-main); position: relative;
+}
+.scale-segment { height: 100%; flex: 1; }
+.scale-segment:nth-child(odd) { background: var(--text-main); }
+.scale-segment:nth-child(even) { background: transparent; }
+.scale-labels {
+  display: flex; justify-content: space-between; width: 140px;
+  font-family: var(--font-mono); font-size: 8px; color: var(--text-muted);
+}
+.scale-caption {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 800;
+  letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-main);
+}
+
+/* Technical Callout Badges */
+#labelContainer {
+  position: fixed; inset: 0; pointer-events: none; z-index: 12;
+}
+.callout-badge {
+  position: absolute; pointer-events: auto;
+  font-family: var(--font-sans); font-size: 10px; font-weight: 700;
+  color: var(--text-main); background: var(--bg-panel);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 3px 8px; white-space: nowrap; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: all 0.15s ease; z-index: 15;
+  display: flex; align-items: center; gap: 5px;
+}
+.callout-badge::before {
+  content: ''; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--accent); flex-shrink: 0;
+}
+.callout-badge:hover, .callout-badge.active {
+  border-color: var(--line-highlight);
+  background: var(--bg-panel);
+  box-shadow: 0 0 12px var(--accent-glow);
+  transform: scale(1.04);
+  color: var(--accent);
+}
+
+/* Component Specification Drawer (Right Side) */
+.spec-drawer {
+  position: absolute; right: 26px; top: 82px; width: 320px; max-height: calc(100% - 190px);
+  padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+  transform: translateX(calc(100% + 40px)); opacity: 0; pointer-events: none;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease;
+  z-index: 30;
+}
+.spec-drawer.open {
+  transform: translateX(0); opacity: 1; pointer-events: auto;
+}
+.drawer-header {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  border-bottom: 1px solid var(--border); padding-bottom: 10px;
+}
+.drawer-category {
+  font-family: var(--font-mono); font-size: 8.5px; font-weight: 700;
+  letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent);
+}
+.drawer-title {
+  font-size: 14px; font-weight: 800; color: var(--text-main); margin-top: 2px;
+}
+.btn-close-drawer {
+  width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-muted); cursor: pointer;
+  display: grid; place-items: center; font-size: 11px;
+}
+.btn-close-drawer:hover { color: var(--text-main); border-color: var(--accent); }
+.drawer-desc {
+  font-size: 11px; line-height: 1.5; color: var(--text-muted);
+}
+.specs-table {
+  width: 100%; border-collapse: collapse; font-size: 10px;
+}
+.specs-table tr {
+  border-bottom: 1px dashed var(--border);
+}
+.specs-table td {
+  padding: 6px 0;
+}
+.specs-table td:first-child {
+  font-family: var(--font-mono); color: var(--text-dim); width: 45%;
+}
+.specs-table td:last-child {
+  font-family: var(--font-mono); font-weight: 700; color: var(--text-main); text-align: right;
+}
+
+/* Loading Overlay */
+#loadingOverlay {
+  position: fixed; inset: 0; background: var(--bg); z-index: 999;
+  display: grid; place-items: center; transition: opacity 0.35s ease;
+}
+.loading-box { text-align: center; }
+.loading-box h2 {
+  font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--accent);
+}
+.loading-box p {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-top: 6px;
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+</head>
+<body>
+
+<div id="loadingOverlay">
+  <div class="loading-box">
+    <h2>INITIALIZING DUAL EXPLODED ARCHITECTURE</h2>
+    <p>Loading multi-assembly spatial layout & hydraulic engine kinematics...</p>
+  </div>
+</div>
+
+<div class="engineering-grid"></div>
+<div class="drawing-frame"></div>
+<div id="canvas-container"></div>
+<svg id="svgLayer"></svg>
+<div id="labelContainer"></div>
+
+<div class="hud-overlay">
+  <!-- Top Technical Header Banner -->
+  <div class="header-bar">
+    <div class="hud-panel title-block">
+      <div>
+        <div class="drawing-title">ARGO PROFILING FLOAT - EXPLODED VIEW (EXTERIOR & INTERIOR)</div>
+        <div class="drawing-subtitle">SIMULTANEOUS MULTI-ASSEMBLY DECOMPOSITION & HYDRAULIC ENGINE DEEP-DIVE</div>
+      </div>
+      <div class="nav-links">
+        <a href="index.html" class="nav-link-btn" title="View Ocean Glider CAD">🌊 Glider</a>
+        <a href="argo.html" class="nav-link-btn" title="View Argo 10-Day Subsurface Mission">🛰️ Mission Sim</a>
+        <a href="argo_diagram.html" class="nav-link-btn" title="View Single Float Exploded Slider CAD">📐 Slider CAD</a>
+      </div>
+    </div>
+
+    <!-- Center Presentation Nav -->
+    <div class="hud-panel mode-nav">
+      <button class="btn-mode active" id="btnModePoster" data-mode="poster">
+        <span>📐</span> FULL EXPLODED POSTER
+      </button>
+      <button class="btn-mode" id="btnModeHydraulic" data-mode="hydraulic">
+        <span>⚙️</span> HYDRAULIC ENGINE DEEP-DIVE
+      </button>
+    </div>
+
+    <!-- Theme & Reset Utilities -->
+    <div class="hud-panel header-actions">
+      <button class="btn-action" id="btnThemeToggle" title="Toggle Blueprint / Dark CAD">🌓</button>
+      <button class="btn-action" id="btnResetView" title="Reset View">⟲</button>
+    </div>
+  </div>
+
+  <!-- Hydraulic Engine Active Telemetry Deck (Bottom Left) -->
+  <div class="hud-panel hydraulic-deck" id="hydraulicDeck">
+    <div class="hydraulic-title">
+      <span class="hydraulic-badge">
+        <span class="pulse-dot"></span> BUOYANCY ENGINE ACTIVE
+      </span>
+      <span style="font-family: var(--font-mono); font-size: 9px; color: var(--text-dim);">PUMP MOTOR 12 Hz</span>
+    </div>
+    <div class="hydraulic-grid">
+      <div class="h-stat">
+        <div class="h-label">WORKING PRESSURE</div>
+        <div class="h-val" id="hydPressure">200.0 bar</div>
+      </div>
+      <div class="h-stat">
+        <div class="h-label">OIL FLOW RATE</div>
+        <div class="h-val" id="hydFlow">35.0 cm³/m</div>
+      </div>
+      <div class="h-stat">
+        <div class="h-label">DISPLACEMENT ΔV</div>
+        <div class="h-val" id="hydDisp">+350 cm³</div>
+      </div>
+      <div class="h-stat">
+        <div class="h-label">PUMP POWER</div>
+        <div class="h-val" id="hydPower">45.0 W</div>
+      </div>
+    </div>
+    <div class="piston-track-box">
+      <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 8px; color: var(--text-muted);">
+        <span>PISTON STROKE (RECIPROCATING)</span>
+        <span id="pistonStrokeVal">0.0 mm</span>
+      </div>
+      <div class="piston-track-bar">
+        <div class="piston-indicator" id="pistonIndicator"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Physical Scale Bar & Miniature Inset (Bottom Right) -->
+  <div class="hud-panel scale-inset-box">
+    <div class="scale-bar-graphic">
+      <div class="scale-segment"></div>
+      <div class="scale-segment"></div>
+      <div class="scale-segment"></div>
+      <div class="scale-segment"></div>
+    </div>
+    <div class="scale-labels">
+      <span>0</span>
+      <span>250</span>
+      <span>500</span>
+      <span>1,000 mm</span>
+    </div>
+    <div class="scale-caption">Scale: 1:10 (Metric)</div>
+  </div>
+
+  <!-- Component Specification Drawer (Right Side) -->
+  <div class="hud-panel spec-drawer" id="specDrawer">
+    <div class="drawer-header">
+      <div>
+        <div class="drawer-category" id="specCategory">SUBSYSTEM</div>
+        <div class="drawer-title" id="specTitle">COMPONENT NAME</div>
+      </div>
+      <button class="btn-close-drawer" id="btnCloseDrawer">✕</button>
+    </div>
+    <div class="drawer-desc" id="specDesc">
+      Detailed technical description will appear here.
+    </div>
+    <table class="specs-table">
+      <tbody id="specTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// 1. ALL 21 EXACT TECHNICAL CALLOUTS FROM REFERENCE IMAGE
+// ==========================================
+const COMPONENT_DATA = {
+  // Top-Right Tier
+  Antenna_GPS_Module: {
+    title: "Antenna/GPS Module",
+    category: "Telemetry & Positioning",
+    desc: "Weather-sealed radome terminal and base coupler integrating multi-band Iridium satellite transceiver and omnidirectional GPS patch antenna.",
+    specs: { "FREQUENCY": "1616-1626 MHz", "TRANSMIT POWER": "3.5 W Peak", "GPS BAND": "L1 1575.42 MHz", "SURFACE APOGEE": "+0.45 m" },
+    nodeNames: ["Antenna_Tip", "Antenna_Rod", "Antenna_GPS_Module"]
+  },
+  GPS_Receiver: {
+    title: "GPS Receiver",
+    category: "Navigation & Positioning",
+    desc: "Low-power 72-channel GNSS receiver board with triple O-ring high-pressure penetrators.",
+    specs: { "TIME TO FIRST FIX": "< 45 s", "CHANNELS": "72 tracking", "CURRENT DRAW": "18 mA", "ACCURACY": "< 3 m" },
+    nodeNames: ["GPS_Receiver", "GPS_Ring_1", "GPS_Ring_2", "GPS_Ring_3"]
+  },
+  CTD_Sensor_Payload: {
+    title: "CTD Sensor Payload (CTD, O₂)",
+    category: "Oceanographic Sensors",
+    desc: "Sea-Bird SBE-41CP primary sensor suite measuring ocean temperature, conductivity (salinity), and hydrostatic pressure down to 2,000 meters depth.",
+    specs: { "CONDUCTIVITY ACCURACY": "±0.0003 S/m", "TEMP ACCURACY": "±0.002 °C", "PRESSURE ACCURACY": "±2.0 dbar", "MAX DEPTH": "2,000 m" },
+    nodeNames: ["CTD_Sensor_Payload"]
+  },
+  CTD_Internal_Cutaway: {
+    title: "CTD Sensor (Conductivity, Temperature, Depth, plus Oxygen cutaway)",
+    category: "Oceanographic Sensors",
+    desc: "Internal ceramic conductivity cell, ultra-stable glass-coated thermistor rod, and integrated optical dissolved oxygen sensor core.",
+    specs: { "CELL TYPE": "Flow-through ceramic", "THERMAL TIME CONSTANT": "0.35 s", "O2 SENSOR": "Optical photoluminescence", "PRESSURE RATING": "200 bar" },
+    nodeNames: ["CTD_Internal_Rod_1", "CTD_Internal_Rod_2", "CTD_Internal_Rod_3"]
+  },
+  Sensor_Port: {
+    title: "Sensor Port",
+    category: "Hydraulic Fluid Intake",
+    desc: "Precision anti-fouling copper intake port guiding seawater flow through the conductivity duct during ascending profiles.",
+    specs: { "FLOW PORT": "5 mm diameter", "ANTI-FOULING": "Tri-butyl tin free copper ring", "MATERIAL": "Titanium Grade 5", "ORIENTATION": "Vertical" },
+    nodeNames: ["Sensor_Port"]
+  },
+  Top_End_Cap: {
+    title: "Top End-Cap Assembly",
+    category: "Structural Pressure Vessel",
+    desc: "CNC-machined 7075-T6 aluminum structural bulkhead with dual radial Viton O-rings and glass-to-metal electrical penetrators.",
+    specs: { "MATERIAL": "7075-T6 Anodized Aluminum", "PROOF TEST": "300 bar (30 MPa)", "SEAL SYSTEM": "Dual radial O-rings", "WEIGHT": "2.4 kg" },
+    nodeNames: ["Top_End_Cap"]
+  },
+  Deployment_Lifting_Bail: {
+    title: "Deployment / Lifting Bail",
+    category: "Handling & Deployment",
+    desc: "Stainless steel lifting bail rated for 150 kg SWL for shipboard hoist, crane deployment, and recovery operations.",
+    specs: { "SAFE WORKING LOAD": "150 kg", "MATERIAL": "316L Stainless Steel", "COATING": "Passivated", "ATTACHMENT": "Titanium studs" },
+    nodeNames: ["Deployment_Lifting_Bail"]
+  },
+  Stability_Collars: {
+    title: "Stability Collars (detached)",
+    category: "Hydrodynamics & Righting Moment",
+    desc: "Hydrodynamic damping and trim collars designed to maintain vertical righting moment and dampen roll during surface wave swell.",
+    specs: { "MATERIAL": "High-Density Polyethylene", "RIGHTING MOMENT": "> 1.8 N·m", "ROLL DAMPING": "40% reduction", "CLAMP": "Titanium hardware" },
+    nodeNames: ["Stability_Collar_1", "Stability_Collar_2"]
+  },
+
+  // Center-Left Tier
+  Upper_Pressure_Case: {
+    title: "Upper Pressure Case Section",
+    category: "Structural Housing",
+    desc: "Upper cylindrical housing cover protecting the avionics bay, CTD electronics board, and lithium primary battery packs.",
+    specs: { "MATERIAL": "7075-T6 Hard-Anodized Aluminum", "WALL THICKNESS": "7.5 mm", "OUTER DIAMETER": "165 mm", "COLLAPSE DEPTH": "2,600 m" },
+    nodeNames: ["Cutaway_Hull_Cover"]
+  },
+  Internal_Ribs: {
+    title: "Internal Ribs / Structure",
+    category: "Structural Reinforcement",
+    desc: "Circumferential internal stiffening ribs engineered to resist asymmetric hoop stress and buckling at 200 bar hydrostatic load.",
+    specs: { "STANDARD": "ASME Pressure Vessel Code Div 3", "BUCKLING FACTOR": "> 1.5x at 2,000 m", "RIB SPACING": "105 mm axial pitch", "WEIGHT": "0.42 kg" },
+    nodeNames: ["Internal_Rib_1", "Internal_Rib_2", "Internal_Rib_3", "Internal_Rib_4", "Internal_Rib_5"]
+  },
+  Lower_Pressure_Case: {
+    title: "Lower Pressure Case Section",
+    category: "Structural Housing",
+    desc: "Main structural pressure cylinder enclosing the internal mineral oil reservoir and hydraulic buoyancy pump motor.",
+    specs: { "DEPTH RATING": "2,000 m operating", "LENGTH": "680 mm", "CORROSION COAT": "Class 3 Hard-Anodize + Epoxy", "DISPLACEMENT": "22.4 kg" },
+    nodeNames: ["Pressure_Hull_Shell", "Lower_Pressure_Case"]
+  },
+
+  // Center-Right Tier
+  Control_Electronics_CPU: {
+    title: "Control Electronics / CPU (cutaway)",
+    category: "Avionics & Automation",
+    desc: "Ultra-low-power embedded ARM Cortex-M4 mission computer controlling buoyancy PID loop, CTD sensor sampling, and Iridium telemetry.",
+    specs: { "ARCHITECTURE": "ARM Cortex-M4 32-bit", "SLEEP CURRENT": "< 150 µA", "FLASH MEMORY": "8 GB Industrial SLC", "BUS": "Dual isolated SPI/I2C" },
+    nodeNames: ["Control_Electronics_CPU"]
+  },
+  Battery_Stack: {
+    title: "Battery Stack (Lithium Thionyl Chloride, cutaway)",
+    category: "Power Subsystem",
+    desc: "Dual 3-tier stacked lithium thionyl chloride (Li-SOCl2) primary packs delivering 15V across extreme temperatures (-2°C to 35°C).",
+    specs: { "CHEMISTRY": "Li-SOCl2 (Lithium Thionyl Chloride)", "VOLTAGE": "15.0 V DC Nominal", "CAPACITY": "300 Ah (2.8 kWh)", "ENDURANCE": "150–300 profiles" },
+    nodeNames: ["Battery_Module_1", "Battery_Module_2", "Battery_Module_3", "Battery_Module_4", "Battery_Module_5", "Battery_Module_6"]
+  },
+
+  // Lower-Right Tier (Hydraulic Engine Deep-Dive)
+  Buoyancy_Pump_Piston_System: {
+    title: "Buoyancy Pump & Piston System (cutaway)",
+    category: "Hydraulic Buoyancy Engine",
+    desc: "High-pressure axial reciprocating piston pump driven by a brushless DC motor with planetary gearbox, pumping oil against 200 bar ambient pressure.",
+    specs: { "MAX WORKING PRESSURE": "200 bar (2,000 m)", "MOTOR": "Brushless DC with Hall sensors", "GEAR RATIO": "42:1 Planetary", "POWER": "45 W" },
+    nodeNames: ["Piston_Mechanism"]
+  },
+  Hydraulic_Pump_System: {
+    title: "Hydraulic Pump System",
+    category: "Hydraulic Buoyancy Engine",
+    desc: "Precision manifold integrating the high-pressure check valves, latching bi-stable solenoid valve, and high-pressure fluid lines.",
+    specs: { "VALVE TYPE": "Latching Solenoid (Zero power hold)", "CHECK VALVES": "Dual ceramic ball seats", "FLUID": "Mil-H-5606 synthetic oil", "LEAK RATE": "< 10⁻⁶ cm³/s" },
+    nodeNames: ["Piston_Mechanism"]
+  },
+  Internal_Reservoir: {
+    title: "Internal Reservoir",
+    category: "Hydraulic Buoyancy Engine",
+    desc: "Internal fluid reservoir containing low-viscosity mineral hydraulic oil at 1 atmosphere pressure inside the pressure hull.",
+    specs: { "CAPACITY": "550 cm³", "INTERNAL PRESSURE": "1.0 atm (inside hull)", "FILTER": "5 µm sintered bronze", "TRANSDUCER": "Internal level sensor" },
+    nodeNames: ["Internal_Reservoir"]
+  },
+  Piston_Mechanism: {
+    title: "Piston Mechanism (cutaway)",
+    category: "Hydraulic Buoyancy Engine",
+    desc: "Hardened stainless steel reciprocating piston with high-pressure ceramic seals reciprocating at 12 Hz to deliver fluid.",
+    specs: { "STROKE LENGTH": "12 mm", "BORE": "8 mm", "CADENCE": "12 Hz (720 RPM motor)", "DISPLACEMENT RATE": "35 cm³/min" },
+    nodeNames: ["Piston_Mechanism"]
+  },
+  External_Ballast_Weight: {
+    title: "External Ballast Weight",
+    category: "Ballast & Trim",
+    desc: "Machined lead/stainless ballast disc tuned to adjust neutral vehicle buoyancy to within ±5 grams in standard seawater.",
+    specs: { "MATERIAL": "Non-magnetic 316L Stainless / Lead", "MASS": "1.85 kg (calibrated)", "ADJUSTMENT": "Shims in 5g increments", "LOCATION": "Base plate" },
+    nodeNames: ["Bottom_Cap"]
+  },
+
+  // Lower-Left Tier
+  Buoyancy_Bladder: {
+    title: "Buoyancy Bladder (exterior, with detail line)",
+    category: "Variable Buoyancy Engine",
+    desc: "Heavy-duty Kevlar-reinforced polyurethane external bladder. Expanding by +350 cm³ imparts positive net buoyancy for ascent.",
+    specs: { "EXPANSION DELTA": "+350 cm³ (Neutral → Positive)", "MATERIAL": "Kevlar-reinforced Polyurethane", "BURST PRESSURE": "> 40 bar", "CYCLES": "> 500 profiles" },
+    nodeNames: ["Buoyancy_Bladder"]
+  },
+  Bottom_End_Cap_Assembly: {
+    title: "Bottom End-Cap & Bladder Assembly",
+    category: "Structural Bulkhead",
+    desc: "Lower hemispherical end-cap sealing the pressure hull and securing the hydraulic oil feed penetrator to the external bladder.",
+    specs: { "MATERIAL": "7075-T6 Anodized Aluminum", "PENETRATOR": "High-pressure fluid coupling", "RETENTION": "Safety collar & clamp", "TEST RATING": "300 bar" },
+    nodeNames: ["Buoyancy_Bladder", "Bottom_Cap"]
+  },
+  Bottom_Cap: {
+    title: "Bottom Cap",
+    category: "Protective Cowling",
+    desc: "Protective domed nose cone protecting the external bladder from seabed impact and hydrodynamic turbulence during descent.",
+    specs: { "MATERIAL": "Impact-resistant Polycarbonate / Aluminum", "DRAIN PORTS": "Dual free-flooding slots", "MOUNT": "Quick-release bayonet", "WEIGHT": "0.38 kg" },
+    nodeNames: ["Bottom_Cap"]
+  }
+};
+
+// ==========================================
+// 2. SCENE, CAMERA & RENDERER SETUP
+// ==========================================
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+
+// Technical Perspective Camera with narrow FOV for CAD isometric projection
+const camera = new THREE.PerspectiveCamera(26, window.innerWidth / window.innerHeight, 0.1, 100);
+const posterCameraPos = new THREE.Vector3(1.2, 0.5, 4.4);
+const posterTarget = new THREE.Vector3(0.05, 0.5, 0);
+
+const hydraulicCameraPos = new THREE.Vector3(0.55, -0.05, 1.85);
+const hydraulicTarget = new THREE.Vector3(0.32, -0.02, 0);
+
+camera.position.copy(posterCameraPos);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+container.appendChild(renderer.domElement);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.target.copy(posterTarget);
+controls.maxDistance = 12;
+controls.minDistance = 0.5;
+
+// Precision Technical Lighting Rig
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+scene.add(ambientLight);
+
+const keyLight = new THREE.DirectionalLight(0xfffaed, 2.5);
+keyLight.position.set(4, 8, 5);
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0xdbeafe, 1.4);
+fillLight.position.set(-6, 3, -4);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xfef3c7, 1.6);
+rimLight.position.set(0, -6, -4);
+scene.add(rimLight);
+
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 0.95);
+scene.add(hemiLight);
+
+// Global Scene References
+const nodeMap = {};
+let argoRoot = null;
+let currentMode = 'poster'; // 'poster' | 'hydraulic'
+let selectedComponentKey = null;
+
+// Theme Switcher
+let currentTheme = 'blueprint';
+function setTheme(t) {
+  currentTheme = t;
+  document.body.classList.toggle('theme-dark', t === 'dark');
+  if (t === 'blueprint') {
+    scene.background = new THREE.Color(0xf8fafc);
+    keyLight.intensity = 2.5;
+    ambientLight.intensity = 0.9;
+  } else {
+    scene.background = new THREE.Color(0x070e17);
+    keyLight.intensity = 2.9;
+    ambientLight.intensity = 0.55;
+  }
+  if (argoRoot) updateLeaderLines();
+}
+setTheme('blueprint');
+
+document.getElementById('btnThemeToggle').addEventListener('click', () => {
+  setTheme(currentTheme === 'blueprint' ? 'dark' : 'blueprint');
+});
+
+// ==========================================
+// 3. SIMULTANEOUS DUAL-ASSEMBLY DECOMPOSITION
+// ==========================================
+// Each mesh in argo_float.glb is positioned simultaneously into the dual-column layout:
+// - Left: Exterior pressure cases (detached upper half-shell), internal ribs, lower case, bladder, bottom cap
+// Hydraulic Engine Kinematics State
+let pistonMesh = null;
+let pistonBaseY = 0;
+let bladderMesh = null;
+let bladderBaseScale = new THREE.Vector3(1, 1, 1);
+let hydraulicActive = true;
+
+function setupDualExplodedSpatialLayout() {
+  // Spatial arrangement strictly reproducing the reference image layout:
+  // Left Column (X ≈ -0.32 to -0.45)
+  // Right Column (X ≈ +0.28 to +0.38)
+  // Center (X ≈ 0.0)
+
+  // 1. TOP-LEFT: CTD Sensor cutaway & GPS Receiver
+  setNodeTransform('GPS_Receiver', -0.38, 0.96, 0.05, 0, 0, 0.25);
+  setNodeTransform('GPS_Ring_1', -0.38, 0.94, 0.05, 0, 0, 0.25);
+  setNodeTransform('GPS_Ring_2', -0.38, 0.96, 0.05, 0, 0, 0.25);
+  setNodeTransform('GPS_Ring_3', -0.38, 0.98, 0.05, 0, 0, 0.25);
+  setNodeTransform('CTD_Internal_Rod_1', -0.40, 0.88, 0.05, 0, 0, 0.25);
+  setNodeTransform('CTD_Internal_Rod_2', -0.38, 0.88, 0.05, 0, 0, 0.25);
+  setNodeTransform('CTD_Internal_Rod_3', -0.36, 0.88, 0.05, 0, 0, 0.25);
+
+  // 2. TOP-RIGHT: Antenna mast, radome, CTD payload, top end-cap assembly
+  setNodeTransform('Antenna_Tip', 0.38, 1.48, 0, 0, 0, -0.15);
+  setNodeTransform('Antenna_Rod', 0.35, 1.34, 0, 0, 0, -0.15);
+  setNodeTransform('Antenna_GPS_Module', 0.31, 1.20, 0, 0, 0, -0.15);
+  setNodeTransform('CTD_Sensor_Payload', 0.28, 1.05, 0, 0, 0, -0.15);
+  setNodeTransform('Sensor_Port', 0.31, 1.05, 0.03, 0, 0, -0.15);
+  setNodeTransform('Top_End_Cap', 0.24, 0.90, 0, 0, 0, -0.15);
+  setNodeTransform('Deployment_Lifting_Bail', 0.27, 0.93, 0.03, 0, 0, -0.15);
+  setNodeTransform('Stability_Collar_1', 0.22, 0.82, 0, 0, 0, -0.15);
+  setNodeTransform('Stability_Collar_2', 0.20, 0.77, 0, 0, 0, -0.15);
+
+  // 3. CENTER-LEFT: Upper Pressure Case (detached half-shell), internal ribs, lower case
+  setNodeTransform('Cutaway_Hull_Cover', -0.34, 0.58, 0.12, 0, 0.2, -0.3);
+  setNodeTransform('Internal_Rib_1', -0.28, 0.34, -0.02, 0, 0, 0);
+  setNodeTransform('Internal_Rib_2', -0.28, 0.42, -0.02, 0, 0, 0);
+  setNodeTransform('Internal_Rib_3', -0.28, 0.50, -0.02, 0, 0, 0);
+  setNodeTransform('Internal_Rib_4', -0.28, 0.58, -0.02, 0, 0, 0);
+  setNodeTransform('Internal_Rib_5', -0.28, 0.66, -0.02, 0, 0, 0);
+  setNodeTransform('Pressure_Hull_Shell', -0.12, 0.52, -0.08, 0, 0, -0.25);
+  setNodeTransform('Lower_Pressure_Case', -0.28, 0.20, 0, 0, 0, 0);
+
+  // 4. CENTER-RIGHT: Control Electronics CPU & Stacked Battery Pack in cutaway hull
+  setNodeTransform('Control_Electronics_CPU', 0.18, 0.58, 0.04, 0, 0, -0.2);
+  setNodeTransform('Battery_Module_1', 0.08, 0.36, 0.02, 0, 0, -0.2);
+  setNodeTransform('Battery_Module_2', 0.10, 0.40, 0.02, 0, 0, -0.2);
+  setNodeTransform('Battery_Module_3', 0.12, 0.44, 0.02, 0, 0, -0.2);
+  setNodeTransform('Battery_Module_4', 0.14, 0.48, 0.02, 0, 0, -0.2);
+  setNodeTransform('Battery_Module_5', 0.16, 0.52, 0.02, 0, 0, -0.2);
+  setNodeTransform('Battery_Module_6', 0.18, 0.56, 0.02, 0, 0, -0.2);
+
+  // 5. LOWER-RIGHT: Hydraulic Buoyancy Engine (Piston mechanism, reservoir, ballast weight)
+  setNodeTransform('Piston_Mechanism', 0.34, 0.06, 0.08, 0, 0, -0.35);
+  setNodeTransform('Internal_Reservoir', 0.22, -0.08, 0.05, 0, 0, -0.35);
+
+  // 6. LOWER-LEFT: Buoyancy Bladder & Bottom Cap Assembly
+  setNodeTransform('Buoyancy_Bladder', -0.26, -0.12, 0.06, 0, 0, -0.3);
+  setNodeTransform('Bottom_Cap', -0.38, -0.24, 0.08, 0, 0, -0.3);
+
+  // Store piston reference for active reciprocation animation
+  pistonMesh = nodeMap['Piston_Mechanism'];
+  if (pistonMesh) pistonBaseY = pistonMesh.position.y;
+  bladderMesh = nodeMap['Buoyancy_Bladder'];
+  if (bladderMesh) bladderBaseScale.copy(bladderMesh.scale);
+}
+
+function setNodeTransform(name, x, y, z, rx, ry, rz) {
+  const node = nodeMap[name];
+  if (!node) return;
+  node.position.set(x, y, z);
+  node.rotation.set(rx, ry, rz);
+}
+
+// ==========================================
+// 4. LOAD ARGO GLTF ASSET (SINGLE INSTANCE)
+// ==========================================
+const loader = new THREE.GLTFLoader();
+loader.load('argo_float.glb', gltf => {
+  argoRoot = gltf.scene;
+
+  argoRoot.traverse(child => {
+    if (child.isMesh) {
+      nodeMap[child.name] = child;
+      child.castShadow = true;
+      child.receiveShadow = true;
+
+      if (child.material) {
+        child.material = child.material.clone();
+        child.userData.originalMaterial = child.material;
+
+        // Realistic PBR technical styling
+        if (child.material.name === 'Argo_Yellow') {
+          child.material.roughness = 0.28;
+          child.material.metalness = 0.12;
+        } else if (child.material.name === 'Metal') {
+          child.material.roughness = 0.22;
+          child.material.metalness = 0.85;
+        }
+      }
+    }
+  });
+
+  setupDualExplodedSpatialLayout();
+  scene.add(argoRoot);
+
+  buildCalloutBadges();
+  updateLeaderLines();
+
+  const overlay = document.getElementById('loadingOverlay');
+  overlay.style.opacity = '0';
+  setTimeout(() => overlay.remove(), 400);
+}, undefined, err => {
+  console.error('Error loading argo_float.glb:', err);
+});
+
+// ==========================================
+// 5. PRECISION DYNAMIC SVG LEADER LINES
+// ==========================================
+const svgLayer = document.getElementById('svgLayer');
+const labelContainer = document.getElementById('labelContainer');
+const badges = {};
+
+// 21 Callouts symmetrically mapped to Left and Right columns
+const CALLOUT_LAYOUT = [
+  // RIGHT COLUMN (Top to Bottom)
+  { key: 'Antenna_GPS_Module', side: 'right', anchorNode: 'Antenna_Rod' },
+  { key: 'CTD_Sensor_Payload', side: 'right', anchorNode: 'CTD_Sensor_Payload' },
+  { key: 'Sensor_Port', side: 'right', anchorNode: 'Sensor_Port' },
+  { key: 'Top_End_Cap', side: 'right', anchorNode: 'Top_End_Cap' },
+  { key: 'Deployment_Lifting_Bail', side: 'right', anchorNode: 'Deployment_Lifting_Bail' },
+  { key: 'Stability_Collars', side: 'right', anchorNode: 'Stability_Collar_1' },
+  { key: 'Control_Electronics_CPU', side: 'right', anchorNode: 'Control_Electronics_CPU' },
+  { key: 'Battery_Stack', side: 'right', anchorNode: 'Battery_Module_3' },
+  { key: 'Buoyancy_Pump_Piston_System', side: 'right', anchorNode: 'Piston_Mechanism' },
+  { key: 'Hydraulic_Pump_System', side: 'right', anchorNode: 'Piston_Mechanism' },
+  { key: 'Internal_Reservoir', side: 'right', anchorNode: 'Internal_Reservoir' },
+  { key: 'Piston_Mechanism', side: 'right', anchorNode: 'Piston_Mechanism' },
+  { key: 'External_Ballast_Weight', side: 'right', anchorNode: 'Bottom_Cap' },
+
+  // LEFT COLUMN (Top to Bottom)
+  { key: 'GPS_Receiver', side: 'left', anchorNode: 'GPS_Receiver' },
+  { key: 'CTD_Internal_Cutaway', side: 'left', anchorNode: 'CTD_Internal_Rod_2' },
+  { key: 'Upper_Pressure_Case', side: 'left', anchorNode: 'Cutaway_Hull_Cover' },
+  { key: 'Internal_Ribs', side: 'left', anchorNode: 'Internal_Rib_3' },
+  { key: 'Lower_Pressure_Case', side: 'left', anchorNode: 'Pressure_Hull_Shell' },
+  { key: 'Bottom_Cap', side: 'left', anchorNode: 'Bottom_Cap' },
+  { key: 'Buoyancy_Bladder', side: 'left', anchorNode: 'Buoyancy_Bladder' },
+  { key: 'Bottom_End_Cap_Assembly', side: 'left', anchorNode: 'Buoyancy_Bladder' }
+];
+
+function buildCalloutBadges() {
+  labelContainer.innerHTML = '';
+  CALLOUT_LAYOUT.forEach(item => {
+    const data = COMPONENT_DATA[item.key];
+    if (!data) return;
+
+    const badge = document.createElement('div');
+    badge.className = 'callout-badge';
+    badge.dataset.key = item.key;
+    badge.textContent = data.title;
+
+    badge.addEventListener('mouseenter', () => highlightComponent(item.key, true));
+    badge.addEventListener('mouseleave', () => highlightComponent(item.key, false));
+    badge.addEventListener('click', () => selectComponent(item.key));
+
+    labelContainer.appendChild(badge);
+    badges[item.key] = badge;
+  });
+}
+
+function updateLeaderLines() {
+  if (!argoRoot) return;
+
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  let svgPaths = '';
+
+  const leftBadgeX = 55;
+  const rightBadgeX = w - 55;
+
+  CALLOUT_LAYOUT.forEach(item => {
+    const badge = badges[item.key];
+    const node = nodeMap[item.anchorNode];
+    if (!badge || !node) return;
+
+    // Anchor point in 3D world space
+    const worldPos = new THREE.Vector3();
+    node.getWorldPosition(worldPos);
+
+    // Minor visual offsets for pristine engineering layout
+    if (item.key === 'Upper_Pressure_Case') worldPos.x -= 0.06;
+    if (item.key === 'Deployment_Lifting_Bail') worldPos.y += 0.02;
+    if (item.key === 'Battery_Stack') worldPos.z += 0.04;
+
+    const screenPos = worldPos.clone().project(camera);
+    const ax = (screenPos.x * 0.5 + 0.5) * w;
+    const ay = (-(screenPos.y * 0.5) + 0.5) * h;
+
+    if (screenPos.z > 1.0) {
+      badge.style.display = 'none';
+      return;
+    }
+    badge.style.display = 'flex';
+
+    const isRight = item.side === 'right';
+    let targetX = isRight ? (rightBadgeX - 250) : leftBadgeX;
+    let targetY = THREE.MathUtils.clamp(ay, 85, h - 90);
+
+    badge.style.left = `${targetX}px`;
+    badge.style.top = `${targetY}px`;
+
+    const badgeRect = badge.getBoundingClientRect();
+    const lx = isRight ? badgeRect.left : badgeRect.right;
+    const ly = badgeRect.top + badgeRect.height / 2;
+
+    const ex = ax + (lx - ax) * 0.45;
+    const ey = ly;
+
+    const isHighlighted = (selectedComponentKey === item.key);
+    const strokeColor = isHighlighted ? 'var(--line-highlight)' : 'var(--line-color)';
+    const strokeWidth = isHighlighted ? '1.8' : '1.0';
+
+    svgPaths += `
+      <circle cx="${ax}" cy="${ay}" r="${isHighlighted ? 4.0 : 2.5}" fill="${strokeColor}" />
+      <path d="M ${ax} ${ay} L ${ex} ${ey} L ${lx} ${ly}" 
+            fill="none" 
+            stroke="${strokeColor}" 
+            stroke-width="${strokeWidth}" 
+            stroke-linejoin="round"
+            opacity="${isHighlighted ? 1.0 : 0.75}" />
+    `;
+  });
+
+  svgLayer.innerHTML = svgPaths;
+}
+
+// ==========================================
+// 6. INTERACTIVE SELECTION & SPECIFICATION DRAWER
+// ==========================================
+function highlightComponent(compKey, active) {
+  const comp = COMPONENT_DATA[compKey];
+  if (!comp) return;
+
+  const badge = badges[compKey];
+  if (badge) badge.classList.toggle('active', active);
+
+  comp.nodeNames.forEach(name => {
+    const mesh = nodeMap[name];
+    if (mesh && mesh.material) {
+      if (active) {
+        mesh.material.emissive = new THREE.Color(0xf59e0b);
+        mesh.material.emissiveIntensity = 0.32;
+      } else if (selectedComponentKey !== compKey) {
+        mesh.material.emissive = new THREE.Color(0x000000);
+        mesh.material.emissiveIntensity = 0.0;
+      }
+    }
+  });
+
+  updateLeaderLines();
+}
+
+function selectComponent(compKey) {
+  selectedComponentKey = compKey;
+  const comp = COMPONENT_DATA[compKey];
+  if (!comp) return;
+
+  Object.keys(badges).forEach(k => {
+    badges[k].classList.toggle('active', k === compKey);
+  });
+
+  Object.keys(COMPONENT_DATA).forEach(k => {
+    const isTarget = k === compKey;
+    COMPONENT_DATA[k].nodeNames.forEach(name => {
+      const m = nodeMap[name];
+      if (m && m.material) {
+        m.material.emissive = isTarget ? new THREE.Color(0xf59e0b) : new THREE.Color(0x000000);
+        m.material.emissiveIntensity = isTarget ? 0.38 : 0.0;
+      }
+    });
+  });
+
+  document.getElementById('specCategory').textContent = comp.category;
+  document.getElementById('specTitle').textContent = comp.title;
+  document.getElementById('specDesc').textContent = comp.desc;
+
+  const tbody = document.getElementById('specTableBody');
+  tbody.innerHTML = '';
+  Object.keys(comp.specs).forEach(k => {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td>${k}</td><td>${comp.specs[k]}</td>`;
+    tbody.appendChild(row);
+  });
+
+  document.getElementById('specDrawer').classList.add('open');
+  updateLeaderLines();
+}
+
+document.getElementById('btnCloseDrawer').addEventListener('click', () => {
+  document.getElementById('specDrawer').classList.remove('open');
+  if (selectedComponentKey) {
+    highlightComponent(selectedComponentKey, false);
+    selectedComponentKey = null;
+  }
+});
+
+// ==========================================
+// 7. HYDRAULIC ENGINE DEEP-DIVE MODE & CAMERA
+// ==========================================
+function switchMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.btn-mode').forEach(b => b.classList.remove('active', 'active-hydraulic'));
+
+  const btnPoster = document.getElementById('btnModePoster');
+  const btnHydraulic = document.getElementById('btnModeHydraulic');
+
+  if (mode === 'poster') {
+    btnPoster.classList.add('active');
+    new TWEEN.Tween(camera.position).to({ x: posterCameraPos.x, y: posterCameraPos.y, z: posterCameraPos.z }, 1000).easing(TWEEN.Easing.Cubic.Out).start();
+    new TWEEN.Tween(controls.target).to({ x: posterTarget.x, y: posterTarget.y, z: posterTarget.z }, 1000).easing(TWEEN.Easing.Cubic.Out).start();
+  } else if (mode === 'hydraulic') {
+    btnHydraulic.classList.add('active-hydraulic');
+    selectComponent('Buoyancy_Pump_Piston_System');
+    new TWEEN.Tween(camera.position).to({ x: hydraulicCameraPos.x, y: hydraulicCameraPos.y, z: hydraulicCameraPos.z }, 1100).easing(TWEEN.Easing.Cubic.Out).start();
+    new TWEEN.Tween(controls.target).to({ x: hydraulicTarget.x, y: hydraulicTarget.y, z: hydraulicTarget.z }, 1100).easing(TWEEN.Easing.Cubic.Out).start();
+  }
+}
+
+document.getElementById('btnModePoster').addEventListener('click', () => switchMode('poster'));
+document.getElementById('btnModeHydraulic').addEventListener('click', () => switchMode('hydraulic'));
+document.getElementById('btnResetView').addEventListener('click', () => {
+  switchMode('poster');
+  if (selectedComponentKey) {
+    highlightComponent(selectedComponentKey, false);
+    selectedComponentKey = null;
+    document.getElementById('specDrawer').classList.remove('open');
+  }
+});
+
+// ==========================================
+// 8. ACTIVE HYDRAULIC KINEMATICS ANIMATION
+// ==========================================
+let animClock = 0;
+function updateHydraulicEngine(dt) {
+  animClock += dt;
+
+  // 12 Hz Reciprocating Piston Motion
+  const strokeFrequency = 12.0; // Hz
+  const strokeAmplitude = 0.018; // meters
+  const strokeOffset = Math.sin(animClock * Math.PI * 2 * strokeFrequency) * strokeAmplitude;
+
+  if (pistonMesh) {
+    pistonMesh.position.y = pistonBaseY + strokeOffset;
+  }
+
+  // Update Telemetry HUD
+  const strokeMM = (strokeOffset * 1000).toFixed(1);
+  const strokeEl = document.getElementById('pistonStrokeVal');
+  if (strokeEl) strokeEl.textContent = `${strokeMM >= 0 ? '+' : ''}${strokeMM} mm`;
+
+  const indicator = document.getElementById('pistonIndicator');
+  if (indicator) {
+    const pct = 50 + (strokeOffset / strokeAmplitude) * 45;
+    indicator.style.left = `${pct}%`;
+  }
+
+  // Subtle Bladder Volumetric Breathing (+350 cm3 oscillation)
+  if (bladderMesh) {
+    const bladderBreath = 1.0 + Math.sin(animClock * 1.8) * 0.08;
+    bladderMesh.scale.set(bladderBaseScale.x * bladderBreath, bladderBaseScale.y, bladderBaseScale.z * bladderBreath);
+  }
+}
+
+// ==========================================
+// 9. ANIMATION LOOP & RESIZE
+// ==========================================
+let lastTime = performance.now();
+function animate(now) {
+  requestAnimationFrame(animate);
+  const dt = Math.min((now - lastTime) / 1000, 0.1);
+  lastTime = now;
+
+  TWEEN.update(now);
+  controls.update();
+
+  if (hydraulicActive) {
+    updateHydraulicEngine(dt);
+  }
+
+  updateLeaderLines();
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(animate);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  updateLeaderLines();
+});
+</script>
+</body>
+</html>

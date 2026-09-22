@@ -1,0 +1,47 @@
+[
+  {
+    "region": "north_indian_ocean",
+    "nProfiles": 1542,
+    "rmse": 0.92,
+    "bias": 0.08,
+    "correlation": 0.95,
+    "rmseByDepth": [
+      {"depth": 0, "rmse": 0.4},
+      {"depth": 50, "rmse": 0.9},
+      {"depth": 100, "rmse": 1.2},
+      {"depth": 200, "rmse": 0.8},
+      {"depth": 500, "rmse": 0.5},
+      {"depth": 1000, "rmse": 0.3}
+    ]
+  },
+  {
+    "region": "bay_of_bengal",
+    "nProfiles": 624,
+    "rmse": 0.84,
+    "bias": 0.12,
+    "correlation": 0.96,
+    "rmseByDepth": [
+      {"depth": 0, "rmse": 0.3},
+      {"depth": 50, "rmse": 0.8},
+      {"depth": 100, "rmse": 1.1},
+      {"depth": 200, "rmse": 0.7},
+      {"depth": 500, "rmse": 0.4},
+      {"depth": 1000, "rmse": 0.2}
+    ]
+  },
+  {
+    "region": "arabian_sea",
+    "nProfiles": 815,
+    "rmse": 1.01,
+    "bias": 0.05,
+    "correlation": 0.94,
+    "rmseByDepth": [
+      {"depth": 0, "rmse": 0.5},
+      {"depth": 50, "rmse": 1.0},
+      {"depth": 100, "rmse": 1.4},
+      {"depth": 200, "rmse": 0.9},
+      {"depth": 500, "rmse": 0.6},
+      {"depth": 1000, "rmse": 0.4}
+    ]
+  }
+]

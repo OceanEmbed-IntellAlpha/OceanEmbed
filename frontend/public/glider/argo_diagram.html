@@ -1,0 +1,1224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Argo Profiling Float — Technical Exploded View (Exterior & Interior)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Blueprint Paper Theme (Default - matching engineering drawing) */
+  --bg: #f8fafc;
+  --bg-panel: rgba(255, 255, 255, 0.94);
+  --border: rgba(15, 42, 66, 0.22);
+  --border-active: #0284c7;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-dim: #64748b;
+  --accent: #d97706; /* Argo Technical Safety Gold */
+  --accent-glow: rgba(217, 119, 6, 0.2);
+  --grid-line: rgba(15, 42, 66, 0.08);
+  --grid-major: rgba(15, 42, 66, 0.16);
+  --line-color: #334155;
+  --line-highlight: #d97706;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+body.theme-dark {
+  --bg: #070e17;
+  --bg-panel: rgba(11, 23, 38, 0.92);
+  --border: rgba(56, 189, 248, 0.2);
+  --border-active: #38bdf8;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --accent: #f59e0b;
+  --accent-glow: rgba(245, 158, 11, 0.25);
+  --grid-line: rgba(56, 189, 248, 0.05);
+  --grid-major: rgba(56, 189, 248, 0.12);
+  --line-color: #64748b;
+  --line-highlight: #f59e0b;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background-color: var(--bg);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  user-select: none;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Engineering Technical Graph Paper Grid */
+.engineering-grid {
+  position: fixed; inset: 0; pointer-events: none; z-index: 2;
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+}
+.engineering-grid::after {
+  content: ''; position: absolute; inset: 0;
+  background-size: 160px 160px;
+  background-image: 
+    linear-gradient(to right, var(--grid-major) 1.5px, transparent 1.5px),
+    linear-gradient(to bottom, var(--grid-major) 1.5px, transparent 1.5px);
+}
+
+/* Outer Technical Blueprint Border with Metric Rulers */
+.drawing-frame {
+  position: fixed; inset: 12px; pointer-events: none; z-index: 5;
+  border: 1.5px solid var(--border);
+  box-shadow: inset 0 0 0 1px var(--grid-line);
+}
+
+#canvas-container {
+  position: fixed; inset: 0; z-index: 1;
+}
+
+#svgLayer {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 10; overflow: visible;
+}
+
+/* HUD Overlay & Panels */
+.hud-overlay {
+  position: fixed; inset: 0; pointer-events: none; z-index: 20;
+}
+.hud-panel {
+  pointer-events: auto;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(16px);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Top Technical Header Banner */
+.header-bar {
+  position: absolute; top: 22px; left: 26px; right: 26px;
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+}
+.title-block {
+  padding: 8px 18px; display: flex; align-items: center; gap: 16px;
+}
+.drawing-title {
+  font-family: var(--font-sans); font-size: 13.5px; font-weight: 800;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-main);
+}
+.drawing-subtitle {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 600;
+  color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px;
+}
+.nav-links {
+  display: flex; align-items: center; gap: 6px; margin-left: 8px;
+}
+.nav-link-btn {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  color: var(--text-muted); text-decoration: none; padding: 4px 9px;
+  border: 1px solid var(--border); border-radius: 5px; background: rgba(0,0,0,0.03);
+  transition: all 0.15s;
+}
+.nav-link-btn:hover {
+  color: var(--accent); border-color: var(--accent); background: var(--accent-glow);
+}
+
+/* Mode Switcher Nav */
+.mode-nav {
+  display: flex; gap: 4px; padding: 5px;
+}
+.btn-mode {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  padding: 6px 14px; border-radius: 6px; border: 1px solid transparent;
+  background: transparent; color: var(--text-muted); cursor: pointer;
+  transition: all 0.15s ease; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.btn-mode:hover {
+  color: var(--text-main); background: var(--accent-glow);
+}
+.btn-mode.active {
+  background: var(--accent); color: #ffffff; border-color: var(--accent);
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+
+/* Header Utilities */
+.header-actions {
+  display: flex; align-items: center; gap: 8px; padding: 5px;
+}
+.btn-action {
+  width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-main); cursor: pointer;
+  display: grid; place-items: center; font-size: 13px; transition: all 0.15s;
+}
+.btn-action:hover {
+  border-color: var(--accent); background: var(--accent-glow);
+}
+
+/* Explosion Control Deck (Bottom Center) */
+.explosion-deck {
+  position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 14px; padding: 8px 18px;
+}
+.deck-label {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 800;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-main);
+}
+.slider-container {
+  display: flex; align-items: center; gap: 10px; width: 220px;
+}
+.slider-container input[type=range] {
+  width: 100%; height: 5px; accent-color: var(--accent); cursor: pointer;
+}
+.explode-val {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  color: var(--accent); width: 38px; text-align: right;
+}
+.camera-quick-btn {
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 700;
+  padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-muted); cursor: pointer;
+  transition: all 0.15s; text-transform: uppercase;
+}
+.camera-quick-btn:hover, .camera-quick-btn.active {
+  color: var(--accent); border-color: var(--accent); background: var(--accent-glow);
+}
+
+/* Scale Bar & Miniature Inset (Bottom Right) */
+.scale-inset-box {
+  position: absolute; bottom: 24px; right: 26px; padding: 12px 16px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+}
+.scale-bar-graphic {
+  display: flex; align-items: center; width: 140px; height: 8px;
+  border: 1px solid var(--text-main); position: relative;
+}
+.scale-segment {
+  height: 100%; flex: 1;
+}
+.scale-segment:nth-child(odd) { background: var(--text-main); }
+.scale-segment:nth-child(even) { background: transparent; }
+.scale-labels {
+  display: flex; justify-content: space-between; width: 140px;
+  font-family: var(--font-mono); font-size: 8px; color: var(--text-muted);
+}
+.scale-caption {
+  font-family: var(--font-mono); font-size: 9px; font-weight: 800;
+  letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-main);
+}
+
+/* Technical Callout Badges */
+#labelContainer {
+  position: fixed; inset: 0; pointer-events: none; z-index: 12;
+}
+.callout-badge {
+  position: absolute; pointer-events: auto;
+  font-family: var(--font-sans); font-size: 10.5px; font-weight: 700;
+  color: var(--text-main); background: var(--bg-panel);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 3px 8px; white-space: nowrap; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: all 0.15s ease; z-index: 15;
+  display: flex; align-items: center; gap: 5px;
+}
+.callout-badge::before {
+  content: ''; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--accent); flex-shrink: 0;
+}
+.callout-badge:hover, .callout-badge.active {
+  border-color: var(--line-highlight);
+  background: var(--bg-panel);
+  box-shadow: 0 0 12px var(--accent-glow);
+  transform: scale(1.04);
+  color: var(--accent);
+}
+.callout-badge.dimmed {
+  opacity: 0.35;
+}
+
+/* Component Specification Drawer (Right Side) */
+.spec-drawer {
+  position: absolute; right: 26px; top: 82px; width: 310px; max-height: calc(100% - 190px);
+  padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+  transform: translateX(calc(100% + 40px)); opacity: 0; pointer-events: none;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease;
+  z-index: 30;
+}
+.spec-drawer.open {
+  transform: translateX(0); opacity: 1; pointer-events: auto;
+}
+.drawer-header {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  border-bottom: 1px solid var(--border); padding-bottom: 10px;
+}
+.drawer-category {
+  font-family: var(--font-mono); font-size: 8.5px; font-weight: 700;
+  letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent);
+}
+.drawer-title {
+  font-size: 14px; font-weight: 800; color: var(--text-main); margin-top: 2px;
+}
+.btn-close-drawer {
+  width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-muted); cursor: pointer;
+  display: grid; place-items: center; font-size: 11px;
+}
+.btn-close-drawer:hover { color: var(--text-main); border-color: var(--accent); }
+.drawer-desc {
+  font-size: 11px; line-height: 1.5; color: var(--text-muted);
+}
+.specs-table {
+  width: 100%; border-collapse: collapse; font-size: 10px;
+}
+.specs-table tr {
+  border-bottom: 1px dashed var(--border);
+}
+.specs-table td {
+  padding: 6px 0;
+}
+.specs-table td:first-child {
+  font-family: var(--font-mono); color: var(--text-dim); width: 45%;
+}
+.specs-table td:last-child {
+  font-family: var(--font-mono); font-weight: 700; color: var(--text-main); text-align: right;
+}
+
+/* Loading Overlay */
+#loadingOverlay {
+  position: fixed; inset: 0; background: var(--bg); z-index: 999;
+  display: grid; place-items: center; transition: opacity 0.35s ease;
+}
+.loading-box { text-align: center; }
+.loading-box h2 {
+  font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--accent);
+}
+.loading-box p {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-top: 6px;
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+</head>
+<body>
+
+<div id="loadingOverlay">
+  <div class="loading-box">
+    <h2>INITIALIZING ARGO FLOAT CAD MODEL</h2>
+    <p>Loading precision single-instance geometry & explosion kinematics...</p>
+  </div>
+</div>
+
+<div class="engineering-grid"></div>
+<div class="drawing-frame"></div>
+<div id="canvas-container"></div>
+<svg id="svgLayer"></svg>
+<div id="labelContainer"></div>
+
+<div class="hud-overlay">
+  <!-- Top Technical Header Banner -->
+  <div class="header-bar">
+    <div class="hud-panel title-block">
+      <div>
+        <div class="drawing-title">ARGO PROFILING FLOAT - EXPLODED VIEW (EXTERIOR & INTERIOR)</div>
+        <div class="drawing-subtitle">PRECISION TECHNICAL DISASSEMBLY & STRUCTURAL PACKAGING</div>
+      </div>
+      <div class="nav-links">
+        <a href="index.html" class="nav-link-btn" title="View Ocean Glider CAD">🌊 Glider</a>
+        <a href="argo.html" class="nav-link-btn" title="View Argo Subsurface Mission Simulation">🛰️ Mission Sim</a>
+        <a href="argo_dual_exploded.html" class="nav-link-btn" style="color: #0284c7; border-color: rgba(2, 132, 199, 0.4);" title="View Dual Exploded Poster & Hydraulic Engine Deep-Dive">⚙️ Dual Poster</a>
+      </div>
+    </div>
+
+    <!-- Visualization Modes -->
+    <div class="hud-panel mode-nav">
+      <button class="btn-mode" id="btnModeAssembled" data-mode="assembled">ASSEMBLED</button>
+      <button class="btn-mode active" id="btnModeExterior" data-mode="exterior">EXTERIOR EXPLODED</button>
+      <button class="btn-mode" id="btnModeCutaway" data-mode="cutaway">CUTAWAY EXPLODED</button>
+    </div>
+
+    <!-- Theme & Reset Utilities -->
+    <div class="hud-panel header-actions">
+      <button class="btn-action" id="btnThemeToggle" title="Toggle Blueprint / Dark CAD">🌓</button>
+      <button class="btn-action" id="btnResetView" title="Reset Camera View">⟲</button>
+    </div>
+  </div>
+
+  <!-- Explosion Slider & Camera Deck (Bottom Center) -->
+  <div class="hud-panel explosion-deck">
+    <span class="deck-label">EXPLODE</span>
+    <div class="slider-container">
+      <input type="range" id="explodeSlider" min="0" max="100" value="100">
+      <span class="explode-val" id="explodeVal">100%</span>
+    </div>
+    <div style="width: 1px; height: 18px; background: var(--border); margin: 0 4px;"></div>
+    <div style="display: flex; gap: 4px;">
+      <button class="camera-quick-btn active" data-cam="iso">Isometric</button>
+      <button class="camera-quick-btn" data-cam="front">Front</button>
+      <button class="camera-quick-btn" data-cam="side">Side</button>
+      <button class="camera-quick-btn" data-cam="top">Top</button>
+    </div>
+  </div>
+
+  <!-- Physical Scale Bar & Miniature Inset (Bottom Right) -->
+  <div class="hud-panel scale-inset-box">
+    <div class="scale-bar-graphic">
+      <div class="scale-segment"></div>
+      <div class="scale-segment"></div>
+      <div class="scale-segment"></div>
+      <div class="scale-segment"></div>
+    </div>
+    <div class="scale-labels">
+      <span>0</span>
+      <span>250</span>
+      <span>500</span>
+      <span>1,000 mm</span>
+    </div>
+    <div class="scale-caption">Scale: 1:10 (Metric)</div>
+  </div>
+
+  <!-- Component Specification Drawer (Right Side) -->
+  <div class="hud-panel spec-drawer" id="specDrawer">
+    <div class="drawer-header">
+      <div>
+        <div class="drawer-category" id="specCategory">SUBSYSTEM</div>
+        <div class="drawer-title" id="specTitle">COMPONENT NAME</div>
+      </div>
+      <button class="btn-close-drawer" id="btnCloseDrawer">✕</button>
+    </div>
+    <div class="drawer-desc" id="specDesc">
+      Detailed technical description will appear here.
+    </div>
+    <table class="specs-table">
+      <tbody id="specTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// 1. COMPONENT SPECIFICATION DATA ARCHITECTURE
+// ==========================================
+const COMPONENT_DATA = {
+  Antenna_Group: {
+    title: "Antenna / GPS Module",
+    category: "Telemetry & Positioning",
+    desc: "Weather-sealed radome tip and fiberglass radiator mast housing the omnidirectional GPS patch antenna and multi-band Iridium satellite transceiver for bidirectional mission commands and data bursts.",
+    specs: {
+      "Frequency": "1616-1626 MHz (Iridium)",
+      "GPS Band": "L1 1575.42 MHz",
+      "Surface Apogee": "+0.45 m above waterline",
+      "Penetrator Rating": "300 bar Test"
+    },
+    nodeNames: ["Antenna_Tip", "Antenna_Rod", "Antenna_GPS_Module"]
+  },
+  GPS_Receiver_Group: {
+    title: "GPS Receiver",
+    category: "Telemetry & Positioning",
+    desc: "Low-power receiver with triple pressure-sealed backup O-rings. Acquires ephemeris and fixes position to within 3 meters upon surfacing before transmitting vertical CTD profile data.",
+    specs: {
+      "Time To First Fix": "< 45 seconds (Warm)",
+      "Channels": "72-channel tracking",
+      "Current Draw": "18 mA active / 15 µA standby",
+      "O-Ring Material": "Dual Viton 75D"
+    },
+    nodeNames: ["GPS_Receiver", "GPS_Ring_1", "GPS_Ring_2", "GPS_Ring_3"]
+  },
+  CTD_Sensor_Payload: {
+    title: "CTD Sensor Payload (CTD, O₂)",
+    category: "Oceanographic Sensors",
+    desc: "High-precision Sea-Bird SBE-41CP CTD sensor measuring ocean temperature, electrical conductivity (salinity), and hydrostatic pressure from surface down to 2,000 meters depth.",
+    specs: {
+      "Conductivity Accuracy": "±0.0003 S/m (0.003 PSU)",
+      "Temperature Accuracy": "±0.002 °C",
+      "Pressure Accuracy": "±2.0 dbar (2000 dbar full scale)",
+      "Sampling Rate": "1 Hz continuous ascent"
+    },
+    nodeNames: ["CTD_Sensor_Payload", "Sensor_Port", "CTD_Internal_Rod_1", "CTD_Internal_Rod_2", "CTD_Internal_Rod_3"]
+  },
+  Top_End_Cap_Assembly: {
+    title: "Top End-Cap Assembly",
+    category: "Structural & Pressure Case",
+    desc: "Precision CNC-machined 7075-T6 aluminum bulkhead end-cap with dual radial O-ring gland seals, high-pressure electrical penetrators, and integrated deployment lifting bail.",
+    specs: {
+      "Material": "7075-T6 Anodized Aluminum",
+      "Proof Pressure": "300 bar (30 MPa)",
+      "Seal Type": "Dual radial O-rings with backups",
+      "Fasteners": "Titanium Grade 5"
+    },
+    nodeNames: ["Top_End_Cap", "Deployment_Lifting_Bail"]
+  },
+  Stability_Collars: {
+    title: "Stability Collars (detached)",
+    category: "Hydrodynamics & Righting Moment",
+    desc: "Hydrodynamic damping and trim collars designed to maintain vertical righting moment, damp roll during surface swell, and protect the top end-cap seal during deployment.",
+    specs: {
+      "Material": "High-Density Polyethylene (HDPE)",
+      "Function": "Roll & pitch stabilization",
+      "Righting Moment": "> 1.8 N·m",
+      "Mounting": "Split clamp ring"
+    },
+    nodeNames: ["Stability_Collar_1", "Stability_Collar_2"]
+  },
+  Upper_Pressure_Case: {
+    title: "Upper Pressure Case Section",
+    category: "Structural Housing",
+    desc: "Upper cylindrical housing cover protecting the avionics bay, CTD electronics board, and lithium primary battery packs while maintaining structural integrity under extreme ocean hydrostatic load.",
+    specs: {
+      "Material": "7075-T6 Hard-Anodized Aluminum",
+      "Yield Strength": "505 MPa",
+      "Outer Diameter": "165 mm",
+      "Wall Thickness": "7.5 mm"
+    },
+    nodeNames: ["Cutaway_Hull_Cover"]
+  },
+  Internal_Ribs: {
+    title: "Internal Ribs / Structure",
+    category: "Structural Reinforcement",
+    desc: "Circumferential internal stiffening ribs engineered to resist buckling and asymmetric hoop stress induced by hydrostatic pressures exceeding 200 bar (2,000 m depth).",
+    specs: {
+      "Design Standard": "ASME Pressure Vessel Code Div 3",
+      "Buckling Factor": "> 1.5x at 2,000 m",
+      "Rib Spacing": "105 mm axial pitch",
+      "Weight": "0.42 kg total"
+    },
+    nodeNames: ["Internal_Rib_1", "Internal_Rib_2", "Internal_Rib_3", "Internal_Rib_4", "Internal_Rib_5"]
+  },
+  Lower_Pressure_Case: {
+    title: "Lower Pressure Case Section",
+    category: "Structural Housing",
+    desc: "Main structural cylindrical hull housing the hydraulic buoyancy engine, internal oil reservoir, and high-pressure axial reciprocating piston pump.",
+    specs: {
+      "Depth Rating": "2,000 m operating / 2,600 m crush",
+      "Corrosion Coating": "Hard-anodized Class 3 + epoxy primer",
+      "Buoyancy Contribution": "22.4 kg displacement",
+      "Length": "680 mm"
+    },
+    nodeNames: ["Pressure_Hull_Shell", "Lower_Pressure_Case"]
+  },
+  Control_Electronics_CPU: {
+    title: "Control Electronics / CPU (cutaway)",
+    category: "Avionics & Automation",
+    desc: "Ultra-low-power embedded microprocessor mission computer controlling real-time buoyancy PID profiling, CTD sensor sampling routines, Iridium telemetry handshakes, and emergency abort sequences.",
+    specs: {
+      "Architecture": "ARM Cortex-M4 32-bit",
+      "Sleep Current": "< 150 µA",
+      "Storage": "8 GB industrial SLC eMMC Flash",
+      "Telemetry Protocol": "SBD (Short Burst Data)"
+    },
+    nodeNames: ["Control_Electronics_CPU"]
+  },
+  Battery_Stack: {
+    title: "Battery Stack (Lithium Thionyl Chloride)",
+    category: "Power Subsystem",
+    desc: "Dual 3-tier stacked lithium thionyl chloride (Li-SOCl2) primary battery packs providing stable 15V output across severe temperature ranges from -2°C abyssal depths to 35°C surface waters.",
+    specs: {
+      "Chemistry": "Li-SOCl2 (Lithium Thionyl Chloride)",
+      "Nominal Voltage": "15.0 V DC (multi-cell pack)",
+      "Total Energy": "2.8 kWh (300 Ah)",
+      "Mission Lifespan": "150–300 profiles (4–6 years)"
+    },
+    nodeNames: ["Battery_Module_1", "Battery_Module_2", "Battery_Module_3", "Battery_Module_4", "Battery_Module_5", "Battery_Module_6"]
+  },
+  Buoyancy_Pump_Piston: {
+    title: "Buoyancy Pump & Piston System",
+    category: "Variable Buoyancy Engine",
+    desc: "High-pressure axial reciprocating piston pump driven by a brushless DC motor with precision planetary reduction gearing, capable of pumping hydraulic oil into the external bladder against 200 bar ambient pressure.",
+    specs: {
+      "Max Working Pressure": "200 bar (2,000 m seawater)",
+      "Motor Type": "Brushless DC with Hall sensors",
+      "Flow Rate": "35 cm³/min at 200 bar",
+      "Electrical Power": "45 W during pumping"
+    },
+    nodeNames: ["Piston_Mechanism"]
+  },
+  Internal_Reservoir: {
+    title: "Internal Reservoir",
+    category: "Variable Buoyancy Engine",
+    desc: "Internal fluid bladder containing synthetic hydraulic mineral oil at near-atmospheric pressure. When the descent latching valve opens, external hydrostatic pressure pushes oil back into this reservoir.",
+    specs: {
+      "Fluid Medium": "Low-viscosity Mil-H-5606 hydraulic oil",
+      "Usable Volume": "550 cm³",
+      "Internal Pressure": "1.0 atm (inside pressure hull)",
+      "Filter Rating": "5 µm sintered bronze"
+    },
+    nodeNames: ["Internal_Reservoir"]
+  },
+  Buoyancy_Bladder: {
+    title: "Buoyancy Bladder (exterior)",
+    category: "Variable Buoyancy Engine",
+    desc: "Flexible, reinforced polyurethane external bladder located at the lower end of the float. Expanding the bladder by +350 cm³ increases overall vehicle volume and imparts positive buoyancy for ascent.",
+    specs: {
+      "Material": "Kevlar-reinforced Polyurethane",
+      "Displacement Delta": "+350 cm³ (Neutral → Positive)",
+      "Ascent Velocity": "0.10 m/s nominal",
+      "Cycles Rated": "> 500 complete expansions"
+    },
+    nodeNames: ["Buoyancy_Bladder", "Bottom_Cap"]
+  }
+};
+
+// ==========================================
+// 2. SCENE, CAMERA & RENDERER SETUP
+// ==========================================
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+
+// Technical Perspective Camera (Narrow FOV to emulate isometric orthographic clarity)
+const camera = new THREE.PerspectiveCamera(28, window.innerWidth / window.innerHeight, 0.1, 100);
+const initialCameraPos = new THREE.Vector3(1.7, 1.4, 3.8);
+const initialTarget = new THREE.Vector3(0, 0.65, 0);
+camera.position.copy(initialCameraPos);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
+container.appendChild(renderer.domElement);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.target.copy(initialTarget);
+controls.maxDistance = 14;
+controls.minDistance = 0.6;
+
+// Technical Lighting Rig
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+scene.add(ambientLight);
+
+const keyLight = new THREE.DirectionalLight(0xfffbf2, 2.4);
+keyLight.position.set(4, 9, 5);
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0xdbeafe, 1.3);
+fillLight.position.set(-6, 3, -4);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xfef3c7, 1.6);
+rimLight.position.set(0, -6, -4);
+scene.add(rimLight);
+
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 0.9);
+scene.add(hemiLight);
+
+// Theme Switcher
+let currentTheme = 'blueprint';
+function setTheme(t) {
+  currentTheme = t;
+  document.body.classList.toggle('theme-dark', t === 'dark');
+  if (t === 'blueprint') {
+    scene.background = new THREE.Color(0xf8fafc);
+    keyLight.intensity = 2.4;
+    ambientLight.intensity = 0.85;
+  } else {
+    scene.background = new THREE.Color(0x070e17);
+    keyLight.intensity = 2.8;
+    ambientLight.intensity = 0.55;
+  }
+}
+setTheme('blueprint');
+
+document.getElementById('btnThemeToggle').addEventListener('click', () => {
+  setTheme(currentTheme === 'blueprint' ? 'dark' : 'blueprint');
+  updateLeaderLines();
+});
+
+// ==========================================
+// 3. SINGLE AUTHORITATIVE GEOMETRY & EXPLOSION TRANSFORMS
+// ==========================================
+// NO MESH DUPLICATION: Each node has ONE authoritative instance in the scene.
+const nodeMap = {}; // name -> THREE.Object3D
+const nodeTransforms = {}; // name -> { assembledPos, assembledRot, exteriorExplodedPos, cutawayExplodedPos, exteriorExplodedRot, cutawayExplodedRot }
+
+let argoRoot = null;
+let currentMode = 'exterior'; // 'assembled' | 'exterior' | 'cutaway'
+let currentExplodeFactor = 1.0; // 0.0 to 1.0
+let selectedComponentKey = null;
+
+// Raycasting & Interaction
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let hoveredNode = null;
+
+// Explosion Vector Rules (Strictly matching reference diagram layout & assembly sequence)
+// Antenna/GPS Head: Explodes UP along +Y
+// Top End Cap & Collars: Intermediate +Y
+// Upper Pressure Case (Cutaway_Hull_Cover): Explodes UP and LATERALLY to the LEFT
+// Internal Ribs: Centered along internal axis
+// Batteries & CPU: Explode downward/upward inside casing
+// Buoyancy Engine & Piston: Explodes DOWN along -Y
+// Buoyancy Bladder & Bottom Cap: Lowest -Y
+function setupExplosionTransforms() {
+  Object.keys(nodeMap).forEach(name => {
+    const obj = nodeMap[name];
+    const basePos = obj.position.clone();
+    const baseRot = obj.rotation.clone();
+
+    // Default: stays at base position
+    const extPos = basePos.clone();
+    const cutPos = basePos.clone();
+    const extRot = baseRot.clone();
+    const cutRot = baseRot.clone();
+
+    // === EXTERIOR EXPLODED CONFIGURATION ===
+    if (name === 'Antenna_Tip') {
+      extPos.y += 0.85;
+    } else if (name === 'Antenna_Rod') {
+      extPos.y += 0.72;
+    } else if (name === 'Antenna_GPS_Module') {
+      extPos.y += 0.58;
+    } else if (name === 'GPS_Receiver') {
+      extPos.y += 0.45;
+    } else if (name.startsWith('GPS_Ring')) {
+      extPos.y += 0.43;
+    } else if (name === 'CTD_Sensor_Payload' || name.startsWith('CTD_Internal_Rod') || name === 'Sensor_Port') {
+      extPos.y += 0.32;
+    } else if (name === 'Stability_Collar_1' || name === 'Stability_Collar_2') {
+      extPos.y += 0.20;
+      extPos.x += 0.04;
+    } else if (name === 'Top_End_Cap' || name === 'Deployment_Lifting_Bail') {
+      extPos.y += 0.12;
+    } else if (name === 'Cutaway_Hull_Cover') {
+      // Upper pressure case section lifts UP and laterally LEFT as in reference image
+      extPos.y += 0.18;
+      extPos.x -= 0.32;
+      extPos.z += 0.10;
+      extRot.z -= 0.22;
+    } else if (name === 'Pressure_Hull_Shell') {
+      extPos.y -= 0.05;
+    } else if (name.startsWith('Internal_Rib')) {
+      // Spiral ribs remain visible in the lower case
+      extPos.y -= 0.05;
+    } else if (name === 'Control_Electronics_CPU' || name.startsWith('Battery_Module')) {
+      extPos.y -= 0.05;
+    } else if (name === 'Internal_Reservoir' || name === 'Piston_Mechanism') {
+      extPos.y -= 0.25;
+    } else if (name === 'Lower_Pressure_Case') {
+      extPos.y -= 0.42;
+    } else if (name === 'Buoyancy_Bladder') {
+      extPos.y -= 0.52;
+    } else if (name === 'Bottom_Cap') {
+      extPos.y -= 0.65;
+    }
+
+    // === CUTAWAY EXPLODED CONFIGURATION ===
+    // Exposes internal ribs, battery stack, CPU, and hydraulic pump
+    if (name === 'Antenna_Tip') {
+      cutPos.y += 0.75;
+    } else if (name === 'Antenna_Rod') {
+      cutPos.y += 0.64;
+    } else if (name === 'Antenna_GPS_Module') {
+      cutPos.y += 0.52;
+    } else if (name === 'GPS_Receiver' || name.startsWith('GPS_Ring')) {
+      cutPos.y += 0.40;
+    } else if (name === 'CTD_Sensor_Payload' || name.startsWith('CTD_Internal_Rod') || name === 'Sensor_Port') {
+      cutPos.y += 0.28;
+    } else if (name === 'Top_End_Cap' || name === 'Deployment_Lifting_Bail' || name.startsWith('Stability_Collar')) {
+      cutPos.y += 0.15;
+    } else if (name === 'Cutaway_Hull_Cover') {
+      // Cutaway shell is fully translated aside to reveal internal electronics
+      cutPos.y += 0.30;
+      cutPos.x -= 0.42;
+      cutPos.z += 0.18;
+      cutRot.z -= 0.35;
+    } else if (name === 'Control_Electronics_CPU') {
+      cutPos.y += 0.06;
+      cutPos.x += 0.05;
+    } else if (name.startsWith('Battery_Module')) {
+      // Battery stack shifts slightly forward for clear inspection
+      cutPos.x += 0.04;
+      cutPos.y += 0.02;
+    } else if (name.startsWith('Internal_Rib')) {
+      // Internal ribs stay in place inside lower case
+      cutPos.y -= 0.02;
+    } else if (name === 'Pressure_Hull_Shell') {
+      cutPos.y -= 0.02;
+    } else if (name === 'Piston_Mechanism') {
+      // Piston and hydraulic system explode down and forward
+      cutPos.y -= 0.28;
+      cutPos.x += 0.12;
+    } else if (name === 'Internal_Reservoir') {
+      cutPos.y -= 0.38;
+    } else if (name === 'Lower_Pressure_Case') {
+      cutPos.y -= 0.52;
+    } else if (name === 'Buoyancy_Bladder') {
+      cutPos.y -= 0.64;
+    } else if (name === 'Bottom_Cap') {
+      cutPos.y -= 0.76;
+    }
+
+    nodeTransforms[name] = {
+      assembledPos: basePos,
+      assembledRot: baseRot,
+      exteriorExplodedPos: extPos,
+      exteriorExplodedRot: extRot,
+      cutawayExplodedPos: cutPos,
+      cutawayExplodedRot: cutRot
+    };
+  });
+}
+
+// Update mesh transforms based on current mode and explosion factor
+function applyTransforms() {
+  const t = currentExplodeFactor;
+  Object.keys(nodeTransforms).forEach(name => {
+    const data = nodeTransforms[name];
+    const obj = nodeMap[name];
+    if (!obj) return;
+
+    let targetPos, targetRot;
+    if (currentMode === 'assembled') {
+      targetPos = data.assembledPos;
+      targetRot = data.assembledRot;
+    } else if (currentMode === 'exterior') {
+      targetPos = data.assembledPos.clone().lerp(data.exteriorExplodedPos, t);
+      targetRot = new THREE.Euler(
+        THREE.MathUtils.lerp(data.assembledRot.x, data.exteriorExplodedRot.x, t),
+        THREE.MathUtils.lerp(data.assembledRot.y, data.exteriorExplodedRot.y, t),
+        THREE.MathUtils.lerp(data.assembledRot.z, data.exteriorExplodedRot.z, t)
+      );
+    } else if (currentMode === 'cutaway') {
+      targetPos = data.assembledPos.clone().lerp(data.cutawayExplodedPos, t);
+      targetRot = new THREE.Euler(
+        THREE.MathUtils.lerp(data.assembledRot.x, data.cutawayExplodedRot.x, t),
+        THREE.MathUtils.lerp(data.assembledRot.y, data.cutawayExplodedRot.y, t),
+        THREE.MathUtils.lerp(data.assembledRot.z, data.cutawayExplodedRot.z, t)
+      );
+    }
+
+    obj.position.copy(targetPos);
+    obj.rotation.copy(targetRot);
+  });
+
+  updateLeaderLines();
+}
+
+// ==========================================
+// 4. LOAD GLTF MODEL (SINGLE INSTANCE ONLY)
+// ==========================================
+const loader = new THREE.GLTFLoader();
+loader.load('argo_float.glb', gltf => {
+  argoRoot = gltf.scene;
+
+  argoRoot.traverse(child => {
+    if (child.isMesh) {
+      nodeMap[child.name] = child;
+      child.castShadow = true;
+      child.receiveShadow = true;
+
+      // Enhance materials for technical engineering aesthetic
+      if (child.material) {
+        child.material = child.material.clone();
+        child.userData.originalMaterial = child.material;
+        child.material.polygonOffset = true;
+        child.material.polygonOffsetFactor = 1;
+        child.material.polygonOffsetUnits = 1;
+
+        // Custom fine-tuning for Argo Safety Yellow & Metal
+        if (child.material.name === 'Argo_Yellow') {
+          child.material.roughness = 0.28;
+          child.material.metalness = 0.12;
+        } else if (child.material.name === 'Metal') {
+          child.material.roughness = 0.25;
+          child.material.metalness = 0.85;
+        }
+      }
+    }
+  });
+
+  setupExplosionTransforms();
+  scene.add(argoRoot);
+
+  buildCalloutBadges();
+  applyTransforms();
+
+  const overlay = document.getElementById('loadingOverlay');
+  overlay.style.opacity = '0';
+  setTimeout(() => overlay.remove(), 400);
+}, undefined, err => {
+  console.error('Error loading argo_float.glb:', err);
+});
+
+// ==========================================
+// 5. LEADER LINE & TECHNICAL LABEL SYSTEM
+// ==========================================
+const svgLayer = document.getElementById('svgLayer');
+const labelContainer = document.getElementById('labelContainer');
+const badges = {}; // componentKey -> DOM Element
+
+// Define which components anchor to Left vs Right to prevent line crossings
+const CALLOUT_LAYOUT = [
+  // RIGHT COLUMN (Top to Bottom)
+  { key: 'Antenna_Group', side: 'right', anchorNode: 'Antenna_Rod' },
+  { key: 'GPS_Receiver_Group', side: 'right', anchorNode: 'GPS_Receiver' },
+  { key: 'CTD_Sensor_Payload', side: 'right', anchorNode: 'CTD_Sensor_Payload' },
+  { key: 'Top_End_Cap_Assembly', side: 'right', anchorNode: 'Top_End_Cap' },
+  { key: 'Stability_Collars', side: 'right', anchorNode: 'Stability_Collar_1' },
+  { key: 'Control_Electronics_CPU', side: 'right', anchorNode: 'Control_Electronics_CPU' },
+  { key: 'Battery_Stack', side: 'right', anchorNode: 'Battery_Module_3' },
+  { key: 'Buoyancy_Pump_Piston', side: 'right', anchorNode: 'Piston_Mechanism' },
+
+  // LEFT COLUMN (Top to Bottom)
+  { key: 'Upper_Pressure_Case', side: 'left', anchorNode: 'Cutaway_Hull_Cover' },
+  { key: 'Internal_Ribs', side: 'left', anchorNode: 'Internal_Rib_3' },
+  { key: 'Lower_Pressure_Case', side: 'left', anchorNode: 'Pressure_Hull_Shell' },
+  { key: 'Internal_Reservoir', side: 'left', anchorNode: 'Internal_Reservoir' },
+  { key: 'Buoyancy_Bladder', side: 'left', anchorNode: 'Buoyancy_Bladder' }
+];
+
+function buildCalloutBadges() {
+  labelContainer.innerHTML = '';
+  CALLOUT_LAYOUT.forEach(item => {
+    const data = COMPONENT_DATA[item.key];
+    if (!data) return;
+
+    const badge = document.createElement('div');
+    badge.className = 'callout-badge';
+    badge.dataset.key = item.key;
+    badge.textContent = data.title;
+
+    badge.addEventListener('mouseenter', () => highlightComponent(item.key, true));
+    badge.addEventListener('mouseleave', () => highlightComponent(item.key, false));
+    badge.addEventListener('click', () => selectComponent(item.key));
+
+    labelContainer.appendChild(badge);
+    badges[item.key] = badge;
+  });
+}
+
+function updateLeaderLines() {
+  if (!argoRoot) return;
+
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  let svgPaths = '';
+
+  const leftBadgeX = 60;
+  const rightBadgeX = w - 60;
+
+  // Compute screen coords for each callout
+  CALLOUT_LAYOUT.forEach((item, idx) => {
+    const badge = badges[item.key];
+    const node = nodeMap[item.anchorNode];
+    if (!badge || !node) return;
+
+    // Anchor point in 3D world space
+    const worldPos = new THREE.Vector3();
+    node.getWorldPosition(worldPos);
+
+    // Minor offset adjustments for visual perfection
+    if (item.key === 'Upper_Pressure_Case') worldPos.x -= 0.05;
+    if (item.key === 'Battery_Stack') worldPos.z += 0.03;
+
+    // Project 3D -> 2D Screen coordinates
+    const screenPos = worldPos.clone().project(camera);
+    const ax = (screenPos.x * 0.5 + 0.5) * w;
+    const ay = (-(screenPos.y * 0.5) + 0.5) * h;
+
+    // Don't render if behind camera
+    if (screenPos.z > 1.0) {
+      badge.style.display = 'none';
+      return;
+    }
+    badge.style.display = 'flex';
+
+    // Position badge on designated side with staggered vertical heights
+    const isRight = item.side === 'right';
+    let targetX, targetY;
+
+    if (isRight) {
+      targetX = rightBadgeX - 220;
+      targetY = ay;
+    } else {
+      targetX = leftBadgeX;
+      targetY = ay;
+    }
+
+    // Clamp Y to viewport
+    targetY = THREE.MathUtils.clamp(targetY, 90, h - 85);
+
+    badge.style.left = `${targetX}px`;
+    badge.style.top = `${targetY}px`;
+
+    // Leader line connection points:
+    // P1: Anchor on 3D mesh (ax, ay)
+    // P2: Elbow waypoint (ex, ey)
+    // P3: Label attachment (lx, ly)
+    const badgeRect = badge.getBoundingClientRect();
+    const lx = isRight ? badgeRect.left : badgeRect.right;
+    const ly = badgeRect.top + badgeRect.height / 2;
+
+    const elbowOffset = isRight ? -24 : 24;
+    const ex = ax + (lx - ax) * 0.45;
+    const ey = ly;
+
+    const isHighlighted = (selectedComponentKey === item.key) || (hoveredNode && COMPONENT_DATA[item.key].nodeNames.includes(hoveredNode.name));
+    const strokeColor = isHighlighted ? 'var(--line-highlight)' : 'var(--line-color)';
+    const strokeWidth = isHighlighted ? '1.8' : '1.0';
+    const strokeDash = isHighlighted ? 'none' : 'none';
+
+    // Draw Anchor Dot + 2-segment Elbow Line
+    svgPaths += `
+      <circle cx="${ax}" cy="${ay}" r="${isHighlighted ? 4.0 : 2.5}" fill="${strokeColor}" />
+      <path d="M ${ax} ${ay} L ${ex} ${ey} L ${lx} ${ly}" 
+            fill="none" 
+            stroke="${strokeColor}" 
+            stroke-width="${strokeWidth}" 
+            stroke-dasharray="${strokeDash}"
+            stroke-linejoin="round"
+            opacity="${isHighlighted ? 1.0 : 0.75}" />
+    `;
+  });
+
+  svgLayer.innerHTML = svgPaths;
+}
+
+// ==========================================
+// 6. INTERACTION & SELECTION SYSTEM
+// ==========================================
+function highlightComponent(compKey, active) {
+  if (!COMPONENT_DATA[compKey]) return;
+  const comp = COMPONENT_DATA[compKey];
+
+  // Update badge class
+  const badge = badges[compKey];
+  if (badge) badge.classList.toggle('active', active);
+
+  // Apply subtle emissive highlight to meshes
+  comp.nodeNames.forEach(name => {
+    const mesh = nodeMap[name];
+    if (mesh && mesh.material) {
+      if (active) {
+        mesh.material.emissive = new THREE.Color(0xf59e0b);
+        mesh.material.emissiveIntensity = 0.28;
+      } else if (selectedComponentKey !== compKey) {
+        mesh.material.emissive = new THREE.Color(0x000000);
+        mesh.material.emissiveIntensity = 0.0;
+      }
+    }
+  });
+
+  updateLeaderLines();
+}
+
+function selectComponent(compKey) {
+  selectedComponentKey = compKey;
+  const comp = COMPONENT_DATA[compKey];
+  if (!comp) return;
+
+  // Highlight active badge
+  Object.keys(badges).forEach(k => {
+    badges[k].classList.toggle('active', k === compKey);
+  });
+
+  // Highlight meshes
+  Object.keys(COMPONENT_DATA).forEach(k => {
+    const isTarget = k === compKey;
+    COMPONENT_DATA[k].nodeNames.forEach(name => {
+      const m = nodeMap[name];
+      if (m && m.material) {
+        m.material.emissive = isTarget ? new THREE.Color(0xf59e0b) : new THREE.Color(0x000000);
+        m.material.emissiveIntensity = isTarget ? 0.35 : 0.0;
+      }
+    });
+  });
+
+  // Populate Specification Drawer
+  document.getElementById('specCategory').textContent = comp.category;
+  document.getElementById('specTitle').textContent = comp.title;
+  document.getElementById('specDesc').textContent = comp.desc;
+
+  const tbody = document.getElementById('specTableBody');
+  tbody.innerHTML = '';
+  Object.keys(comp.specs).forEach(k => {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td>${k}</td><td>${comp.specs[k]}</td>`;
+    tbody.appendChild(row);
+  });
+
+  document.getElementById('specDrawer').classList.add('open');
+
+  // Smoothly frame camera toward selected component
+  const firstMesh = nodeMap[comp.nodeNames[0]];
+  if (firstMesh) {
+    const targetCenter = new THREE.Vector3();
+    firstMesh.getWorldPosition(targetCenter);
+    new TWEEN.Tween(controls.target)
+      .to({ x: targetCenter.x, y: targetCenter.y, z: targetCenter.z }, 800)
+      .easing(TWEEN.Easing.Cubic.Out)
+      .start();
+  }
+
+  updateLeaderLines();
+}
+
+document.getElementById('btnCloseDrawer').addEventListener('click', () => {
+  document.getElementById('specDrawer').classList.remove('open');
+  if (selectedComponentKey) {
+    highlightComponent(selectedComponentKey, false);
+    selectedComponentKey = null;
+  }
+});
+
+// Canvas Raycasting on Mouse Move & Click
+window.addEventListener('mousemove', e => {
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(Object.values(nodeMap));
+
+  if (intersects.length > 0) {
+    const hitMesh = intersects[0].object;
+    if (hoveredNode !== hitMesh) {
+      if (hoveredNode) {
+        const prevKey = findCompKeyForNode(hoveredNode.name);
+        if (prevKey && prevKey !== selectedComponentKey) highlightComponent(prevKey, false);
+      }
+      hoveredNode = hitMesh;
+      const newKey = findCompKeyForNode(hitMesh.name);
+      if (newKey) highlightComponent(newKey, true);
+    }
+  } else if (hoveredNode) {
+    const prevKey = findCompKeyForNode(hoveredNode.name);
+    if (prevKey && prevKey !== selectedComponentKey) highlightComponent(prevKey, false);
+    hoveredNode = null;
+  }
+});
+
+window.addEventListener('click', e => {
+  // Don't raycast if clicking UI elements
+  if (e.target.closest('.hud-panel') || e.target.closest('.callout-badge')) return;
+
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(Object.values(nodeMap));
+
+  if (intersects.length > 0) {
+    const hitMesh = intersects[0].object;
+    const compKey = findCompKeyForNode(hitMesh.name);
+    if (compKey) selectComponent(compKey);
+  }
+});
+
+function findCompKeyForNode(name) {
+  return Object.keys(COMPONENT_DATA).find(k => COMPONENT_DATA[k].nodeNames.includes(name));
+}
+
+// ==========================================
+// 7. VIEW MODES & EXPLOSION SLIDER CONTROLS
+// ==========================================
+function switchMode(newMode) {
+  if (currentMode === newMode && currentExplodeFactor === 1.0) return;
+  currentMode = newMode;
+
+  document.querySelectorAll('.btn-mode').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === newMode);
+  });
+
+  // Animate explosion factor smoothly over 1.2 seconds
+  const targetFactor = (newMode === 'assembled') ? 0.0 : 1.0;
+  new TWEEN.Tween({ t: currentExplodeFactor })
+    .to({ t: targetFactor }, 1100)
+    .easing(TWEEN.Easing.Cubic.InOut)
+    .onUpdate(obj => {
+      currentExplodeFactor = obj.t;
+      document.getElementById('explodeSlider').value = Math.round(obj.t * 100);
+      document.getElementById('explodeVal').textContent = `${Math.round(obj.t * 100)}%`;
+      applyTransforms();
+    })
+    .start();
+}
+
+document.getElementById('btnModeAssembled').addEventListener('click', () => switchMode('assembled'));
+document.getElementById('btnModeExterior').addEventListener('click', () => switchMode('exterior'));
+document.getElementById('btnModeCutaway').addEventListener('click', () => switchMode('cutaway'));
+
+// Explosion Slider Manual Drag
+const slider = document.getElementById('explodeSlider');
+slider.addEventListener('input', e => {
+  const val = parseFloat(e.target.value) / 100.0;
+  currentExplodeFactor = val;
+  document.getElementById('explodeVal').textContent = `${Math.round(val * 100)}%`;
+
+  if (val === 0.0 && currentMode !== 'assembled') {
+    currentMode = 'assembled';
+    document.querySelectorAll('.btn-mode').forEach(b => b.classList.toggle('active', b.dataset.mode === 'assembled'));
+  } else if (val > 0.0 && currentMode === 'assembled') {
+    currentMode = 'exterior';
+    document.querySelectorAll('.btn-mode').forEach(b => b.classList.toggle('active', b.dataset.mode === 'exterior'));
+  }
+
+  applyTransforms();
+});
+
+// ==========================================
+// 8. CAMERA PRESETS & SMOOTH TRANSITIONS
+// ==========================================
+const CAMERA_PRESETS = {
+  iso: { pos: new THREE.Vector3(1.7, 1.4, 3.8), target: new THREE.Vector3(0, 0.65, 0) },
+  front: { pos: new THREE.Vector3(0, 0.7, 4.2), target: new THREE.Vector3(0, 0.65, 0) },
+  side: { pos: new THREE.Vector3(4.2, 0.7, 0), target: new THREE.Vector3(0, 0.65, 0) },
+  top: { pos: new THREE.Vector3(0.01, 4.6, 0.01), target: new THREE.Vector3(0, 0.65, 0) }
+};
+
+function transitionCamera(presetKey) {
+  const p = CAMERA_PRESETS[presetKey];
+  if (!p) return;
+
+  document.querySelectorAll('.camera-quick-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.cam === presetKey);
+  });
+
+  new TWEEN.Tween(camera.position)
+    .to({ x: p.pos.x, y: p.pos.y, z: p.pos.z }, 1000)
+    .easing(TWEEN.Easing.Cubic.Out)
+    .start();
+
+  new TWEEN.Tween(controls.target)
+    .to({ x: p.target.x, y: p.target.y, z: p.target.z }, 1000)
+    .easing(TWEEN.Easing.Cubic.Out)
+    .start();
+}
+
+document.querySelectorAll('.camera-quick-btn').forEach(btn => {
+  btn.addEventListener('click', () => transitionCamera(btn.dataset.cam));
+});
+
+document.getElementById('btnResetView').addEventListener('click', () => {
+  transitionCamera('iso');
+  if (selectedComponentKey) {
+    highlightComponent(selectedComponentKey, false);
+    selectedComponentKey = null;
+    document.getElementById('specDrawer').classList.remove('open');
+  }
+});
+
+// ==========================================
+// 9. ANIMATION LOOP & RESIZE HANDLING
+// ==========================================
+function animate(time) {
+  requestAnimationFrame(animate);
+  TWEEN.update(time);
+  controls.update();
+  updateLeaderLines();
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(animate);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  updateLeaderLines();
+});
+</script>
+</body>
+</html>

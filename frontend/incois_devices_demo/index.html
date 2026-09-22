@@ -1,0 +1,3190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ocean Glider — Engineering Technical Reference & Hydrodynamic Simulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #030d17;
+  --bg-panel: rgba(6, 21, 36, 0.88);
+  --border: rgba(94, 214, 255, 0.22);
+  --border-active: rgba(94, 214, 255, 0.7);
+  --text-main: #ebf8ff;
+  --text-muted: #82a8bd;
+  --text-dim: #547c91;
+  --accent: #38d9f5;
+  --accent-glow: rgba(56, 217, 245, 0.28);
+  --line-color: #38d9f5;
+  --grid-line: rgba(56, 217, 245, 0.07);
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+body.theme-blueprint {
+  --bg: #f4f6f8;
+  --bg-panel: rgba(255, 255, 255, 0.94);
+  --border: rgba(14, 43, 68, 0.18);
+  --border-active: rgba(14, 43, 68, 0.7);
+  --text-main: #0c2132;
+  --text-muted: #415e75;
+  --text-dim: #718d9f;
+  --accent: #02669e;
+  --accent-glow: rgba(2, 102, 158, 0.15);
+  --line-color: #0c2b44;
+  --grid-line: rgba(12, 43, 68, 0.08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background-color: var(--bg);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  user-select: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+#canvas-container {
+  position: fixed; inset: 0; z-index: 1;
+}
+
+/* Background Engineering Grid (for CAD modes) */
+.engineering-grid {
+  position: fixed; inset: 0; pointer-events: none; z-index: 2;
+  background-size: 36px 36px;
+  background-image: 
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+}
+
+/* SVG Leader Lines Layer */
+#svgLayer {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 15; overflow: visible;
+}
+
+/* DOM Labels Container */
+#labelContainer {
+  position: fixed; inset: 0; pointer-events: none; z-index: 16;
+}
+
+/* Sleek Floating Technical CAD Labels (Direct Names, Zero Numbers) */
+.eng-badge {
+  position: absolute;
+  pointer-events: auto;
+  padding: 4px 10px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.32);
+  font-size: 9.5px;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.2s ease, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 18;
+}
+.eng-badge.visible {
+  opacity: 1;
+}
+.eng-badge:hover, .eng-badge.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 14px var(--accent-glow), 0 4px 20px rgba(0,0,0,0.45);
+  transform: translate(-50%, -50%) scale(1.04);
+  z-index: 25;
+}
+.eng-badge .dot-indicator {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+  flex-shrink: 0;
+}
+.eng-badge .title {
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--text-main);
+}
+
+/* HUD System */
+.hud-overlay {
+  position: fixed; inset: 0; pointer-events: none; z-index: 25;
+}
+.hud-panel {
+  pointer-events: auto;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 12px 36px rgba(0,0,0,0.35);
+}
+
+/* Top Header Bar */
+.top-bar {
+  position: absolute; left: 20px; right: 20px; top: 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+}
+.brand-box {
+  padding: 10px 16px; display: flex; align-items: center; gap: 12px;
+}
+.brand-title {
+  font-size: 12px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+}
+.brand-sub {
+  font-size: 9px; color: var(--text-muted); font-family: var(--font-mono); letter-spacing: 0.06em;
+}
+.cross-nav-link {
+  color: #f5b338; text-decoration: none; font-weight: 700; font-family: var(--font-mono); font-size: 10px;
+  padding: 4px 9px; border-radius: 5px; border: 1px solid rgba(245, 179, 56, 0.4);
+  background: rgba(245, 179, 56, 0.08); transition: all 0.15s ease; white-space: nowrap;
+}
+.cross-nav-link:hover {
+  background: rgba(245, 179, 56, 0.22); border-color: #f5b338; transform: translateY(-1px);
+}
+.mode-nav {
+  display: flex; gap: 5px; padding: 6px; flex-wrap: wrap;
+}
+.btn-nav {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  font-size: 11px; font-weight: 600;
+  padding: 7px 13px; border-radius: 7px;
+  cursor: pointer; transition: all 0.18s ease;
+  display: flex; align-items: center; gap: 6px;
+}
+.btn-nav:hover {
+  background: var(--accent-glow);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.btn-nav.active {
+  background: var(--accent);
+  color: #03101b;
+  border-color: var(--accent);
+  font-weight: 700;
+  box-shadow: 0 0 14px var(--accent-glow);
+}
+body.theme-blueprint .btn-nav.active {
+  color: #ffffff;
+}
+
+/* Left Telemetry Card */
+.left-sidebar {
+  position: absolute; left: 20px; top: 88px; width: 235px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.info-card {
+  padding: 13px 15px;
+}
+.card-caption {
+  font-family: var(--font-mono); font-size: 8.5px; font-weight: 700;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-dim);
+}
+.card-heading {
+  font-size: 14px; font-weight: 800; margin-top: 3px; color: var(--text-main);
+}
+.status-indicator {
+  display: flex; align-items: center; gap: 6px; margin-top: 6px;
+  font-size: 10px; font-family: var(--font-mono); color: #34d399;
+}
+.status-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: #34d399;
+  box-shadow: 0 0 10px #34d399;
+}
+.telemetry-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 11px; margin-top: 8px; border-bottom: 1px dashed var(--border);
+  padding-bottom: 4px;
+}
+.telemetry-row span { color: var(--text-muted); font-size: 10px; }
+.telemetry-row b { font-family: var(--font-mono); font-size: 11px; }
+
+/* Right Component Inspector Drawer (Slides in smoothly ONLY on selection) */
+.right-drawer {
+  position: absolute; right: 20px; top: 88px; width: 280px;
+  display: flex; flex-direction: column; gap: 10px;
+  transform: translateX(calc(100% + 40px));
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease;
+  z-index: 30;
+}
+.right-drawer.open {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+.spec-header {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.close-btn {
+  background: transparent; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 16px; padding: 2px 6px;
+  transition: color 0.15s;
+}
+.close-btn:hover { color: var(--accent); }
+.spec-desc {
+  font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-top: 6px;
+}
+.spec-param {
+  margin-top: 8px; font-size: 10px; display: grid; grid-template-columns: 85px 1fr; gap: 4px;
+}
+.spec-param span { color: var(--text-dim); font-family: var(--font-mono); }
+.spec-param b { color: var(--text-main); font-family: var(--font-mono); font-size: 10px; }
+
+/* Bottom Control Deck */
+.bottom-deck {
+  position: absolute; left: 20px; right: 20px; bottom: 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+.slider-panel {
+  padding: 10px 18px; display: flex; align-items: center; gap: 14px; flex: 1; max-width: 620px;
+}
+.slider-label {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.1em; color: var(--text-muted); white-space: nowrap;
+}
+.slider-track {
+  flex: 1; display: flex; align-items: center; gap: 10px;
+}
+input[type="range"] {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 5px; background: rgba(120, 200, 255, 0.2); border-radius: 4px;
+  outline: none; cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); border: 2px solid #ffffff;
+  cursor: pointer; box-shadow: 0 0 10px var(--accent);
+  transition: transform 0.1s;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+.slider-val {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 800; min-width: 44px; text-align: right;
+}
+.bottom-tools {
+  display: flex; gap: 8px; padding: 6px 10px;
+}
+.btn-tool {
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text-main); font-family: var(--font-mono); font-size: 10px;
+  padding: 6px 12px; border-radius: 6px; cursor: pointer;
+  display: flex; align-items: center; gap: 6px; transition: 0.15s;
+}
+.btn-tool:hover {
+  border-color: var(--accent); background: var(--accent-glow);
+}
+.btn-tool.active {
+  background: var(--accent-glow); border-color: var(--accent); color: var(--accent); font-weight: 700;
+}
+
+/* Technical Drawing Banner */
+.drawing-tag {
+  position: absolute; left: 50%; top: 86px; transform: translateX(-50%);
+  padding: 6px 14px; border: 1px solid var(--border); border-radius: 20px;
+  background: var(--bg-panel); font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent);
+  pointer-events: none; box-shadow: 0 4px 18px rgba(0,0,0,0.25);
+  white-space: nowrap; z-index: 24;
+}
+
+/* Ocean Depth Ruler (Displayed ONLY in Mission Mode) */
+.depth-ruler {
+  position: absolute; left: 270px; top: 90px; bottom: 85px; width: 150px;
+  pointer-events: none; display: none;
+  border-left: 2px dashed rgba(56, 217, 245, 0.7);
+  z-index: 26;
+}
+.depth-ruler.visible { display: block; }
+.depth-marker {
+  position: absolute; left: 12px; transform: translateY(-50%);
+  font-family: var(--font-mono); font-size: 11px; font-weight: 800;
+  color: #38d9f5; text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+  display: flex; align-items: center; gap: 6px;
+}
+.depth-marker::before {
+  content: ''; position: absolute; left: -14px; width: 8px; height: 2px;
+  background: #38d9f5; box-shadow: 0 0 6px #38d9f5;
+}
+.depth-marker small {
+  font-size: 8.5px; color: #bdefff; font-weight: 600; letter-spacing: 0.05em;
+}
+
+/* Mission Guidance Callout & Diurnal Mission Clock HUD */
+.mission-callout {
+  position: absolute; left: 50%; top: 86px; transform: translateX(-50%);
+  max-width: 650px; width: 85%; padding: 10px 18px;
+  background: rgba(4, 20, 36, 0.95); border: 1px solid rgba(56, 217, 245, 0.65);
+  border-radius: 9px; backdrop-filter: blur(16px); box-shadow: 0 10px 36px rgba(0,0,0,0.7);
+  pointer-events: none; display: none; text-align: center; z-index: 26;
+}
+.mission-callout.visible { display: block; }
+
+.mission-clock-hud {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding-bottom: 6px; margin-bottom: 6px;
+  border-bottom: 1px solid rgba(56, 217, 245, 0.22);
+}
+.mission-clock-left {
+  display: flex; align-items: center; gap: 8px;
+}
+.mission-day-badge {
+  background: #38d9f5; color: #020c14; font-family: var(--font-mono);
+  font-size: 10px; font-weight: 800; letter-spacing: 0.12em;
+  padding: 2px 7px; border-radius: 4px;
+}
+.mission-utc-time {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 800;
+  color: #ebf8ff; letter-spacing: 0.08em;
+}
+.mission-solar-badge {
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 700;
+  letter-spacing: 0.08em; padding: 3px 9px; border-radius: 12px;
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.25s ease;
+}
+.solar-dawn {
+  background: rgba(255, 140, 66, 0.28); color: #ffba7a;
+  border-color: rgba(255, 170, 90, 0.55);
+}
+.solar-day {
+  background: rgba(255, 215, 0, 0.22); color: #ffe680;
+  border-color: rgba(255, 224, 102, 0.55);
+}
+.solar-sunset {
+  background: rgba(235, 87, 87, 0.28); color: #ff8c8c;
+  border-color: rgba(255, 123, 123, 0.55);
+}
+.solar-night {
+  background: rgba(79, 70, 229, 0.32); color: #c7d2fe;
+  border-color: rgba(165, 180, 252, 0.55);
+}
+
+.mission-cycle-meta {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  font-size: 9px; color: var(--text-muted); font-family: var(--font-mono);
+  margin-bottom: 6px;
+}
+.mission-cycle-meta span b {
+  color: var(--accent); font-weight: 700;
+}
+
+.mission-badge {
+  display: inline-block; font-family: var(--font-mono); font-size: 9px; font-weight: 800;
+  letter-spacing: 0.16em; text-transform: uppercase; color: #020c14;
+  background: #38d9f5; padding: 2px 7px; border-radius: 4px; margin-bottom: 4px;
+}
+.mission-quote {
+  font-size: 11px; font-weight: 600; color: #f0faff; line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+
+/* Loading Overlay */
+#loadingOverlay {
+  position: fixed; inset: 0; background: var(--bg); z-index: 999;
+  display: grid; place-items: center; transition: opacity 0.4s ease;
+}
+.loading-box { text-align: center; }
+.loading-box h2 {
+  font-size: 14px; letter-spacing: 0.2em; text-transform: uppercase;
+}
+.loading-box p {
+  font-size: 11px; color: var(--text-muted); margin-top: 6px; font-family: var(--font-mono);
+}
+
+/* Sunset Customizer Floating Card */
+.sunset-panel {
+  position: absolute;
+  right: 20px;
+  bottom: 80px;
+  width: 390px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-active);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 24px var(--accent-glow);
+  z-index: 45;
+  backdrop-filter: blur(20px);
+  animation: sunsetFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes sunsetFadeIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.sunset-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+.sunset-title-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sunset-icon {
+  font-size: 20px;
+}
+.sunset-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #ff9e42;
+}
+.sunset-subtitle {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+}
+.btn-tool-icon {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  transition: 0.15s;
+}
+.btn-tool-icon:hover {
+  color: var(--text-main);
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+.sunset-presets-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.sunset-preset-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.18s ease;
+  color: var(--text-main);
+}
+.sunset-preset-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+.sunset-preset-btn.active {
+  border-color: #ff9e42;
+  background: rgba(255, 158, 66, 0.16);
+  box-shadow: 0 0 12px rgba(255, 158, 66, 0.22);
+}
+.preset-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.25);
+}
+.preset-info {
+  overflow: hidden;
+}
+.preset-name {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.preset-desc {
+  font-size: 8px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sunset-controls-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: rgba(0,0,0,0.22);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.sunset-control-item label {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.sunset-control-item label span {
+  color: #ff9e42;
+}
+.slider-track-sm input[type=range] {
+  width: 100%;
+  height: 4px;
+  accent-color: #ff9e42;
+  cursor: pointer;
+}
+.sunset-footer-actions {
+  display: flex;
+  gap: 8px;
+}
+.btn-sunset-preview {
+  flex: 1;
+  background: rgba(255, 158, 66, 0.18) !important;
+  border-color: #ff9e42 !important;
+  color: #ffa442 !important;
+  font-weight: 700;
+  justify-content: center;
+}
+.btn-sunset-preview:hover {
+  background: rgba(255, 158, 66, 0.35) !important;
+}
+</style>
+</head>
+<body class="theme-blueprint">
+
+<div id="loadingOverlay">
+  <div class="loading-box">
+    <h2>INITIALIZING GLIDER CAD MODEL</h2>
+    <p>Loading precision GLTF asset & kinematics...</p>
+  </div>
+</div>
+
+<div class="engineering-grid"></div>
+<div id="canvas-container"></div>
+<svg id="svgLayer"></svg>
+<div id="labelContainer"></div>
+
+<div class="drawing-tag" id="drawingTag">UNDERWATER GLIDER — EXTERIOR EXPLODED ASSEMBLY</div>
+
+<div class="hud-overlay">
+  <!-- Ocean Depth Scale for Water Cutaway Profile -->
+  <div class="depth-ruler" id="depthRuler">
+    <div class="depth-marker" style="top: 8%;"><span>0 m</span> <small>SURFACE / AIR</small></div>
+    <div class="depth-marker" style="top: 22%;"><span>20 m</span> <small>PHOTIC ZONE</small></div>
+    <div class="depth-marker" style="top: 42%;"><span>200 m</span> <small>MESOPELAGIC</small></div>
+    <div class="depth-marker" style="top: 70%;"><span>700 m</span> <small>THERMOCLINE</small></div>
+    <div class="depth-marker" style="top: 94%;"><span>1,000 m</span> <small>SEABED APEX</small></div>
+  </div>
+
+  <!-- Mission Guidance Annotation & Diurnal Mission Clock HUD -->
+  <div class="mission-callout" id="missionCallout">
+    <div class="mission-clock-hud">
+      <div class="mission-clock-left">
+        <span class="mission-day-badge" id="missionDayBadge">DAY 01</span>
+        <span class="mission-utc-time" id="missionUtcTime">06:00:00 UTC</span>
+      </div>
+      <div class="mission-solar-badge solar-dawn" id="missionSolarBadge">
+        <span id="solarIcon">🌅</span> <span id="solarText">DAWN (06:00)</span>
+      </div>
+    </div>
+    <div class="mission-cycle-meta">
+      <span>DIVE CYCLE: <b id="missionCycleIndex">#01 / 5</b></span>
+      <span>T_CYCLE: <b>4.8h (4h 48m)</b></span>
+      <span>ELAPSED: <b id="missionCycleElapsed">00h 00m (0%)</b></span>
+      <span>DESCENT: <b>0.14 m/s</b></span>
+    </div>
+    <div class="mission-badge" id="missionBadge">SURFACE TELEMETRY & GPS FIX</div>
+    <div class="mission-quote" id="missionQuote">
+      Telemetry is accomplished with Iridium satellite communications. GPS is used to obtain a position fix while surfaced.
+    </div>
+  </div>
+
+  <!-- Top Navigation Header -->
+  <div class="top-bar">
+    <div class="hud-panel brand-box">
+      <div>
+        <div class="brand-title">UNDERWATER GLIDER</div>
+        <div class="brand-sub">ENGINEERING EXPLODED SPECIFICATION & MISSION</div>
+      </div>
+      <div style="display: flex; gap: 6px;">
+        <a href="argo.html" class="cross-nav-link" title="Switch to Argo Mission Sim">🛰️ Float Sim</a>
+        <a href="argo_diagram.html" class="cross-nav-link" style="border-color: rgba(56, 189, 248, 0.4); color: #38bdf8; background: rgba(56, 189, 248, 0.08);" title="Switch to Argo Exploded Slider CAD">📐 Slider CAD</a>
+        <a href="argo_dual_exploded.html" class="cross-nav-link" style="border-color: rgba(2, 132, 199, 0.4); color: #0284c7; background: rgba(2, 132, 199, 0.08);" title="Switch to Dual Exploded Poster & Hydraulic Deep-Dive">⚙️ Dual Poster</a>
+      </div>
+    </div>
+
+    <div class="hud-panel mode-nav">
+      <button class="btn-nav active" data-view="explodeExterior">
+        <span>☵</span> Exterior Exploded
+      </button>
+      <button class="btn-nav" data-view="cutaway">
+        <span>◨</span> Cutaway (Assembled)
+      </button>
+      <button class="btn-nav" data-view="explodeCutaway">
+        <span>☷</span> Interior Exploded
+      </button>
+      <button class="btn-nav" data-view="exterior">
+        <span>●</span> Exterior Assembled
+      </button>
+      <button class="btn-nav" data-view="mission">
+        <span>▶</span> Hydrodynamics Mission
+      </button>
+    </div>
+
+    <div class="hud-panel" style="padding: 6px;">
+      <button class="btn-tool" id="btnTheme">
+        <span id="themeIcon">☼</span> <span id="themeLabel">Dark HUD</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Left Telemetry & Vehicle Status -->
+  <div class="left-sidebar">
+    <div class="hud-panel info-card">
+      <div class="card-caption" id="viewModeCaption">Vehicle State</div>
+      <div class="card-heading" id="viewModeHeading">EXTERIOR EXPLODED</div>
+      <div class="status-indicator">
+        <span class="status-dot" id="statusDot"></span> <span id="telemetryStatus">CAD DISASSEMBLY ACTIVE</span>
+      </div>
+
+      <div id="telemetryContent" style="margin-top: 12px;"></div>
+    </div>
+  </div>
+
+  <!-- Right Component Inspector Drawer (Slides in on Selection) -->
+  <div class="right-drawer" id="rightDrawer">
+    <div class="hud-panel info-card" id="inspectorCard">
+      <div class="spec-header">
+        <div class="card-caption" id="inspectorCategory">COMPONENT SPEC</div>
+        <button class="close-btn" id="closeInspector" title="Close">×</button>
+      </div>
+      <div class="card-heading" style="font-size: 13px;" id="inspectorTitle">Select Any Component</div>
+      <div class="spec-desc" id="inspectorDesc">
+        Click any floating engineering callout or 3D component to inspect exact CAD specifications, material properties, and operational function.
+      </div>
+      <div id="inspectorDetails"></div>
+    </div>
+  </div>
+
+  <!-- Floating Sunset Customizer Panel -->
+  <div class="hud-panel sunset-panel" id="sunsetCustomizerPanel" style="display: none;">
+    <div class="sunset-panel-header">
+      <div class="sunset-title-box">
+        <span class="sunset-icon">🌇</span>
+        <div>
+          <div class="sunset-title">CUSTOMIZE SUNSET PALETTE</div>
+          <div class="sunset-subtitle">Atmospheric Optics & Ocean Specular Reflections</div>
+        </div>
+      </div>
+      <button class="btn-tool-icon" id="btnCloseSunsetPanel" title="Close Panel">✕</button>
+    </div>
+    <div class="sunset-presets-row">
+      <button class="sunset-preset-btn active" data-preset="golden">
+        <span class="preset-swatch" style="background: linear-gradient(135deg, #0c1c3d 0%, #7a365d 50%, #ffa442 100%);"></span>
+        <div class="preset-info">
+          <div class="preset-name">Cinematic Gold</div>
+          <div class="preset-desc">Molten amber & sapphire sea</div>
+        </div>
+      </button>
+      <button class="sunset-preset-btn" data-preset="crimson">
+        <span class="preset-swatch" style="background: linear-gradient(135deg, #130a2a 0%, #9e285a 50%, #ff7347 100%);"></span>
+        <div class="preset-info">
+          <div class="preset-name">Pacific Crimson</div>
+          <div class="preset-desc">Radiant magenta & coral reef</div>
+        </div>
+      </button>
+      <button class="sunset-preset-btn" data-preset="nordic">
+        <span class="preset-swatch" style="background: linear-gradient(135deg, #0e2038 0%, #82577c 50%, #fcb08a 100%);"></span>
+        <div class="preset-info">
+          <div class="preset-name">Nordic Pastel</div>
+          <div class="preset-desc">Blush rose & arctic turquoise</div>
+        </div>
+      </button>
+      <button class="sunset-preset-btn" data-preset="tropical">
+        <span class="preset-swatch" style="background: linear-gradient(135deg, #0a1236 0%, #6e2568 50%, #ff8533 100%);"></span>
+        <div class="preset-info">
+          <div class="preset-name">Maldivian Dusk</div>
+          <div class="preset-desc">Royal amethyst & tangerine</div>
+        </div>
+      </button>
+    </div>
+    
+    <div class="sunset-controls-grid">
+      <div class="sunset-control-item">
+        <label>HORIZON WARMTH <span id="valHorizonWarmth">75%</span></label>
+        <div class="slider-track-sm">
+          <input type="range" id="sunsetHorizonWarmth" min="0" max="100" value="75">
+        </div>
+      </div>
+      <div class="sunset-control-item">
+        <label>SKY MAGENTA TINT <span id="valSkyTint">60%</span></label>
+        <div class="slider-track-sm">
+          <input type="range" id="sunsetSkyTint" min="0" max="100" value="60">
+        </div>
+      </div>
+      <div class="sunset-control-item">
+        <label>WATER DEPTH TINT <span id="valWaterTint">50%</span></label>
+        <div class="slider-track-sm">
+          <input type="range" id="sunsetWaterTint" min="0" max="100" value="50">
+        </div>
+      </div>
+      <div class="sunset-control-item">
+        <label>SUN FLARE RADIANCE <span id="valFlareRadiance">100%</span></label>
+        <div class="slider-track-sm">
+          <input type="range" id="sunsetFlareRadiance" min="50" max="200" value="100">
+        </div>
+      </div>
+    </div>
+
+    <div class="sunset-footer-actions">
+      <button class="btn-tool btn-sunset-preview" id="btnPreviewSunset">🌇 Preview Sunset Now</button>
+      <button class="btn-tool" id="btnResetSunset">↺ Reset</button>
+    </div>
+  </div>
+
+  <!-- Bottom Control Deck -->
+  <div class="bottom-deck">
+    <div class="hud-panel slider-panel" id="sliderPanel">
+      <span class="slider-label" id="sliderLabelText">EXPLOSION DISTANCE</span>
+      <div class="slider-track">
+        <input type="range" id="explodeSlider" min="0" max="100" value="100">
+        <span class="slider-val" id="sliderVal">100%</span>
+      </div>
+      <button class="btn-tool" id="btnPlayExplosion">▶ Auto</button>
+    </div>
+
+    <div class="hud-panel bottom-tools">
+      <button class="btn-tool" id="btnTurntable" style="display: none;">▶ 360° Orbit</button>
+      <button class="btn-tool" id="btnMissionSpeed" style="display: none;">Speed: 1x</button>
+      <button class="btn-tool" id="btnDiurnalMode" style="display: none;">⏱ Diurnal: Auto</button>
+      <button class="btn-tool" id="btnSunsetPalette" style="display: none;" title="Customize Sunset Colors">🌇 Sunset: Cinematic Gold ▾</button>
+      <button class="btn-tool" id="btnMissionCam" style="display: none;">Cam: Wide Cutaway</button>
+      <button class="btn-tool active" id="btnTraceLines">Guidelines: ON</button>
+      <button class="btn-tool active" id="btnLabels">Labels: ON</button>
+      <button class="btn-tool" id="btnReset">Reset View</button>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+// Application State
+const appState = {
+  viewMode: 'explodeExterior',
+  explosionFactor: 1.0,
+  hullCutProgress: 0.5, // 0.0 (closed) to 1.0 (deep cut)
+  autoPlay: false,
+  autoDir: 1,
+  showTraceLines: true,
+  showLabels: true,
+  turntable: false,
+  theme: 'blueprint',
+  selectedPart: null,
+  hoveredPart: null,
+  missionCamMode: 'wide', // 'wide' or 'chase'
+  missionProgress: 0.0,
+  missionPlaying: true,
+  missionSpeed: 1.0,
+  missionCycleIndex: 1,
+  diurnalOverride: 'auto', // 'auto', 'dawn', 'noon', 'sunset', 'night'
+  sunsetPreset: 'golden',
+  sunsetSliders: { horizon: 75, skyTint: 60, waterTint: 50, flare: 100 }
+};
+
+// Scene, Camera & Renderer Setup
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.05, 120);
+camera.position.set(0.5, 2.2, -3.8);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.localClippingEnabled = true;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.target.set(-0.1, 0, 0);
+
+// Lighting Setup
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334455, 1.8);
+scene.add(hemiLight);
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.8);
+keyLight.position.set(4, 5, 4);
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0xaaddee, 1.4);
+fillLight.position.set(-4, 2, -3);
+scene.add(fillLight);
+
+const backLight = new THREE.DirectionalLight(0xffffff, 1.2);
+backLight.position.set(0, -4, -2);
+scene.add(backLight);
+
+// Theme Configuration
+function setTheme(t) {
+  appState.theme = t;
+  document.body.classList.toggle('theme-blueprint', t === 'blueprint');
+  document.getElementById('themeIcon').textContent = t === 'blueprint' ? '☼' : '☾';
+  document.getElementById('themeLabel').textContent = t === 'blueprint' ? 'Dark HUD' : 'Blueprint';
+  
+  if (appState.viewMode === 'mission') {
+    scene.background = new THREE.Color(0x021626);
+    hemiLight.color.setHex(0x9deeff);
+    hemiLight.groundColor.setHex(0x031c33);
+    keyLight.intensity = 3.5;
+  } else if (t === 'blueprint') {
+    scene.background = new THREE.Color(0xf4f6f8);
+    hemiLight.color.setHex(0xffffff);
+    hemiLight.groundColor.setHex(0x99aabb);
+    keyLight.color.setHex(0xffffff);
+    keyLight.intensity = 2.4;
+  } else {
+    scene.background = new THREE.Color(0x030d17);
+    hemiLight.color.setHex(0x9deeff);
+    hemiLight.groundColor.setHex(0x02121d);
+    keyLight.color.setHex(0xffffff);
+    keyLight.intensity = 3.2;
+  }
+  updateTraceLinesTheme();
+  updateLabels();
+}
+
+// Technical Component Specifications Database
+const PART_DATABASE = {
+  Hull_Nose: {
+    title: "Nose Cone / Ballast Weight",
+    category: "Structure & Ballast",
+    desc: "Streamlined forward hydrodynamic fairing containing the solid lead trim ballast and acoustic pinger transducer.",
+    params: { "Material": "Molded Polyurethane", "Mass": "14.2 kg (Trimmed)", "Depth": "1000 m", "Function": "Hydrodynamic Bow & Trim" }
+  },
+  CTD_Sensor_Suite: {
+    title: "CTD Sensor Suite",
+    category: "Oceanographic Sensors",
+    desc: "High-precision oceanographic sensor suite measuring Conductivity, Temperature, and Hydrostatic Depth.",
+    params: { "Sensor Model": "Sea-Bird SBE 41CP", "Accuracy": "±0.002 °C / ±0.003 mS/cm", "Power": "0.45 W Sampling", "Mount": "Forward Collar" }
+  },
+  Pressure_Port: {
+    title: "Primary Pressure Port",
+    category: "Avionics & Depth",
+    desc: "Direct through-hull hydrostatic tap coupled to the internal quartz crystal pressure transducer.",
+    params: { "Sensor Type": "Digiquartz Crystal", "Resolution": "0.01 mm depth", "Port ID": "4.0 mm SS316", "Seal": "Dual Viton O-Rings" }
+  },
+  Fin_Left: {
+    title: "Wings (Detailed)",
+    category: "Aerodynamics & Lift",
+    desc: "Removable high-aspect ratio gull wings producing forward glide lift vector from vertical buoyancy displacement.",
+    params: { "Material": "Carbon Fiber / Corecell", "Span": "120 cm Total", "Aspect Ratio": "6.8", "Mount": "Quick-Release Cam-Locks" }
+  },
+  Wing_Spar_Left: {
+    title: "Aluminum Wing Spars",
+    category: "Structural Load Path",
+    desc: "Heavy-duty aerospace aluminum spar transferring hydrodynamic wing bending moments into the central internal chassis rails.",
+    params: { "Alloy": "7075-T6 Hard-Anodized", "OD / ID": "25.4 mm / 20.0 mm", "Proof Load": "3500 N", "Lock": "Through-Pin Cotter" }
+  },
+  Hull_Main: {
+    title: "Pressure Hull",
+    category: "Primary Pressure Vessel",
+    desc: "Isogrid-stiffened carbon fiber composite and 6061-T6 aluminum cylindrical pressure vessel housing all dry electronics.",
+    params: { "Diameter": "220 mm OD", "Length": "1250 mm Cylinder", "Proof Pressure": "150 bar (1500 m)", "Weight": "21.5 kg Dry" }
+  },
+  Lifting_Recovery_Bail: {
+    title: "Lifting / Recovery Bail",
+    category: "Recovery & Towing",
+    desc: "Rigid tow bail positioned at the vehicle neutral buoyancy center for boat crane hoist line engagement and tether attachment.",
+    params: { "Material": "316 Marine Stainless Steel", "Working Load": "450 kgf", "Safety Factor": "4.5 : 1", "Strobe Mount": "Optional Top Clip" }
+  },
+  Hull_Rear: {
+    title: "Aft Tail Cone Fairing",
+    category: "Fairing & Tail Assembly",
+    desc: "Aft hydrodynamic fairing housing the propulsion thruster motor, magnetic coupling, and rudder servo linkages.",
+    params: { "Material": "Syntactic Foam / GRP", "Displacement": "Free-Flooding", "Fasteners": "Titanium Q-Turns", "Service": "Stern Access" }
+  },
+  Propeller_Hub: {
+    title: "Propeller Assembly",
+    category: "Propulsion System",
+    desc: "Magnetic-drive 4-blade folding auxiliary propulsion thruster for accelerated surface transit and counter-current thrust.",
+    params: { "Drive Type": "Hermetic Magnetic Coupler", "Thrust": "18.5 N @ 900 RPM", "Power": "35 W Peak", "Blades": "4-Blade Folding" }
+  },
+  Rudder_Tail_Fin: {
+    title: "Rudder / Tail Fin",
+    category: "Control Surfaces",
+    desc: "Vertical control fin with internal brushless magnetic actuator for directional yaw heading control during glides.",
+    params: { "Span": "280 mm", "Deflection": "± 25 deg", "Torque": "3.2 Nm Servo", "Heading Accuracy": "± 1.5 deg" }
+  },
+  GPS_Iridium_Antenna_Mast: {
+    title: "GPS / Iridium Antenna Mast",
+    category: "Surface Telemetry & Comms",
+    desc: "Vertical antenna mast elevated above ocean waves when the glider yaws and rolls on the surface to transmit data to satellites.",
+    params: { "Frequency": "1616-1626 MHz Iridium / L1 GPS", "Height": "420 mm Extension", "Telemetry": "Bidirectional SBD", "LED": "High-Intensity White Strobe" }
+  },
+  Control_Aileron_Left: {
+    title: "Control Ailerons",
+    category: "Control Surfaces",
+    desc: "Horizontal trailing edge trim control surfaces for vehicle pitch stabilization, passive roll dampening, and active glide trim.",
+    params: { "Actuation": "Micro Linear Servo", "Trim Range": "± 15 deg", "Response": "0.15 s full throw", "Material": "Anodized Aluminum" }
+  },
+  Battery_Main: {
+    title: "Sliding Pitch Battery Pack",
+    category: "Center-of-Mass Pitch Control",
+    desc: "Lithium-ion energy pack mounted on an active ballscrew linear actuator; shifts fore and aft along chassis rails to control glider pitch angle.",
+    params: { "Capacity": "14.8 V, 78 Ah (1.15 kWh)", "Mass": "18.5 kg (Movable)", "Actuator": "Precision Ballscrew / Stepper", "Pitch Range": "± 40 deg" }
+  },
+  Electronics_Main: {
+    title: "Electronics Bay / Flight Computer",
+    category: "Avionics & Autopilot",
+    desc: "Dual-redundant flight control computer executing autonomous mission scripts, dead-reckoning navigation, and data logging.",
+    params: { "Architecture": "Dual ARM Cortex-M7", "Storage": "64 GB Industrial NVMe", "Sensors": "3-Axis AHRS + Magnetometer", "Power Draw": "1.8 W Standby" }
+  },
+  Forward_Buoyancy_Bladder: {
+    title: "Forward Buoyancy Bladder (VBE)",
+    category: "Variable Buoyancy Engine",
+    desc: "Internal oil reservoir displacing mineral oil to external flexible bladders to change net vehicle buoyancy between dive and climb cycles.",
+    params: { "Volume Change": "± 450 cc Displacement", "Working Fluid": "Low-Viscosity Silicone Oil", "Cycles": "> 20,000 Depth Cycles", "Pressure": "150 bar rating" }
+  },
+  Ballast_Tank: {
+    title: "Aft Buoyancy Bladder & Pump (VBE)",
+    category: "Variable Buoyancy Engine",
+    desc: "High-pressure multi-piston hydraulic pump capable of pumping hydraulic oil against full ocean depth hydrostatic pressure.",
+    params: { "Pump Type": "Radial Piston / Brushless DC", "Max Pressure": "200 bar (2000 m)", "Flow Rate": "60 cc/min", "Efficiency": "74% Hydraulic" }
+  },
+  Internal_Rib_02: {
+    title: "Internal Structure / Ribs & Rails",
+    category: "Structural Backbone",
+    desc: "Circular CNC bulkheads and twin longitudinal frame rails supporting all modular payload chassis trays inside the pressure hull.",
+    params: { "Alloy": "6061-T6 Hard Coat", "Rail Diameter": "12.0 mm Polished", "Rib Spacing": "180 mm Centers", "Payload Bay": "Modular Slide-Out" }
+  },
+  Motor: {
+    title: "Propulsion Motor & Drivetrain",
+    category: "Auxiliary Drivetrain",
+    desc: "Brushless DC propulsion motor coupled through a 4:1 planetary reduction gearbox to the hermetic magnetic through-hull drive.",
+    params: { "Motor": "Custom Frameless BLDC", "Reduction": "4:1 Planetary", "Max Torque": "1.4 Nm", "Current": "2.8 A @ 14.8 V" }
+  }
+};
+
+// Component Definitions with Outward Radial Direction Vectors (Short 35-45px Leaders, Zero Line Crossing!)
+const LABELS_CONFIG = [
+  // --- EXTERIOR CALLOUTS ---
+  { id: "Nose_Cone", nodeName: "Hull_Nose", title: "NOSE CONE / BALLAST", sub: "Trim Fairing", mode: "explodeExterior", pinNum: 1, dir: { x: -1.0, y: -0.5 } },
+  { id: "CTD_Sensor", nodeName: "CTD_Sensor_Suite", title: "CTD SENSOR SUITE", sub: "Oceanographic Sensors", mode: "explodeExterior", pinNum: 2, dir: { x: -0.9, y: 0.5 } },
+  { id: "Pressure_Port", nodeName: "Pressure_Port", title: "PRIMARY PRESSURE PORT", sub: "Depth Transducer Tap", mode: "explodeExterior", pinNum: 3, dir: { x: -0.7, y: 0.8 } },
+  { id: "Wings_Detailed", nodeName: "Fin_Left", title: "WINGS (DETAILED)", sub: "Lifting Airfoils", mode: "explodeExterior", pinNum: 4, dir: { x: -0.9, y: -0.7 } },
+  { id: "Aluminum_Spars", nodeName: "Wing_Spar_Left", title: "ALUMINUM WING SPARS", sub: "7075-T6 Spar Tubes", mode: "explodeExterior", pinNum: 5, dir: { x: -0.6, y: 0.9 } },
+  { id: "Pressure_Hull", nodeName: "Hull_Main", title: "PRESSURE HULL", sub: "Carbon Isogrid Cylinder", mode: "explodeExterior", pinNum: 6, dir: { x: 0.1, y: -1.0 } },
+  { id: "Lifting_Bail", nodeName: "Lifting_Recovery_Bail", title: "LIFTING / RECOVERY BAIL", sub: "Deck Hoist Point", mode: "explodeExterior", pinNum: 7, dir: { x: 0.4, y: -1.0 } },
+  { id: "Tail_Cone", nodeName: "Hull_Rear", title: "AFT TAIL CONE", sub: "Stern Fairing", mode: "explodeExterior", pinNum: 8, dir: { x: 1.0, y: 0.4 } },
+  { id: "Propeller_Assembly", nodeName: "Propeller_Hub", title: "PROPELLER ASSEMBLY", sub: "Magnetic Auxiliary Thruster", mode: "explodeExterior", pinNum: 9, dir: { x: 1.0, y: 0.8 } },
+  { id: "Rudder_Tail_Fin", nodeName: "Rudder_Tail_Fin", title: "RUDDER / TAIL FIN", sub: "Yaw Stabilizer", mode: "explodeExterior", pinNum: 10, dir: { x: 0.7, y: -0.4 } },
+  { id: "Antenna_Mast", nodeName: "GPS_Iridium_Antenna_Mast", title: "GPS / IRIDIUM ANTENNA", sub: "Satellite Uplink", mode: "explodeExterior", pinNum: 11, dir: { x: -0.6, y: -1.0 } },
+  { id: "Control_Ailerons", nodeName: "Control_Aileron_Left", title: "CONTROL AILERONS", sub: "Horizontal Trim", mode: "explodeExterior", pinNum: 12, dir: { x: 0.9, y: 0.1 } },
+
+  // --- CUTAWAY & INTERIOR SUBSYSTEMS ---
+  { id: "Cut_Fwd_Bladder", nodeName: "Forward_Buoyancy_Bladder", title: "FORWARD VBE BLADDER", sub: "±450 cc Displacement", mode: "cutaway", pinNum: 1, dir: { x: -0.9, y: 0.6 } },
+  { id: "Cut_Internal_Frame", nodeName: "Internal_Rib_02", title: "INTERNAL CHASSIS RAILS", sub: "12mm 6061 Backbone", mode: "cutaway", pinNum: 2, dir: { x: -0.2, y: 0.9 } },
+  { id: "Cut_Battery_Pitch", nodeName: "Battery_Main", title: "SLIDING PITCH BATTERY", sub: "18.5 kg Movable Mass", mode: "cutaway", pinNum: 3, dir: { x: -0.2, y: -0.9 } },
+  { id: "Cut_Electronics", nodeName: "Electronics_Main", title: "ELECTRONICS BAY / AUTOPILOT", sub: "Dual ARM Cortex-M7", mode: "cutaway", pinNum: 4, dir: { x: 0.7, y: -0.8 } },
+  { id: "Cut_Aft_Bladder", nodeName: "Aft_Buoyancy_Bladder", title: "AFT BUOYANCY BLADDER", sub: "Variable Displacement", mode: "cutaway", pinNum: 5, dir: { x: 0.6, y: 0.8 } },
+  { id: "Cut_Motor_Drive", nodeName: "Motor", title: "PROPULSION MOTOR & DRIVE", sub: "Brushless DC Motor", mode: "cutaway", pinNum: 6, dir: { x: 1.0, y: -0.2 } }
+];
+
+// Reference CAD Explosion Displacements
+const EXTERIOR_EXPLOSION = {
+  Hull_Nose: new THREE.Vector3(1.35, 0, 0),
+  Nose_Cap: new THREE.Vector3(1.48, 0, 0),
+  CTD_Sensor_Suite: new THREE.Vector3(0.72, 0.05, 0),
+  Pressure_Port: new THREE.Vector3(0.42, 0.38, 0.10),
+  Fin_Left: new THREE.Vector3(0, 0, 1.25),
+  Wing_Spar_Left: new THREE.Vector3(0, 0, 0.70),
+  Fin_Right: new THREE.Vector3(0, 0, -1.25),
+  Wing_Spar_Right: new THREE.Vector3(0, 0, -0.70),
+  Lifting_Recovery_Bail: new THREE.Vector3(0, -0.65, 0),
+  Hull_Rear: new THREE.Vector3(-1.10, 0, 0),
+  Rear_Cap: new THREE.Vector3(-1.24, 0, 0),
+  Propeller_Assembly: new THREE.Vector3(-2.10, 0, 0),
+  PROP_ROTATION_AXIS: new THREE.Vector3(-2.10, 0, 0),
+  Propeller_Shaft: new THREE.Vector3(-1.75, 0, 0),
+  Fin_Top: new THREE.Vector3(-0.35, 0.75, 0),
+  Rudder_Tail_Fin: new THREE.Vector3(-0.35, 0.75, 0),
+  GPS_Iridium_Antenna_Mast: new THREE.Vector3(-0.35, 1.35, 0),
+  Antenna_Tip: new THREE.Vector3(-0.35, 1.50, 0),
+  Control_Aileron_Left: new THREE.Vector3(-0.30, 0, 0.40),
+  Control_Aileron_Right: new THREE.Vector3(-0.30, 0, -0.40),
+  Fin_Bottom: new THREE.Vector3(-0.25, -0.65, 0)
+};
+
+const INTERIOR_EXPLOSION = {
+  Battery_System: new THREE.Vector3(0, 0.75, 0),
+  Battery_Main: new THREE.Vector3(0, 0.75, 0),
+  Battery_Cell_Group_01: new THREE.Vector3(0.12, 0.82, 0),
+  Battery_Cell_Group_02: new THREE.Vector3(-0.12, 0.82, 0),
+  Pitch_Linear_Actuator: new THREE.Vector3(0, 0.92, 0),
+  Actuator_Module: new THREE.Vector3(0.35, 0.75, 0),
+  Buoyancy_System: new THREE.Vector3(0.15, -0.80, 0),
+  Ballast_Tank: new THREE.Vector3(0.35, -0.80, 0),
+  Forward_Buoyancy_Bladder: new THREE.Vector3(0.65, -0.80, 0),
+  Aft_Buoyancy_Bladder: new THREE.Vector3(-0.55, -0.80, 0),
+  Pump_Module: new THREE.Vector3(0.25, -0.90, 0.15),
+  Hydraulic_Module: new THREE.Vector3(0.20, -0.90, -0.15),
+  Electronics_System: new THREE.Vector3(-0.30, -0.70, 0.35),
+  Electronics_Main: new THREE.Vector3(-0.30, -0.70, 0.35),
+  Flight_Controller: new THREE.Vector3(-0.28, -0.78, 0.40),
+  Navigation_Controller: new THREE.Vector3(-0.38, -0.78, 0.40),
+  Power_Management: new THREE.Vector3(-0.45, -0.78, 0.30),
+  Propulsion_System: new THREE.Vector3(-1.10, 0, 0),
+  Motor: new THREE.Vector3(-1.10, 0, 0),
+  Gearbox: new THREE.Vector3(-1.25, 0, 0),
+  Drive_Shaft: new THREE.Vector3(-1.45, 0, 0)
+};
+
+// Dynamic Cutting Plane for Cutaway Views
+const hullCutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0.015);
+
+// 3D Assembly Trace Lines Group
+const traceLineGroup = new THREE.Group();
+scene.add(traceLineGroup);
+const traceLinePairs = [];
+
+function registerTraceLine(partName, originOffset = new THREE.Vector3(0, 0, 0)) {
+  const geom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+  const mat = new THREE.LineDashedMaterial({
+    color: appState.theme === 'blueprint' ? 0x0c2b44 : 0x38d9f5,
+    dashSize: 0.035,
+    gapSize: 0.025,
+    transparent: true,
+    opacity: 0.75
+  });
+  const line = new THREE.Line(geom, mat);
+  traceLineGroup.add(line);
+  traceLinePairs.push({ partName, originOffset, line });
+}
+
+function updateTraceLinesTheme() {
+  const col = appState.theme === 'blueprint' ? 0x0c2b44 : 0x38d9f5;
+  traceLinePairs.forEach(p => p.line.material.color.setHex(col));
+}
+
+function initTraceLines() {
+  traceLineGroup.clear();
+  traceLinePairs.length = 0;
+  if (appState.viewMode === 'explodeExterior') {
+    registerTraceLine('Hull_Nose');
+    registerTraceLine('CTD_Sensor_Suite');
+    registerTraceLine('Pressure_Port');
+    registerTraceLine('Fin_Left');
+    registerTraceLine('Wing_Spar_Left');
+    registerTraceLine('Fin_Right');
+    registerTraceLine('Wing_Spar_Right');
+    registerTraceLine('Lifting_Recovery_Bail');
+    registerTraceLine('Hull_Rear');
+    registerTraceLine('Propeller_Assembly');
+    registerTraceLine('Rudder_Tail_Fin');
+    registerTraceLine('GPS_Iridium_Antenna_Mast');
+    registerTraceLine('Control_Aileron_Left');
+  } else if (appState.viewMode === 'explodeCutaway') {
+    registerTraceLine('Battery_Main');
+    registerTraceLine('Electronics_Main');
+    registerTraceLine('Forward_Buoyancy_Bladder');
+    registerTraceLine('Ballast_Tank');
+    registerTraceLine('Motor');
+  }
+}
+
+function updateTraceLines() {
+  if (!glider || !appState.showTraceLines || appState.viewMode === 'exterior' || appState.viewMode === 'cutaway' || appState.viewMode === 'mission') {
+    traceLineGroup.visible = false;
+    return;
+  }
+  traceLineGroup.visible = true;
+
+  traceLinePairs.forEach(pair => {
+    const obj = glider.getObjectByName(pair.partName);
+    if (!obj || !obj.visible) {
+      pair.line.visible = false;
+      return;
+    }
+    const origLocal = originalPositions[pair.partName] || new THREE.Vector3();
+    const origWorld = origLocal.clone().add(pair.originOffset);
+    obj.parent.localToWorld(origWorld);
+    
+    const currWorld = new THREE.Vector3();
+    obj.getWorldPosition(currWorld);
+
+    if (currWorld.distanceTo(origWorld) < 0.04) {
+      pair.line.visible = false;
+      return;
+    }
+    pair.line.visible = true;
+
+    const positions = pair.line.geometry.attributes.position.array;
+    positions[0] = origWorld.x; positions[1] = origWorld.y; positions[2] = origWorld.z;
+    positions[3] = currWorld.x; positions[4] = currWorld.y; positions[5] = currWorld.z;
+    pair.line.geometry.attributes.position.needsUpdate = true;
+    pair.line.computeLineDistances();
+  });
+}
+
+// ==========================================
+// REALISTIC OCEAN CUTAWAY & HYDRODYNAMICS
+// ==========================================
+const waterMissionGroup = new THREE.Group();
+scene.add(waterMissionGroup);
+waterMissionGroup.visible = false;
+
+// 1. Ocean Volume Backdrop & Dynamic Diurnal Gradient Slices
+const oceanBackGeom = new THREE.PlaneGeometry(14, 3.4);
+const oceanCanvas = document.createElement('canvas');
+oceanCanvas.width = 128; oceanCanvas.height = 256;
+const oceanCtx = oceanCanvas.getContext('2d');
+const oceanTexture = new THREE.CanvasTexture(oceanCanvas);
+const oceanBackdrop = new THREE.Mesh(oceanBackGeom, new THREE.MeshBasicMaterial({ map: oceanTexture, side: THREE.DoubleSide }));
+oceanBackdrop.position.set(0, -0.3, -1.8);
+waterMissionGroup.add(oceanBackdrop);
+
+// Sky / Air horizon above the water surface with dynamic diurnal atmosphere
+const skyCanvas = document.createElement('canvas');
+skyCanvas.width = 128; skyCanvas.height = 256;
+const skyCtx = skyCanvas.getContext('2d');
+const skyTexture = new THREE.CanvasTexture(skyCanvas);
+const skyGeom = new THREE.PlaneGeometry(16, 2.6);
+const skyPlane = new THREE.Mesh(skyGeom, new THREE.MeshBasicMaterial({ map: skyTexture, side: THREE.DoubleSide }));
+skyPlane.position.set(0, 2.7, -1.8);
+waterMissionGroup.add(skyPlane);
+
+// Celestial Sun System (Golden Core Disk, Solar Corona, Radiance Aura)
+const sunGroup = new THREE.Group();
+const sunDisk = new THREE.Mesh(
+  new THREE.CircleGeometry(0.34, 32),
+  new THREE.MeshBasicMaterial({ color: 0xfff6cf, side: THREE.DoubleSide, transparent: true, opacity: 1.0 })
+);
+const sunCorona = new THREE.Mesh(
+  new THREE.RingGeometry(0.32, 0.72, 32),
+  new THREE.MeshBasicMaterial({ color: 0xffaa22, transparent: true, opacity: 0.65, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+);
+const sunAura = new THREE.Mesh(
+  new THREE.RingGeometry(0.68, 1.45, 32),
+  new THREE.MeshBasicMaterial({ color: 0xff7700, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+);
+sunGroup.add(sunDisk, sunCorona, sunAura);
+sunGroup.position.set(-4.0, 2.8, -1.78);
+waterMissionGroup.add(sunGroup);
+
+// Celestial Moon System (Silver Lunar Disk, Cool Halo, Ambient Lunar Aura)
+const moonGroup = new THREE.Group();
+const moonDisk = new THREE.Mesh(
+  new THREE.CircleGeometry(0.28, 32),
+  new THREE.MeshBasicMaterial({ color: 0xf1f5f9, side: THREE.DoubleSide, transparent: true, opacity: 1.0 })
+);
+const moonHalo = new THREE.Mesh(
+  new THREE.RingGeometry(0.26, 0.62, 32),
+  new THREE.MeshBasicMaterial({ color: 0x93c5fd, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+);
+const moonAura = new THREE.Mesh(
+  new THREE.RingGeometry(0.58, 1.25, 32),
+  new THREE.MeshBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+);
+moonGroup.add(moonDisk, moonHalo, moonAura);
+moonGroup.position.set(3.0, 2.8, -1.78);
+waterMissionGroup.add(moonGroup);
+
+// Celestial Starfield (240 glittering stars twinkling across nighttime sky)
+const STAR_COUNT = 240;
+const starGeom = new THREE.BufferGeometry();
+const starPositions = new Float32Array(STAR_COUNT * 3);
+for (let i = 0; i < STAR_COUNT; i++) {
+  starPositions[i * 3] = (Math.random() - 0.5) * 15.0;
+  starPositions[i * 3 + 1] = 1.48 + Math.random() * 2.38; // In sky plane above water line Y=1.4
+  starPositions[i * 3 + 2] = -1.76;
+}
+starGeom.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+const starMat = new THREE.PointsMaterial({
+  color: 0xffffff,
+  size: 0.035,
+  transparent: true,
+  opacity: 0.0,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false
+});
+const starsPoints = new THREE.Points(starGeom, starMat);
+waterMissionGroup.add(starsPoints);
+
+// Antenna Tip Navigation Strobe Beacon (Safety flasher during night navigation)
+const strobeLight = new THREE.PointLight(0x9df3ff, 0.0, 2.4, 1.8);
+waterMissionGroup.add(strobeLight);
+
+const strobeGeom = new THREE.SphereGeometry(0.04, 8, 8);
+const strobeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.0 });
+const strobeMesh = new THREE.Mesh(strobeGeom, strobeMat);
+waterMissionGroup.add(strobeMesh);
+
+// 2. Translucent Cutaway Water Volume Front Face
+const waterBlockGeom = new THREE.PlaneGeometry(14, 4.2);
+const waterBlockFront = new THREE.Mesh(waterBlockGeom, new THREE.MeshBasicMaterial({
+  color: 0x0a6699,
+  transparent: true,
+  opacity: 0.16,
+  side: THREE.DoubleSide
+}));
+waterBlockFront.position.set(0, -0.3, 1.6);
+waterMissionGroup.add(waterBlockFront);
+
+// 3. Cutaway Water Outline Boundary Frames (Technical Cyan Border)
+const frameGeom = new THREE.BufferGeometry().setFromPoints([
+  new THREE.Vector3(-7, 1.4, -1.8), new THREE.Vector3(7, 1.4, -1.8),
+  new THREE.Vector3(7, 1.4, 1.6), new THREE.Vector3(-7, 1.4, 1.6), new THREE.Vector3(-7, 1.4, -1.8),
+  new THREE.Vector3(-7, -2.0, -1.8), new THREE.Vector3(7, -2.0, -1.8), new THREE.Vector3(7, -2.0, 1.6),
+  new THREE.Vector3(-7, -2.0, 1.6), new THREE.Vector3(-7, -2.0, -1.8)
+]);
+const cutawayFrame = new THREE.Line(frameGeom, new THREE.LineBasicMaterial({ color: 0x38d9f5, transparent: true, opacity: 0.6 }));
+waterMissionGroup.add(cutawayFrame);
+
+// 4. Animated Water Surface with Wave Displacement
+const waterSurfaceGeom = new THREE.PlaneGeometry(14, 3.4, 48, 20);
+const waterSurfaceMat = new THREE.MeshStandardMaterial({
+  color: 0x22b2e0,
+  emissive: 0x0c4866,
+  roughness: 0.2,
+  metalness: 0.1,
+  transparent: true,
+  opacity: 0.75,
+  side: THREE.DoubleSide
+});
+const waterSurface = new THREE.Mesh(waterSurfaceGeom, waterSurfaceMat);
+waterSurface.rotation.x = -Math.PI / 2;
+waterSurface.position.set(0, 1.4, -0.1); // Y = 1.4 is Depth = 0m
+waterMissionGroup.add(waterSurface);
+
+// 5. Bathymetric Seabed Terrain at 1000m Depth
+const seabedGeom = new THREE.PlaneGeometry(14, 3.4, 32, 16);
+const sbPos = seabedGeom.attributes.position;
+for (let i = 0; i < sbPos.count; i++) {
+  const x = sbPos.getX(i);
+  const y = sbPos.getY(i);
+  sbPos.setZ(i, Math.sin(x * 1.2) * 0.10 + Math.cos(y * 1.5) * 0.06 + Math.sin(x * 3.2) * 0.03);
+}
+sbPos.needsUpdate = true;
+seabedGeom.computeVertexNormals();
+
+const oceanSeabed = new THREE.Mesh(seabedGeom, new THREE.MeshStandardMaterial({ color: 0x243b47, roughness: 0.9, metalness: 0.1 }));
+oceanSeabed.rotation.x = -Math.PI / 2;
+oceanSeabed.position.set(0, -2.0, -0.1);
+waterMissionGroup.add(oceanSeabed);
+
+// 6. Volumetric Sunlight Caustics / God Rays
+const causticsGroup = new THREE.Group();
+for (let i = 0; i < 5; i++) {
+  const beamGeom = new THREE.ConeGeometry(0.5 + i * 0.16, 3.8, 16);
+  const beamMat = new THREE.MeshBasicMaterial({
+    color: 0x7beeff,
+    transparent: true,
+    opacity: 0.08 + (i % 2) * 0.03,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const beam = new THREE.Mesh(beamGeom, beamMat);
+  beam.position.set(-4.0 + i * 2.0, -0.25, -0.3);
+  beam.rotation.z = -0.15 + (i % 2) * 0.08;
+  causticsGroup.add(beam);
+}
+waterMissionGroup.add(causticsGroup);
+
+// 7. Marine Snow / Micro-Plankton Particles
+const snowCount = 300;
+const snowGeom = new THREE.BufferGeometry();
+const snowPositions = new Float32Array(snowCount * 3);
+for (let i = 0; i < snowCount; i++) {
+  snowPositions[i * 3] = (Math.random() - 0.5) * 13;
+  snowPositions[i * 3 + 1] = -1.9 + Math.random() * 3.2;
+  snowPositions[i * 3 + 2] = -1.5 + Math.random() * 2.8;
+}
+snowGeom.setAttribute('position', new THREE.BufferAttribute(snowPositions, 3));
+const marineSnow = new THREE.Points(snowGeom, new THREE.PointsMaterial({
+  color: 0x9deeff,
+  size: 0.025,
+  transparent: true,
+  opacity: 0.6,
+  depthWrite: false
+}));
+waterMissionGroup.add(marineSnow);
+
+// 8. Sawtooth Trajectory Curve (Scaled for high-visibility)
+const sawtoothPoints = [
+  new THREE.Vector3(-4.6, 1.35, 0), // 1. Surface Fix & Satellite Uplink
+  new THREE.Vector3(-3.4, 1.05, 0), // 2. Dive broach
+  new THREE.Vector3(-2.0, 0.30, 0), // 3. Glide descent (200m)
+  new THREE.Vector3(-0.6, -0.70, 0), // 4. Glide descent (700m)
+  new THREE.Vector3(0.5, -1.78, 0),  // 5. Deep Apex 1000m Seabed Inflection
+  new THREE.Vector3(1.8, -0.70, 0),  // 6. Ascent climb (700m)
+  new THREE.Vector3(3.2, 0.30, 0),   // 7. Ascent climb (200m)
+  new THREE.Vector3(4.6, 1.35, 0)   // 8. Surface broach & telemetry download
+];
+const trajectoryCurve = new THREE.CatmullRomCurve3(sawtoothPoints, false, 'catmullrom', 0.5);
+
+const curveGeom = new THREE.BufferGeometry().setFromPoints(trajectoryCurve.getPoints(120));
+const trajectoryLine = new THREE.Line(curveGeom, new THREE.LineDashedMaterial({
+  color: 0x38d9f5,
+  dashSize: 0.12,
+  gapSize: 0.07,
+  transparent: true,
+  opacity: 0.85
+}));
+trajectoryLine.computeLineDistances();
+waterMissionGroup.add(trajectoryLine);
+
+// 9. Propeller Cavitation Wake & Helical Bubbles
+const bubbleCount = 140;
+const bubbleGeom = new THREE.SphereGeometry(0.016, 8, 8);
+const bubbleMat = new THREE.MeshStandardMaterial({
+  color: 0xe6fbff,
+  emissive: 0x38d9f5,
+  emissiveIntensity: 0.45,
+  roughness: 0.1,
+  metalness: 0.1,
+  transparent: true,
+  opacity: 0.8,
+  depthWrite: false
+});
+const cavitationBubbles = new THREE.InstancedMesh(bubbleGeom, bubbleMat, bubbleCount);
+waterMissionGroup.add(cavitationBubbles);
+
+const bubbleParticles = Array.from({ length: bubbleCount }, () => ({
+  age: Math.random() * 1.5,
+  life: 1.0 + Math.random() * 0.8,
+  angle: Math.random() * Math.PI * 2,
+  spinSpeed: 22 + Math.random() * 12,
+  radius: 0.02 + Math.random() * 0.05,
+  distBack: Math.random() * 1.4,
+  driftY: (Math.random() - 0.2) * 0.09
+}));
+
+// Vortex Wake Rings
+const vortexRingsGroup = new THREE.Group();
+const vortexRings = [];
+for (let i = 0; i < 6; i++) {
+  const ringGeom = new THREE.TorusGeometry(0.05 + i * 0.035, 0.008, 8, 28);
+  const ring = new THREE.Mesh(ringGeom, new THREE.MeshBasicMaterial({
+    color: 0x85ecff,
+    transparent: true,
+    opacity: 0.45 - i * 0.06,
+    depthWrite: false
+  }));
+  ring.rotation.y = Math.PI / 2;
+  vortexRingsGroup.add(ring);
+  vortexRings.push(ring);
+}
+waterMissionGroup.add(vortexRingsGroup);
+
+// 10. Satellite Transmission Pulse Rings (When Surfaced)
+const satelliteGroup = new THREE.Group();
+const satelliteRings = [];
+for (let i = 0; i < 4; i++) {
+  const satGeom = new THREE.RingGeometry(0.08 + i * 0.12, 0.09 + i * 0.12, 32);
+  const sRing = new THREE.Mesh(satGeom, new THREE.MeshBasicMaterial({
+    color: 0xffb82e,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.75 - i * 0.15,
+    depthWrite: false
+  }));
+  sRing.rotation.x = -Math.PI / 2;
+  satelliteGroup.add(sRing);
+  satelliteRings.push(sRing);
+}
+waterMissionGroup.add(satelliteGroup);
+
+// Build DOM Elements for Floating Engineering Badges (No Numbers)
+const labelContainer = document.getElementById('labelContainer');
+const svgLayer = document.getElementById('svgLayer');
+const labelElements = [];
+
+function buildLabelElements() {
+  labelContainer.innerHTML = '';
+  labelElements.length = 0;
+
+  LABELS_CONFIG.forEach(cfg => {
+    const badge = document.createElement('div');
+    badge.className = 'eng-badge';
+    badge.dataset.id = cfg.id;
+    badge.dataset.nodeName = cfg.nodeName;
+    badge.dataset.mode = cfg.mode;
+    badge.innerHTML = `
+      <span class="dot-indicator"></span>
+      <span class="title">${cfg.title}</span>
+    `;
+
+    badge.addEventListener('mouseenter', () => highlightPart(cfg.nodeName, true));
+    badge.addEventListener('mouseleave', () => highlightPart(cfg.nodeName, false));
+    badge.addEventListener('click', () => selectPart(cfg.nodeName));
+
+    labelContainer.appendChild(badge);
+    labelElements.push({ cfg, badge });
+  });
+}
+
+// 3D Spatial Position Helper (Uses accurate mesh bounding-box center)
+const _calcBox = new THREE.Box3();
+function getComponentWorldCenter(obj, targetVec) {
+  _calcBox.setFromObject(obj);
+  if (!_calcBox.isEmpty()) {
+    _calcBox.getCenter(targetVec);
+  } else {
+    obj.getWorldPosition(targetVec);
+  }
+}
+
+// Dynamic Non-Overlapping Label Updater (No Numbers, Direct Technical Names)
+function updateLabels() {
+  if (!glider || !appState.showLabels || appState.viewMode === 'mission') {
+    labelElements.forEach(item => {
+      item.badge.classList.remove('visible');
+    });
+    svgLayer.innerHTML = '';
+    return;
+  }
+
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const isBlueprint = appState.theme === 'blueprint';
+  const strokeCol = isBlueprint ? '#0c2b44' : '#38d9f5';
+  svgLayer.innerHTML = '';
+
+  const activeBadges = [];
+
+  labelElements.forEach(item => {
+    let shouldShow = false;
+    if (appState.viewMode === 'explodeExterior') {
+      shouldShow = item.cfg.mode === 'explodeExterior';
+    } else if (appState.viewMode === 'cutaway' || appState.viewMode === 'explodeCutaway') {
+      shouldShow = item.cfg.mode === 'cutaway';
+    } else if (appState.viewMode === 'exterior') {
+      shouldShow = item.cfg.mode === 'explodeExterior' && [
+        "Nose_Cone", "Wings_Detailed", "Pressure_Hull", "Tail_Cone", "Rudder_Tail_Fin", "Antenna_Mast"
+      ].includes(item.cfg.id);
+    }
+
+    if (!shouldShow) {
+      item.badge.classList.remove('visible');
+      return;
+    }
+
+    const obj = glider.getObjectByName(item.cfg.nodeName);
+    if (!obj || !obj.visible) {
+      item.badge.classList.remove('visible');
+      return;
+    }
+
+    const worldPos = new THREE.Vector3();
+    getComponentWorldCenter(obj, worldPos);
+
+    const projected = worldPos.clone().project(camera);
+    if (projected.z < -1 || projected.z > 1) {
+      item.badge.classList.remove('visible');
+      return;
+    }
+
+    const sx = (projected.x * 0.5 + 0.5) * w;
+    const sy = (-projected.y * 0.5 + 0.5) * h;
+
+    const offsetDist = 38; // Short leader line length
+    let targetX = sx + item.cfg.dir.x * offsetDist;
+    let targetY = sy + item.cfg.dir.y * offsetDist;
+
+    // Exclude left panel zone: [0..265, 0..390]
+    if (targetX < 265 && targetY < 390) {
+      targetX = 275;
+    }
+    // Exclude right drawer zone when open: [w-300..w, 0..390]
+    const drawerOpen = document.getElementById('rightDrawer').classList.contains('open');
+    if (drawerOpen && targetX > w - 300 && targetY < 390) {
+      targetX = w - 310;
+    }
+
+    // Keep within safe viewport bounds with badge width/height margins
+    targetY = Math.max(102, Math.min(h - 92, targetY));
+    targetX = Math.max(102, Math.min(w - 105, targetX));
+
+    activeBadges.push({
+      item,
+      sx, sy,
+      targetX, targetY,
+      width: 160, height: 26
+    });
+  });
+
+  // Anti-collision relaxation solver so no labels overlap
+  for (let iter = 0; iter < 18; iter++) {
+    for (let i = 0; i < activeBadges.length; i++) {
+      for (let j = i + 1; j < activeBadges.length; j++) {
+        const a = activeBadges[i];
+        const b = activeBadges[j];
+        const dx = b.targetX - a.targetX;
+        const dy = b.targetY - a.targetY;
+        const dist = Math.hypot(dx, dy);
+        const minDist = 44;
+        if (dist < minDist && dist > 0.01) {
+          const push = (minDist - dist) * 0.5;
+          const nx = (dx / dist) * push;
+          const ny = (dy / dist) * push;
+          a.targetX -= nx; a.targetY -= ny;
+          b.targetX += nx; b.targetY += ny;
+        }
+      }
+    }
+  }
+
+  activeBadges.forEach(a => {
+    a.item.badge.style.left = a.targetX + 'px';
+    a.item.badge.style.top = a.targetY + 'px';
+    a.item.badge.classList.add('visible');
+
+    // Short clean SVG leader line
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', `M ${a.sx} ${a.sy} L ${a.targetX} ${a.targetY}`);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', strokeCol);
+    path.setAttribute('stroke-width', '1.3');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('opacity', '0.75');
+    svgLayer.appendChild(path);
+
+    // Anchor dot on mesh
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', a.sx);
+    circle.setAttribute('cy', a.sy);
+    circle.setAttribute('r', '3');
+    circle.setAttribute('fill', strokeCol);
+    circle.setAttribute('stroke', '#ffffff');
+    circle.setAttribute('stroke-width', '1');
+    svgLayer.appendChild(circle);
+  });
+}
+
+// Component Selection & Highlighting
+function highlightPart(nodeName, on) {
+  if (!glider) return;
+  const obj = glider.getObjectByName(nodeName);
+  
+  labelElements.forEach(l => {
+    if (l.cfg.nodeName === nodeName) {
+      if (l.badge) l.badge.classList.toggle('active', on);
+    }
+  });
+
+  if (!obj) return;
+  obj.traverse(child => {
+    if (child.isMesh && child.material) {
+      if (on) {
+        if (!child.userData.originalEmissive) {
+          child.userData.originalEmissive = child.material.emissive ? child.material.emissive.clone() : new THREE.Color(0,0,0);
+        }
+        child.material.emissive = new THREE.Color(appState.theme === 'blueprint' ? 0x02669e : 0x38d9f5);
+        child.material.emissiveIntensity = 0.45;
+      } else {
+        if (child.userData.originalEmissive) {
+          child.material.emissive.copy(child.userData.originalEmissive);
+          child.material.emissiveIntensity = 0.0;
+        }
+      }
+    }
+  });
+}
+
+function selectPart(nodeName) {
+  appState.selectedPart = nodeName;
+  const db = PART_DATABASE[nodeName];
+  const rightDrawer = document.getElementById('rightDrawer');
+  const titleEl = document.getElementById('inspectorTitle');
+  const catEl = document.getElementById('inspectorCategory');
+  const descEl = document.getElementById('inspectorDesc');
+  const detailsEl = document.getElementById('inspectorDetails');
+
+  if (db) {
+    titleEl.textContent = db.title;
+    catEl.textContent = db.category;
+    descEl.textContent = db.desc;
+    detailsEl.innerHTML = Object.entries(db.params).map(([k, v]) => `
+      <div class="spec-param">
+        <span>${k}</span>
+        <b>${v}</b>
+      </div>
+    `).join('');
+  } else {
+    titleEl.textContent = nodeName;
+    catEl.textContent = "CAD Sub-Assembly";
+    descEl.textContent = "Autonomous glider precision engineering component.";
+    detailsEl.innerHTML = '';
+  }
+
+  // Smoothly slide in right drawer
+  rightDrawer.classList.add('open');
+
+  if (glider && appState.viewMode !== 'mission') {
+    const obj = glider.getObjectByName(nodeName);
+    if (obj) {
+      const targetWorld = new THREE.Vector3();
+      getComponentWorldCenter(obj, targetWorld);
+      controls.target.copy(targetWorld);
+    }
+  }
+  updateLabels();
+}
+
+document.getElementById('closeInspector').addEventListener('click', () => {
+  document.getElementById('rightDrawer').classList.remove('open');
+  appState.selectedPart = null;
+  updateLabels();
+});
+
+// Telemetry Rendering Helper (Strictly Page-Specific Data)
+function renderTelemetryCard(mode) {
+  const container = document.getElementById('telemetryContent');
+  const caption = document.getElementById('viewModeCaption');
+
+  if (mode === 'mission') {
+    caption.textContent = "Dive & Mission Telemetry";
+    container.innerHTML = `
+      <div class="telemetry-row"><span>Mission Clock</span><b id="liveMissionTime">Day 01, 06:00:00 UTC</b></div>
+      <div class="telemetry-row"><span>Diurnal State</span><b id="liveDiurnal">🌅 Dawn / Sunrise</b></div>
+      <div class="telemetry-row"><span>Dive Cycle</span><b id="liveDiveCycle">Cycle #01 of 5 (Day 1)</b></div>
+      <div class="telemetry-row"><span>Cycle Elapsed</span><b id="liveCycleElapsed">00h 00m / 04h 48m (0%)</b></div>
+      <div class="telemetry-row"><span>Depth</span><b id="liveDepth">0.0 m</b></div>
+      <div class="telemetry-row"><span>Glide Pitch</span><b id="livePitch">+35.0° (Srf)</b></div>
+      <div class="telemetry-row"><span>Propeller</span><b id="liveRpm">0 RPM</b></div>
+      <div class="telemetry-row"><span>Buoyancy (VBE)</span><b id="liveVbe">Neutral (0 cc)</b></div>
+      <div class="telemetry-row"><span>Comms Channel</span><b id="liveComms">Iridium SBD Uplink</b></div>
+    `;
+  } else if (mode === 'cutaway') {
+    caption.textContent = "Internal Subsystems";
+    container.innerHTML = `
+      <div class="telemetry-row"><span>Internal Volume</span><b>34.5 L Pressurized</b></div>
+      <div class="telemetry-row"><span>Pitch Battery</span><b>14.8V 78Ah (18.5 kg)</b></div>
+      <div class="telemetry-row"><span>Variable Buoyancy</span><b>± 450 cc Displacement</b></div>
+      <div class="telemetry-row"><span>Flight Avionics</span><b>Dual ARM Cortex-M7</b></div>
+      <div class="telemetry-row"><span>Hydraulic Pump</span><b>200 bar (2000 m)</b></div>
+      <div class="telemetry-row"><span>Internal Rails</span><b>Twin 12 mm 6061-T6</b></div>
+    `;
+  } else if (mode === 'explodeCutaway') {
+    caption.textContent = "Chassis Modular Disassembly";
+    container.innerHTML = `
+      <div class="telemetry-row"><span>Modular Tiers</span><b>4 Payload Bays</b></div>
+      <div class="telemetry-row"><span>Tier 1 (Top)</span><b>Sliding Battery Pack</b></div>
+      <div class="telemetry-row"><span>Tier 2 (Mid)</span><b>Autopilot Computer</b></div>
+      <div class="telemetry-row"><span>Tier 3 (Bottom)</span><b>Dual VBE Bladders</b></div>
+      <div class="telemetry-row"><span>Tier 4 (Stern)</span><b>Auxiliary Drivetrain</b></div>
+      <div class="telemetry-row"><span>Tier Separation</span><b id="telemetrySep">100% Exploded</b></div>
+    `;
+  } else if (mode === 'exterior') {
+    caption.textContent = "Operational Specification";
+    container.innerHTML = `
+      <div class="telemetry-row"><span>Displacement</span><b>52.0 L</b></div>
+      <div class="telemetry-row"><span>Hull Diameter</span><b>220 mm</b></div>
+      <div class="telemetry-row"><span>Total Length</span><b>1.80 m</b></div>
+      <div class="telemetry-row"><span>Wing Span</span><b>1.20 m</b></div>
+      <div class="telemetry-row"><span>Depth Rating</span><b>1000 m (100 bar)</b></div>
+      <div class="telemetry-row"><span>Operational Range</span><b>4000 km / 180 Days</b></div>
+    `;
+  } else {
+    // explodeExterior
+    caption.textContent = "Disassembly Telemetry";
+    container.innerHTML = `
+      <div class="telemetry-row"><span>Separated Units</span><b>12 Primary Modules</b></div>
+      <div class="telemetry-row"><span>Assembly Axes</span><b>Longitudinal & Lateral X/Z</b></div>
+      <div class="telemetry-row"><span>Pressure Hull</span><b>Carbon Fiber / 6061-T6</b></div>
+      <div class="telemetry-row"><span>Wing Span</span><b>1.20 m Removable Airfoils</b></div>
+      <div class="telemetry-row"><span>Bow Fairing</span><b>Polyurethane Lead-Trim</b></div>
+      <div class="telemetry-row"><span>Disassembly State</span><b id="telemetryState">100% Exploded</b></div>
+    `;
+  }
+}
+
+// View Modes Orchestration (Ensures Strictly Page-Specific Controls & Visibility)
+function setViewMode(mode) {
+  appState.viewMode = mode;
+
+  document.querySelectorAll('[data-view]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === mode);
+  });
+
+  const heading = document.getElementById('viewModeHeading');
+  const drawingTag = document.getElementById('drawingTag');
+  const statusEl = document.getElementById('telemetryStatus');
+  const statusDot = document.getElementById('statusDot');
+  const depthRuler = document.getElementById('depthRuler');
+  const missionCallout = document.getElementById('missionCallout');
+  const btnMissionCam = document.getElementById('btnMissionCam');
+  const btnMissionSpeed = document.getElementById('btnMissionSpeed');
+  const btnDiurnalMode = document.getElementById('btnDiurnalMode');
+  const btnSunsetPalette = document.getElementById('btnSunsetPalette');
+  const sunsetCustomizerPanel = document.getElementById('sunsetCustomizerPanel');
+  const btnTurntable = document.getElementById('btnTurntable');
+  const sliderPanel = document.getElementById('sliderPanel');
+  const sliderLabelText = document.getElementById('sliderLabelText');
+  const btnPlayExplosion = document.getElementById('btnPlayExplosion');
+  const btnTraceLines = document.getElementById('btnTraceLines');
+  const btnLabels = document.getElementById('btnLabels');
+  const rightDrawer = document.getElementById('rightDrawer');
+  const explodeSlider = document.getElementById('explodeSlider');
+  const sliderVal = document.getElementById('sliderVal');
+
+  // Always close right drawer and sunset customizer when switching modes to keep scene unblocked
+  rightDrawer.classList.remove('open');
+  if (sunsetCustomizerPanel) sunsetCustomizerPanel.style.display = 'none';
+  appState.selectedPart = null;
+
+  const titles = {
+    explodeExterior: "EXTERIOR EXPLODED",
+    cutaway: "CUTAWAY ARCHITECTURE",
+    explodeCutaway: "INTERIOR EXPLODED",
+    exterior: "NOMINAL ASSEMBLED",
+    mission: "HYDRODYNAMICS MISSION"
+  };
+  const tags = {
+    explodeExterior: "UNDERWATER GLIDER — CAD EXTERIOR DISASSEMBLY",
+    cutaway: "UNDERWATER GLIDER — INTERNAL CUTAWAY ARCHITECTURE",
+    explodeCutaway: "UNDERWATER GLIDER — INTERNAL SYSTEMS EXPLODED TIERS",
+    exterior: "UNDERWATER GLIDER — NOMINAL VEHICLE ASSEMBLED",
+    mission: ""
+  };
+
+  heading.textContent = titles[mode] || mode.toUpperCase();
+  drawingTag.textContent = tags[mode] || "";
+
+  renderTelemetryCard(mode);
+
+  if (mode === 'mission') {
+    statusEl.textContent = "1000M OCEAN SIMULATION";
+    statusDot.style.background = '#38d9f5';
+    depthRuler.classList.add('visible');
+    missionCallout.classList.add('visible');
+    drawingTag.style.display = 'none';
+
+    // Mission Controls
+    sliderPanel.style.display = 'flex';
+    sliderLabelText.textContent = "TRAJECTORY TIMELINE";
+    btnPlayExplosion.style.display = 'flex';
+    btnPlayExplosion.textContent = appState.missionPlaying ? '❚❚ Pause' : '▶ Play';
+    btnMissionCam.style.display = 'flex';
+    btnMissionSpeed.style.display = 'flex';
+    btnDiurnalMode.style.display = 'flex';
+    if (btnSunsetPalette) btnSunsetPalette.style.display = 'flex';
+    btnTurntable.style.display = 'none';
+    btnTraceLines.style.display = 'none';
+    btnLabels.style.display = 'none';
+
+    waterMissionGroup.visible = true;
+    document.querySelector('.engineering-grid').style.display = 'none';
+    setTheme('dark');
+
+    // Wide Cutaway Ocean Profile Camera
+    camera.position.set(0, -0.1, 6.4);
+    controls.target.set(0, -0.2, 0);
+    controls.update();
+
+  } else if (mode === 'cutaway') {
+    statusEl.textContent = "INTERNAL SUBSYSTEMS REVEALED";
+    statusDot.style.background = '#38d9f5';
+    depthRuler.classList.remove('visible');
+    missionCallout.classList.remove('visible');
+    drawingTag.style.display = 'block';
+
+    // Cutaway Section Controls
+    sliderPanel.style.display = 'flex';
+    sliderLabelText.textContent = "HULL CUT SECTION";
+    btnPlayExplosion.style.display = 'none'; // No autoplay explosion in assembled cutaway
+    btnMissionCam.style.display = 'none';
+    btnMissionSpeed.style.display = 'none';
+    btnDiurnalMode.style.display = 'none';
+    if (btnSunsetPalette) btnSunsetPalette.style.display = 'none';
+    btnTurntable.style.display = 'none';
+    btnTraceLines.style.display = 'none'; // No guidelines when assembled
+    btnLabels.style.display = 'flex';
+
+    waterMissionGroup.visible = false;
+    document.querySelector('.engineering-grid').style.display = 'block';
+    if (appState.theme === 'blueprint') setTheme('blueprint');
+
+    camera.position.set(1.3, 1.5, -2.5);
+    controls.target.set(0, 0, 0);
+    controls.update();
+
+    explodeSlider.value = Math.round(appState.hullCutProgress * 100);
+    sliderVal.textContent = Math.round(appState.hullCutProgress * 100) + '%';
+    updateHullCut(appState.hullCutProgress);
+
+  } else if (mode === 'exterior') {
+    statusEl.textContent = "OPERATIONAL FLIGHT SPECIFICATION";
+    statusDot.style.background = '#34d399';
+    depthRuler.classList.remove('visible');
+    missionCallout.classList.remove('visible');
+    drawingTag.style.display = 'block';
+
+    // Nominal Exterior Controls: Hide irrelevant explosion slider, show Turntable
+    sliderPanel.style.display = 'none';
+    btnMissionCam.style.display = 'none';
+    btnMissionSpeed.style.display = 'none';
+    btnDiurnalMode.style.display = 'none';
+    if (btnSunsetPalette) btnSunsetPalette.style.display = 'none';
+    btnTurntable.style.display = 'flex';
+    btnTraceLines.style.display = 'none';
+    btnLabels.style.display = 'flex';
+
+    waterMissionGroup.visible = false;
+    document.querySelector('.engineering-grid').style.display = 'block';
+    if (appState.theme === 'blueprint') setTheme('blueprint');
+
+    camera.position.set(1.4, 1.3, -2.4);
+    controls.target.set(0, 0, 0);
+    controls.update();
+
+  } else {
+    // explodeExterior and explodeCutaway
+    statusEl.textContent = mode === 'explodeExterior' ? "CAD DISASSEMBLY ACTIVE" : "4 PAYLOAD TIERS SEPARATED";
+    statusDot.style.background = '#34d399';
+    depthRuler.classList.remove('visible');
+    missionCallout.classList.remove('visible');
+    drawingTag.style.display = 'block';
+
+    // CAD Disassembly Controls
+    sliderPanel.style.display = 'flex';
+    sliderLabelText.textContent = mode === 'explodeExterior' ? "EXPLOSION DISTANCE" : "INTERNAL SEPARATION";
+    btnPlayExplosion.style.display = 'flex';
+    btnPlayExplosion.textContent = appState.autoPlay ? '❚❚ Pause' : '▶ Auto';
+    btnMissionCam.style.display = 'none';
+    btnMissionSpeed.style.display = 'none';
+    btnDiurnalMode.style.display = 'none';
+    if (btnSunsetPalette) btnSunsetPalette.style.display = 'none';
+    btnTurntable.style.display = 'none';
+    btnTraceLines.style.display = 'flex';
+    btnLabels.style.display = 'flex';
+
+    waterMissionGroup.visible = false;
+    document.querySelector('.engineering-grid').style.display = 'block';
+    if (appState.theme === 'blueprint') setTheme('blueprint');
+
+    if (mode === 'explodeExterior') {
+      camera.position.set(0.5, 2.2, -3.8);
+      controls.target.set(-0.1, 0, 0);
+    } else {
+      camera.position.set(0.5, 2.3, -3.7);
+      controls.target.set(0, 0, 0);
+    }
+    controls.update();
+
+    explodeSlider.value = Math.round(appState.explosionFactor * 100);
+    sliderVal.textContent = Math.round(appState.explosionFactor * 100) + '%';
+  }
+
+  configureVisibilityForMode(mode);
+  initTraceLines();
+
+  if (mode === 'explodeExterior' || mode === 'explodeCutaway') {
+    updateExplosion(1.0);
+  } else {
+    resetComponentPositions();
+  }
+  updateLabels();
+}
+
+// Hull Section Clipping Plane Controller (Interactive section cut for Cutaway mode)
+function updateHullCut(progress) {
+  // progress 0.0 -> y = 0.14 (hull closed)
+  // progress 0.5 -> y = 0.015 (half cylinder cut)
+  // progress 1.0 -> y = -0.06 (deep cutaway)
+  const cutY = 0.14 - progress * 0.20;
+  hullCutPlane.constant = cutY;
+}
+
+function configureVisibilityForMode(mode) {
+  if (!glider) return;
+
+  const interiorGroup = glider.getObjectByName('Interior');
+  const hullMain = glider.getObjectByName('Hull_Main');
+
+  if (mode === 'explodeExterior') {
+    if (interiorGroup) interiorGroup.visible = false;
+    glider.traverse(o => {
+      if (o.name && !o.name.startsWith('CAMERA') && !o.name.startsWith('LABEL_')) {
+        const isInternal = isInsideInterior(o);
+        if (!isInternal) o.visible = true;
+      }
+    });
+    if (hullMain) setHullClipping(false);
+
+  } else if (mode === 'cutaway') {
+    if (interiorGroup) interiorGroup.visible = true;
+    glider.traverse(o => {
+      if (o.name && !o.name.startsWith('CAMERA') && !o.name.startsWith('LABEL_')) {
+        o.visible = true;
+      }
+    });
+    if (hullMain) setHullClipping(true);
+
+  } else if (mode === 'explodeCutaway') {
+    if (interiorGroup) interiorGroup.visible = true;
+    glider.traverse(o => {
+      if (o.name && !o.name.startsWith('CAMERA') && !o.name.startsWith('LABEL_')) {
+        o.visible = true;
+      }
+    });
+    if (hullMain) setHullClipping(true);
+
+  } else if (mode === 'exterior' || mode === 'mission') {
+    if (interiorGroup) interiorGroup.visible = false;
+    glider.traverse(o => {
+      if (o.name && !o.name.startsWith('CAMERA') && !o.name.startsWith('LABEL_')) {
+        const isInternal = isInsideInterior(o);
+        o.visible = !isInternal;
+      }
+    });
+    if (hullMain) setHullClipping(false);
+  }
+}
+
+function isInsideInterior(obj) {
+  let curr = obj;
+  while (curr && curr !== glider) {
+    if (curr.name === 'Interior') return true;
+    curr = curr.parent;
+  }
+  return false;
+}
+
+function setHullClipping(enabled) {
+  const hull = glider.getObjectByName('Hull_Main');
+  if (!hull) return;
+  hull.traverse(child => {
+    if (child.isMesh && child.material) {
+      if (Array.isArray(child.material)) {
+        child.material.forEach(m => {
+          m.clippingPlanes = enabled ? [hullCutPlane] : null;
+          m.clipShadows = true;
+          m.side = THREE.DoubleSide;
+        });
+      } else {
+        child.material.clippingPlanes = enabled ? [hullCutPlane] : null;
+        child.material.clipShadows = true;
+        child.material.side = THREE.DoubleSide;
+      }
+    }
+  });
+}
+
+// Mechanical Explosion Position Solver
+function updateExplosion(lerpAlpha = 0.1) {
+  if (!glider) return;
+
+  const mode = appState.viewMode;
+  const factor = appState.explosionFactor;
+
+  let targetVectors = {};
+  if (mode === 'explodeExterior') {
+    targetVectors = EXTERIOR_EXPLOSION;
+  } else if (mode === 'explodeCutaway') {
+    targetVectors = INTERIOR_EXPLOSION;
+  } else {
+    targetVectors = {};
+  }
+
+  glider.traverse(obj => {
+    if (!obj.name) return;
+    const base = originalPositions[obj.name];
+    if (!base) return;
+
+    const offset = targetVectors[obj.name];
+    let destination = base.clone();
+
+    if (offset && (mode === 'explodeExterior' || mode === 'explodeCutaway')) {
+      destination.add(offset.clone().multiplyScalar(factor));
+    }
+
+    if (lerpAlpha >= 1.0) {
+      obj.position.copy(destination);
+    } else {
+      obj.position.lerp(destination, lerpAlpha);
+    }
+  });
+
+  updateTraceLines();
+
+  // Update telemetry label if present
+  const stateEl = document.getElementById('telemetryState');
+  if (stateEl) stateEl.textContent = Math.round(factor * 100) + '% Exploded';
+  const sepEl = document.getElementById('telemetrySep');
+  if (sepEl) sepEl.textContent = Math.round(factor * 100) + '% Exploded';
+}
+
+function resetComponentPositions() {
+  if (!glider) return;
+  glider.traverse(obj => {
+    if (obj.name && originalPositions[obj.name]) {
+      obj.position.copy(originalPositions[obj.name]);
+    }
+  });
+  updateTraceLines();
+}
+
+// 3D Model Loading
+let glider = null;
+let propAxis = null;
+const originalPositions = {};
+const originalRotations = {};
+
+const gltfLoader = new GLTFLoader();
+gltfLoader.load(
+  './glider3.glb',
+  gltf => {
+    glider = gltf.scene;
+    scene.add(glider);
+
+    glider.traverse(obj => {
+      if (obj.name) {
+        originalPositions[obj.name] = obj.position.clone();
+        originalRotations[obj.name] = obj.rotation.clone();
+      }
+      if (obj.isMesh) {
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+        if (obj.material) {
+          obj.material.roughness = Math.max(obj.material.roughness, 0.25);
+        }
+      }
+    });
+
+    propAxis = glider.getObjectByName('PROP_ROTATION_AXIS');
+
+    initTraceLines();
+    buildLabelElements();
+    setViewMode('explodeExterior');
+
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.remove(), 450);
+  },
+  undefined,
+  err => {
+    console.error('Failed to load glider3.glb:', err);
+    document.querySelector('#loadingOverlay p').textContent = 'GLB load error. Ensure local HTTP server is running.';
+  }
+);
+
+// UI Event Handlers
+document.querySelectorAll('[data-view]').forEach(btn => {
+  btn.addEventListener('click', () => setViewMode(btn.dataset.view));
+});
+
+const explodeSlider = document.getElementById('explodeSlider');
+const sliderVal = document.getElementById('sliderVal');
+
+explodeSlider.addEventListener('input', e => {
+  const val = parseFloat(e.target.value) / 100;
+  if (appState.viewMode === 'mission') {
+    appState.missionProgress = val;
+    sliderVal.textContent = Math.round(val * 100) + '%';
+  } else if (appState.viewMode === 'cutaway') {
+    appState.hullCutProgress = val;
+    sliderVal.textContent = Math.round(val * 100) + '%';
+    updateHullCut(val);
+  } else {
+    appState.explosionFactor = val;
+    sliderVal.textContent = Math.round(val * 100) + '%';
+  }
+});
+
+const btnPlay = document.getElementById('btnPlayExplosion');
+btnPlay.addEventListener('click', () => {
+  if (appState.viewMode === 'mission') {
+    appState.missionPlaying = !appState.missionPlaying;
+    btnPlay.classList.toggle('active', appState.missionPlaying);
+    btnPlay.textContent = appState.missionPlaying ? '❚❚ Pause' : '▶ Play';
+  } else {
+    appState.autoPlay = !appState.autoPlay;
+    btnPlay.classList.toggle('active', appState.autoPlay);
+    btnPlay.textContent = appState.autoPlay ? '❚❚ Pause' : '▶ Auto';
+  }
+});
+
+const btnMissionCam = document.getElementById('btnMissionCam');
+btnMissionCam.addEventListener('click', () => {
+  appState.missionCamMode = appState.missionCamMode === 'wide' ? 'chase' : 'wide';
+  btnMissionCam.textContent = appState.missionCamMode === 'wide' ? 'Cam: Wide Cutaway' : 'Cam: 3D Chase';
+  if (appState.missionCamMode === 'wide') {
+    camera.position.set(0, -0.1, 6.4);
+    controls.target.set(0, -0.2, 0);
+    controls.update();
+  }
+});
+
+const MISSION_SPEEDS = [1.0, 2.0, 5.0, 10.0, 25.0];
+let missionSpeedIdx = 0;
+const btnMissionSpeed = document.getElementById('btnMissionSpeed');
+btnMissionSpeed.addEventListener('click', () => {
+  missionSpeedIdx = (missionSpeedIdx + 1) % MISSION_SPEEDS.length;
+  appState.missionSpeed = MISSION_SPEEDS[missionSpeedIdx];
+  btnMissionSpeed.textContent = `Speed: ${appState.missionSpeed}x`;
+});
+
+const DIURNAL_MODES = [
+  { id: 'auto', label: '⏱ Diurnal: Auto' },
+  { id: 'noon', label: '☀️ Force Noon' },
+  { id: 'sunset', label: '🌅 Force Sunset' },
+  { id: 'night', label: '🌙 Force Night' }
+];
+let diurnalModeIdx = 0;
+const btnDiurnalMode = document.getElementById('btnDiurnalMode');
+btnDiurnalMode.addEventListener('click', () => {
+  diurnalModeIdx = (diurnalModeIdx + 1) % DIURNAL_MODES.length;
+  appState.diurnalOverride = DIURNAL_MODES[diurnalModeIdx].id;
+  btnDiurnalMode.textContent = DIURNAL_MODES[diurnalModeIdx].label;
+});
+
+const btnTurntable = document.getElementById('btnTurntable');
+btnTurntable.addEventListener('click', () => {
+  appState.turntable = !appState.turntable;
+  btnTurntable.classList.toggle('active', appState.turntable);
+  btnTurntable.textContent = appState.turntable ? '❚❚ Stop Orbit' : '▶ 360° Orbit';
+});
+
+const btnTraceLines = document.getElementById('btnTraceLines');
+btnTraceLines.addEventListener('click', () => {
+  appState.showTraceLines = !appState.showTraceLines;
+  btnTraceLines.classList.toggle('active', appState.showTraceLines);
+  btnTraceLines.textContent = appState.showTraceLines ? 'Guidelines: ON' : 'Guidelines: OFF';
+});
+
+// Labels Toggle: ON / OFF
+const btnLabels = document.getElementById('btnLabels');
+btnLabels.addEventListener('click', () => {
+  appState.showLabels = !appState.showLabels;
+  btnLabels.classList.toggle('active', appState.showLabels);
+  btnLabels.textContent = appState.showLabels ? 'Labels: ON' : 'Labels: OFF';
+  updateLabels();
+});
+
+document.getElementById('btnTheme').addEventListener('click', () => {
+  setTheme(appState.theme === 'blueprint' ? 'dark' : 'blueprint');
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  if (appState.viewMode === 'mission') {
+    appState.missionProgress = 0.0;
+    appState.missionCycleIndex = 1;
+    appState.diurnalOverride = 'auto';
+    diurnalModeIdx = 0;
+    btnDiurnalMode.textContent = '⏱ Diurnal: Auto';
+    camera.position.set(0, -0.1, 6.4);
+    controls.target.set(0, -0.2, 0);
+    controls.update();
+  } else if (appState.viewMode === 'cutaway') {
+    camera.position.set(1.3, 1.5, -2.5);
+    controls.target.set(0, 0, 0);
+    controls.update();
+    appState.hullCutProgress = 0.5;
+    explodeSlider.value = 50;
+    sliderVal.textContent = '50%';
+    updateHullCut(0.5);
+  } else {
+    camera.position.set(1.5, 1.9, -2.7);
+    controls.target.set(0, 0, 0);
+    controls.update();
+    appState.explosionFactor = 1.0;
+    explodeSlider.value = 100;
+    sliderVal.textContent = '100%';
+    setViewMode(appState.viewMode);
+  }
+});
+
+// Sunset Customizer Interactive Event Listeners
+const btnSunsetPalette = document.getElementById('btnSunsetPalette');
+const sunsetCustomizerPanel = document.getElementById('sunsetCustomizerPanel');
+const btnCloseSunsetPanel = document.getElementById('btnCloseSunsetPanel');
+
+if (btnSunsetPalette && sunsetCustomizerPanel) {
+  btnSunsetPalette.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isShown = sunsetCustomizerPanel.style.display === 'block';
+    sunsetCustomizerPanel.style.display = isShown ? 'none' : 'block';
+  });
+  btnCloseSunsetPanel.addEventListener('click', (e) => {
+    e.stopPropagation();
+    sunsetCustomizerPanel.style.display = 'none';
+  });
+}
+
+document.querySelectorAll('.sunset-preset-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.sunset-preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const presetId = btn.dataset.preset;
+    appState.sunsetPreset = presetId;
+    const p = SUNSET_PRESETS[presetId];
+    if (p && btnSunsetPalette) {
+      btnSunsetPalette.textContent = `🌇 Sunset: ${p.name} ▾`;
+    }
+  });
+});
+
+const sunsetHorizonWarmth = document.getElementById('sunsetHorizonWarmth');
+const sunsetSkyTint = document.getElementById('sunsetSkyTint');
+const sunsetWaterTint = document.getElementById('sunsetWaterTint');
+const sunsetFlareRadiance = document.getElementById('sunsetFlareRadiance');
+
+const valHorizonWarmth = document.getElementById('valHorizonWarmth');
+const valSkyTint = document.getElementById('valSkyTint');
+const valWaterTint = document.getElementById('valWaterTint');
+const valFlareRadiance = document.getElementById('valFlareRadiance');
+
+function updateSunsetSliders() {
+  appState.sunsetSliders = {
+    horizon: parseInt(sunsetHorizonWarmth.value),
+    skyTint: parseInt(sunsetSkyTint.value),
+    waterTint: parseInt(sunsetWaterTint.value),
+    flare: parseInt(sunsetFlareRadiance.value)
+  };
+  if (valHorizonWarmth) valHorizonWarmth.textContent = `${sunsetHorizonWarmth.value}%`;
+  if (valSkyTint) valSkyTint.textContent = `${sunsetSkyTint.value}%`;
+  if (valWaterTint) valWaterTint.textContent = `${sunsetWaterTint.value}%`;
+  if (valFlareRadiance) valFlareRadiance.textContent = `${sunsetFlareRadiance.value}%`;
+}
+
+if (sunsetHorizonWarmth) {
+  [sunsetHorizonWarmth, sunsetSkyTint, sunsetWaterTint, sunsetFlareRadiance].forEach(el => {
+    el.addEventListener('input', updateSunsetSliders);
+  });
+}
+
+const btnPreviewSunset = document.getElementById('btnPreviewSunset');
+if (btnPreviewSunset) {
+  btnPreviewSunset.addEventListener('click', (e) => {
+    e.stopPropagation();
+    appState.diurnalOverride = 'sunset';
+    diurnalModeIdx = 2;
+    btnDiurnalMode.textContent = '🌅 Force Sunset';
+  });
+}
+
+const btnResetSunset = document.getElementById('btnResetSunset');
+if (btnResetSunset) {
+  btnResetSunset.addEventListener('click', (e) => {
+    e.stopPropagation();
+    sunsetHorizonWarmth.value = 75;
+    sunsetSkyTint.value = 60;
+    sunsetWaterTint.value = 50;
+    sunsetFlareRadiance.value = 100;
+    updateSunsetSliders();
+    const goldenBtn = document.querySelector('.sunset-preset-btn[data-preset="golden"]');
+    if (goldenBtn) goldenBtn.click();
+  });
+}
+
+// Raycasting for Direct 3D Mesh Click/Hover
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+window.addEventListener('pointermove', e => {
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+  if (!glider || appState.viewMode === 'mission') return;
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(glider.children, true);
+
+  let hitNode = null;
+  for (let hit of intersects) {
+    if (hit.object.visible && hit.object.name && !hit.object.name.startsWith('LABEL_')) {
+      hitNode = hit.object.name;
+      break;
+    }
+  }
+
+  if (hitNode !== appState.hoveredPart) {
+    if (appState.hoveredPart) highlightPart(appState.hoveredPart, false);
+    appState.hoveredPart = hitNode;
+    if (appState.hoveredPart) highlightPart(appState.hoveredPart, true);
+  }
+});
+
+window.addEventListener('click', e => {
+  if (e.target.closest('.hud-panel') || e.target.closest('.hotspot-pin') || e.target.closest('.eng-badge')) return;
+  if (!glider || appState.viewMode === 'mission') return;
+
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(glider.children, true);
+
+  for (let hit of intersects) {
+    if (hit.object.visible && hit.object.name && !hit.object.name.startsWith('LABEL_')) {
+      selectPart(hit.object.name);
+      break;
+    }
+  }
+});
+
+// Window Resize Handler
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  updateLabels();
+});
+
+// ==========================================
+// DIURNAL ENGINE & MISSION CYCLE TIME ANALYSIS
+// ==========================================
+// Oceanographic Glider Profile Analysis:
+// - Standard 0m -> 1,000m sawtooth dive profile
+// - Mean vertical descent/ascent rate: w ~ 0.14 m/s (14 cm/s)
+// - Horizontal forward velocity: U ~ 0.35 m/s (0.7 knots)
+// - Descent duration: ~7,140 s (~1.98 hours)
+// - 1,000m Seabed Inflection & VBE oil pumping: ~780 s (~0.22 hours)
+// - Ascent duration: ~7,140 s (~1.98 hours)
+// - Surface telemetry, GPS fix & satellite upload: ~1,500 s (~0.42 hours)
+// TOTAL 1,000m DIVE CYCLE TIME: ~4.8 hours (4h 48m) = 17,280 seconds
+// CYCLES PER 24-HOUR SOLAR DAY: 24.0 / 4.8 = EXACTLY 5.0 DIVE CYCLES PER DAY
+
+// Customized Sunset Optics & Rayleigh Scattering Presets
+const SUNSET_PRESETS = {
+  golden: {
+    id: 'golden',
+    name: 'Cinematic Gold',
+    icon: '✨',
+    badge: 'Molten Gold & Sapphire Sea',
+    skyTop: 0x0a1c3d,    // Deep evening sapphire
+    skyMid: 0x7a365d,    // Dusky orchid-rose
+    skyHoriz: 0xffa442,  // Molten amber gold
+    oceanTop: 0x165a7e,  // Deep sapphire-teal surface
+    oceanPhotic: 0x0d3856, // Deep marine navy
+    oceanMeso: 0x061e33,   // Mesopelagic navy abyss
+    oceanSeabed: 0x020c18, // Abyssal seabed
+    waterColor: 0x185b7e, // Reflective oceanic blue
+    waterEmissive: 0x072236, // Deep cyan oceanic glow
+    bgColor: 0x071224,   // Atmospheric indigo
+    keyColor: 0xffbe68,  // Warm golden sun rays
+    keyIntensity: 2.5,
+    hemiSky: 0xff9e54,   // Warm golden-peach sky light
+    hemiGround: 0x03192d,// Deep ocean bounce
+    sunCore: 0xfffaee,   // Brilliant incandescent core
+    sunCorona: 0xff9e38, // Golden apricot corona
+    sunAura: 0xff7020
+  },
+  crimson: {
+    id: 'crimson',
+    name: 'Pacific Crimson',
+    icon: '🌺',
+    badge: 'Radiant Magenta & Coral Reef',
+    skyTop: 0x130a2a,    // Deep violet zenith
+    skyMid: 0x9e285a,    // Radiant raspberry magenta
+    skyHoriz: 0xff7347,  // Luminous coral peach
+    oceanTop: 0x14496b,  // Deep oceanic slate-teal
+    oceanPhotic: 0x0b2d47,
+    oceanMeso: 0x051a2d,
+    oceanSeabed: 0x020a14,
+    waterColor: 0x164c6e,
+    waterEmissive: 0x061d30,
+    bgColor: 0x0d071a,
+    keyColor: 0xff8c54,
+    keyIntensity: 2.3,
+    hemiSky: 0xff7052,
+    hemiGround: 0x021626,
+    sunCore: 0xfff4e6,
+    sunCorona: 0xff6b38,
+    sunAura: 0xe63b25
+  },
+  nordic: {
+    id: 'nordic',
+    name: 'Nordic Pastel',
+    icon: '❄️',
+    badge: 'Blush Rose & Arctic Turquoise',
+    skyTop: 0x0e2038,    // Twilight steel blue
+    skyMid: 0x82577c,    // Soft blush lavender-rose
+    skyHoriz: 0xfcb08a,  // Warm pale honey-rose
+    oceanTop: 0x1b6d85,  // Crystalline sub-arctic cyan-navy
+    oceanPhotic: 0x10455a,
+    oceanMeso: 0x072738,
+    oceanSeabed: 0x02121d,
+    waterColor: 0x1d7088,
+    waterEmissive: 0x082c3c,
+    bgColor: 0x081324,
+    keyColor: 0xffd9a6,
+    keyIntensity: 2.2,
+    hemiSky: 0xfcae92,
+    hemiGround: 0x041e2e,
+    sunCore: 0xfffaed,
+    sunCorona: 0xfca065,
+    sunAura: 0xeb7c55
+  },
+  tropical: {
+    id: 'tropical',
+    name: 'Maldivian Dusk',
+    icon: '🌴',
+    badge: 'Royal Amethyst & Tangerine',
+    skyTop: 0x0a1236,    // Deep ultramarine
+    skyMid: 0x6e2568,    // Vibrant royal amethyst
+    skyHoriz: 0xff8533,  // Luminous tangerine
+    oceanTop: 0x11506b,  // Deep tropical teal
+    oceanPhotic: 0x0a334a,
+    oceanMeso: 0x051c2e,
+    oceanSeabed: 0x020c18,
+    waterColor: 0x135878,
+    waterEmissive: 0x052233,
+    bgColor: 0x09071c,
+    keyColor: 0xffa44d,
+    keyIntensity: 2.4,
+    hemiSky: 0xff8240,
+    hemiGround: 0x03182b,
+    sunCore: 0xfff6ea,
+    sunCorona: 0xff8828,
+    sunAura: 0xe64a15
+  }
+};
+
+function getActiveSunsetKeyframe() {
+  const p = SUNSET_PRESETS[appState.sunsetPreset] || SUNSET_PRESETS.golden;
+  const s = appState.sunsetSliders || { horizon: 75, skyTint: 60, waterTint: 50, flare: 100 };
+  
+  const horizFactor = s.horizon / 75.0;
+  const skyHorizColor = new THREE.Color(p.skyHoriz).multiplyScalar(Math.min(1.35, horizFactor));
+  
+  const midFactor = s.skyTint / 60.0;
+  const skyMidColor = new THREE.Color(p.skyMid).multiplyScalar(Math.min(1.35, midFactor));
+  
+  const waterFactor = s.waterTint / 50.0;
+  const waterColor = new THREE.Color(p.waterColor).multiplyScalar(Math.min(1.3, waterFactor));
+  const oceanTopColor = new THREE.Color(p.oceanTop).multiplyScalar(Math.min(1.3, waterFactor));
+
+  return {
+    hour: 18.25,
+    skyTop: p.skyTop,
+    skyMid: skyMidColor,
+    skyHoriz: skyHorizColor,
+    oceanTop: oceanTopColor,
+    oceanPhotic: p.oceanPhotic,
+    oceanMeso: p.oceanMeso,
+    oceanSeabed: p.oceanSeabed,
+    waterColor: waterColor,
+    waterEmissive: p.waterEmissive,
+    bgColor: p.bgColor,
+    keyColor: p.keyColor,
+    keyIntensity: p.keyIntensity,
+    hemiSky: p.hemiSky,
+    hemiGround: p.hemiGround,
+    causticsOpacity: 0.05,
+    starOpacity: 0.15,
+    sunOpacity: 1.0,
+    moonOpacity: 0.1,
+    biolumIntensity: 0.15,
+    sunCore: p.sunCore,
+    sunCorona: p.sunCorona,
+    sunAura: p.sunAura,
+    phase: 'sunset',
+    phaseName: `Sunset (${p.name})`,
+    icon: '🌇',
+    badgeClass: 'solar-sunset'
+  };
+}
+
+const DIURNAL_KEYFRAMES = [
+  // 00:00 Midnight (Deep night, silver moonlit ocean)
+  {
+    hour: 0.0,
+    skyTop: 0x02050e, skyMid: 0x060f22, skyHoriz: 0x0c1c36,
+    oceanTop: 0x0a1e36, oceanPhotic: 0x051324, oceanMeso: 0x030c17, oceanSeabed: 0x010307,
+    waterColor: 0x08192e, waterEmissive: 0x020710,
+    bgColor: 0x01050e,
+    keyColor: 0x7da4d4, keyIntensity: 0.85,
+    hemiSky: 0x0e1c30, hemiGround: 0x010408,
+    causticsOpacity: 0.0,
+    starOpacity: 0.90,
+    sunOpacity: 0.0,
+    moonOpacity: 1.0,
+    biolumIntensity: 0.85,
+    sunCore: 0xffffff, sunCorona: 0xffffff, sunAura: 0xffffff,
+    phase: 'night', phaseName: 'Midnight (Moonlit)', icon: '🌙', badgeClass: 'solar-night'
+  },
+  // 04:45 Astronomical Dawn (First twilight, deep purple horizon)
+  {
+    hour: 4.75,
+    skyTop: 0x050d20, skyMid: 0x141838, skyHoriz: 0x362140,
+    oceanTop: 0x0f2a48, oceanPhotic: 0x071b30, oceanMeso: 0x030e1c, oceanSeabed: 0x01040a,
+    waterColor: 0x0d2238, waterEmissive: 0x030a14,
+    bgColor: 0x060b1c,
+    keyColor: 0x8aa5d6, keyIntensity: 0.95,
+    hemiSky: 0x182240, hemiGround: 0x020612,
+    causticsOpacity: 0.0,
+    starOpacity: 0.65,
+    sunOpacity: 0.0,
+    moonOpacity: 0.75,
+    biolumIntensity: 0.65,
+    sunCore: 0xfffaee, sunCorona: 0xffbe68, sunAura: 0xff9033,
+    phase: 'dawn', phaseName: 'Nautical Dawn', icon: '🌌', badgeClass: 'solar-dawn'
+  },
+  // 06:15 Golden Sunrise (Sun rises over horizon, amber-coral rays)
+  {
+    hour: 6.25,
+    skyTop: 0x12254d, skyMid: 0x743956, skyHoriz: 0xffaa66,
+    oceanTop: 0x186a87, oceanPhotic: 0x0f405c, oceanMeso: 0x07253b, oceanSeabed: 0x02101e,
+    waterColor: 0x1d6d8d, waterEmissive: 0x07283c,
+    bgColor: 0x091629,
+    keyColor: 0xffbd7a, keyIntensity: 2.4,
+    hemiSky: 0xffad6e, hemiGround: 0x041e33,
+    causticsOpacity: 0.05,
+    starOpacity: 0.10,
+    sunOpacity: 1.0,
+    moonOpacity: 0.0,
+    biolumIntensity: 0.20,
+    sunCore: 0xfffaee, sunCorona: 0xffbe5c, sunAura: 0xff9438,
+    phase: 'dawn', phaseName: 'Dawn / Sunrise', icon: '🌅', badgeClass: 'solar-dawn'
+  },
+  // 08:30 Morning Sunlight (Vibrant clear morning)
+  {
+    hour: 8.5,
+    skyTop: 0x185ca8, skyMid: 0x4fa2eb, skyHoriz: 0xb5e2ff,
+    oceanTop: 0x2bc4e8, oceanPhotic: 0x1486af, oceanMeso: 0x094c74, oceanSeabed: 0x021324,
+    waterColor: 0x1faed6, waterEmissive: 0x0b435c,
+    bgColor: 0x021424,
+    keyColor: 0xfff4dc, keyIntensity: 3.1,
+    hemiSky: 0x9be8ff, hemiGround: 0x031c33,
+    causticsOpacity: 0.12,
+    starOpacity: 0.0,
+    sunOpacity: 1.0,
+    moonOpacity: 0.0,
+    biolumIntensity: 0.0,
+    sunCore: 0xffffff, sunCorona: 0xffe488, sunAura: 0xffb844,
+    phase: 'day', phaseName: 'Morning Sun', icon: '☀️', badgeClass: 'solar-day'
+  },
+  // 12:00 Solar Noon (Maximum zenith brilliance, bright caustics)
+  {
+    hour: 12.0,
+    skyTop: 0x1558a6, skyMid: 0x469af0, skyHoriz: 0xbce4ff,
+    oceanTop: 0x38d9f5, oceanPhotic: 0x158eb8, oceanMeso: 0x0a4f78, oceanSeabed: 0x021324,
+    waterColor: 0x22b2e0, waterEmissive: 0x0c4866,
+    bgColor: 0x021626,
+    keyColor: 0xfffaed, keyIntensity: 3.5,
+    hemiSky: 0x9deeff, hemiGround: 0x031c33,
+    causticsOpacity: 0.16,
+    starOpacity: 0.0,
+    sunOpacity: 1.0,
+    moonOpacity: 0.0,
+    biolumIntensity: 0.0,
+    sunCore: 0xffffff, sunCorona: 0xfffaaa, sunAura: 0xffdc66,
+    phase: 'day', phaseName: 'High Noon (+90°)', icon: '☀️', badgeClass: 'solar-day'
+  },
+  // 16:30 Late Afternoon (Golden warmth begins)
+  {
+    hour: 16.5,
+    skyTop: 0x164682, skyMid: 0x487ec4, skyHoriz: 0xffc892,
+    oceanTop: 0x22a5c9, oceanPhotic: 0x12708f, oceanMeso: 0x084263, oceanSeabed: 0x021324,
+    waterColor: 0x1f94b8, waterEmissive: 0x083348,
+    bgColor: 0x031526,
+    keyColor: 0xffebd1, keyIntensity: 3.0,
+    hemiSky: 0xffd19e, hemiGround: 0x041d33,
+    causticsOpacity: 0.11,
+    starOpacity: 0.0,
+    sunOpacity: 1.0,
+    moonOpacity: 0.0,
+    biolumIntensity: 0.0,
+    sunCore: 0xfffaee, sunCorona: 0xffcb66, sunAura: 0xffa844,
+    phase: 'day', phaseName: 'Late Afternoon', icon: '☀️', badgeClass: 'solar-day'
+  },
+  // 18:15 Sunset / Golden Hour (Dynamically supplied by getActiveSunsetKeyframe)
+  {
+    hour: 18.25
+  },
+  // 19:45 Dusk / Twilight (Sun set, stars appearing)
+  {
+    hour: 19.75,
+    skyTop: 0x081026, skyMid: 0x261838, skyHoriz: 0x52233c,
+    oceanTop: 0x10344d, oceanPhotic: 0x092236, oceanMeso: 0x051424, oceanSeabed: 0x010712,
+    waterColor: 0x10344b, waterEmissive: 0x041320,
+    bgColor: 0x050c1c,
+    keyColor: 0x8a72a8, keyIntensity: 1.1,
+    hemiSky: 0x281c3e, hemiGround: 0x020c18,
+    causticsOpacity: 0.0,
+    starOpacity: 0.70,
+    sunOpacity: 0.0,
+    moonOpacity: 0.85,
+    biolumIntensity: 0.65,
+    sunCore: 0xfffaee, sunCorona: 0xff7020, sunAura: 0xd93b16,
+    phase: 'sunset', phaseName: 'Dusk / Twilight', icon: '🌆', badgeClass: 'solar-sunset'
+  },
+  // 24:00 (Wraps seamlessly to 00:00)
+  {
+    hour: 24.0,
+    skyTop: 0x02050e, skyMid: 0x060f22, skyHoriz: 0x0c1c36,
+    oceanTop: 0x0a1e36, oceanPhotic: 0x051324, oceanMeso: 0x030c17, oceanSeabed: 0x010307,
+    waterColor: 0x08192e, waterEmissive: 0x020710,
+    bgColor: 0x01050e,
+    keyColor: 0x7da4d4, keyIntensity: 0.85,
+    hemiSky: 0x0e1c30, hemiGround: 0x010408,
+    causticsOpacity: 0.0,
+    starOpacity: 0.90,
+    sunOpacity: 0.0,
+    moonOpacity: 1.0,
+    biolumIntensity: 0.85,
+    sunCore: 0xffffff, sunCorona: 0xffffff, sunAura: 0xffffff,
+    phase: 'night', phaseName: 'Midnight (Moonlit)', icon: '🌙', badgeClass: 'solar-night'
+  }
+];
+
+function getActiveDiurnalKeyframes() {
+  const activeSunset = getActiveSunsetKeyframe();
+  return DIURNAL_KEYFRAMES.map(f => {
+    if (f.hour === 18.25) return activeSunset;
+    return f;
+  });
+}
+
+function interpolateDiurnalState(h) {
+  const keyframes = getActiveDiurnalKeyframes();
+  let k1 = keyframes[0];
+  let k2 = keyframes[1];
+  for (let i = 0; i < keyframes.length - 1; i++) {
+    if (h >= keyframes[i].hour && h <= keyframes[i + 1].hour) {
+      k1 = keyframes[i];
+      k2 = keyframes[i + 1];
+      break;
+    }
+  }
+
+  const span = k2.hour - k1.hour;
+  const rawAlpha = Math.max(0, Math.min(1, (h - k1.hour) / span));
+  // Hermite smoothstep for silky C1 transition
+  const alpha = rawAlpha * rawAlpha * (3.0 - 2.0 * rawAlpha);
+
+  const lerpColor = (c1, c2) => {
+    return new THREE.Color(c1).lerp(new THREE.Color(c2), alpha);
+  };
+  const lerpVal = (v1, v2) => v1 + (v2 - v1) * alpha;
+
+  return {
+    skyTop: lerpColor(k1.skyTop, k2.skyTop),
+    skyMid: lerpColor(k1.skyMid, k2.skyMid),
+    skyHoriz: lerpColor(k1.skyHoriz, k2.skyHoriz),
+    oceanTop: lerpColor(k1.oceanTop, k2.oceanTop),
+    oceanPhotic: lerpColor(k1.oceanPhotic, k2.oceanPhotic),
+    oceanMeso: lerpColor(k1.oceanMeso, k2.oceanMeso),
+    oceanSeabed: lerpColor(k1.oceanSeabed, k2.oceanSeabed),
+    waterColor: lerpColor(k1.waterColor, k2.waterColor),
+    waterEmissive: lerpColor(k1.waterEmissive, k2.waterEmissive),
+    bgColor: lerpColor(k1.bgColor, k2.bgColor),
+    keyColor: lerpColor(k1.keyColor, k2.keyColor),
+    keyIntensity: lerpVal(k1.keyIntensity, k2.keyIntensity),
+    hemiSky: lerpColor(k1.hemiSky, k2.hemiSky),
+    hemiGround: lerpColor(k1.hemiGround, k2.hemiGround),
+    causticsOpacity: lerpVal(k1.causticsOpacity, k2.causticsOpacity),
+    starOpacity: lerpVal(k1.starOpacity, k2.starOpacity),
+    sunOpacity: lerpVal(k1.sunOpacity, k2.sunOpacity),
+    moonOpacity: lerpVal(k1.moonOpacity, k2.moonOpacity),
+    biolumIntensity: lerpVal(k1.biolumIntensity, k2.biolumIntensity),
+    sunCore: lerpColor(k1.sunCore || 0xffffff, k2.sunCore || 0xffffff),
+    sunCorona: lerpColor(k1.sunCorona || 0xffe488, k2.sunCorona || 0xffe488),
+    sunAura: lerpColor(k1.sunAura || 0xffb844, k2.sunAura || 0xffb844),
+    phase: alpha < 0.5 ? k1.phase : k2.phase,
+    phaseName: alpha < 0.5 ? k1.phaseName : k2.phaseName,
+    icon: alpha < 0.5 ? k1.icon : k2.icon,
+    badgeClass: alpha < 0.5 ? k1.badgeClass : k2.badgeClass
+  };
+}
+
+const smoothDiurnal = {
+  skyTop: new THREE.Color(0x1558a6),
+  skyMid: new THREE.Color(0x469af0),
+  skyHoriz: new THREE.Color(0xbce4ff),
+  oceanTop: new THREE.Color(0x38d9f5),
+  oceanPhotic: new THREE.Color(0x158eb8),
+  oceanMeso: new THREE.Color(0x0a4f78),
+  oceanSeabed: new THREE.Color(0x021324),
+  waterColor: new THREE.Color(0x22b2e0),
+  waterEmissive: new THREE.Color(0x0c4866),
+  bgColor: new THREE.Color(0x021626),
+  keyColor: new THREE.Color(0xfffaed),
+  keyIntensity: 3.4,
+  hemiSky: new THREE.Color(0x9deeff),
+  hemiGround: new THREE.Color(0x031c33),
+  causticsOpacity: 0.14,
+  starOpacity: 0.0,
+  sunOpacity: 1.0,
+  moonOpacity: 0.0,
+  biolumIntensity: 0.0,
+  sunCore: new THREE.Color(0xfffaee),
+  sunCorona: new THREE.Color(0xfffaaa),
+  sunAura: new THREE.Color(0xffdc66)
+};
+
+function updateDiurnalCycle(delta, t) {
+  // 1. Calculate Physical Mission Timeline
+  const CYCLE_PERIOD_SEC = 17280; // 4.8 hours = 17,280 seconds (5 dives per day)
+  const SECONDS_PER_DAY = 86400;  // 24 hours
+
+  const cycleElapsedSec = appState.missionProgress * CYCLE_PERIOD_SEC;
+  const totalMissionSec = ((appState.missionCycleIndex - 1) * CYCLE_PERIOD_SEC) + cycleElapsedSec;
+  const startSec = 6 * 3600; // Deploy at Dawn: Day 01, 06:00:00 UTC
+  const currentSimSec = startSec + totalMissionSec;
+
+  const missionDay = 1 + Math.floor(currentSimSec / SECONDS_PER_DAY);
+  const daySec = currentSimSec % SECONDS_PER_DAY;
+  const clockHour = daySec / 3600;
+
+  // Real Mission Clock Formatted
+  const ch = Math.floor(clockHour);
+  const cm = Math.floor((clockHour - ch) * 60);
+  const cs = Math.floor((((clockHour - ch) * 60) - cm) * 60);
+  const timeStr = `${String(ch).padStart(2, '0')}:${String(cm).padStart(2, '0')}:${String(cs).padStart(2, '0')} UTC`;
+
+  const cycH = Math.floor(cycleElapsedSec / 3600);
+  const cycM = Math.floor((cycleElapsedSec % 3600) / 60);
+  const cycleElapsedStr = `${String(cycH).padStart(2, '0')}h ${String(cycM).padStart(2, '0')}m (${Math.round(appState.missionProgress * 100)}%)`;
+
+  // Target Solar Hour Determination
+  let targetSolarHour = clockHour;
+  if (appState.diurnalOverride === 'noon') {
+    targetSolarHour = 12.0;
+  } else if (appState.diurnalOverride === 'sunset') {
+    targetSolarHour = 18.25;
+  } else if (appState.diurnalOverride === 'night') {
+    targetSolarHour = 23.8;
+  }
+
+  // Smooth circular interpolation for active solar hour (cinematic time-lapse glide)
+  if (appState.activeSolarHour === undefined) appState.activeSolarHour = targetSolarHour;
+  let dHour = targetSolarHour - appState.activeSolarHour;
+  while (dHour < -12) dHour += 24;
+  while (dHour > 12) dHour -= 24;
+
+  const speedBoost = Math.max(1.0, appState.missionSpeed * 0.4);
+  if (appState.diurnalOverride === 'auto') {
+    if (Math.abs(dHour) > 0.05) {
+      appState.activeSolarHour += dHour * Math.min(1.0, delta * 3.5 * speedBoost);
+    } else {
+      appState.activeSolarHour = targetSolarHour;
+    }
+  } else {
+    // Smooth cinematic time-lapse glide to forced condition over ~1.2s
+    appState.activeSolarHour += dHour * Math.min(1.0, delta * 2.8);
+  }
+  appState.activeSolarHour = (appState.activeSolarHour + 24) % 24;
+
+  // 2. Interpolate Continuous Diurnal Parameters
+  const target = interpolateDiurnalState(appState.activeSolarHour);
+
+  // Smooth temporal lerping across frames
+  const blendRate = Math.min(1.0, delta * 4.8);
+  smoothDiurnal.skyTop.lerp(target.skyTop, blendRate);
+  smoothDiurnal.skyMid.lerp(target.skyMid, blendRate);
+  smoothDiurnal.skyHoriz.lerp(target.skyHoriz, blendRate);
+  smoothDiurnal.oceanTop.lerp(target.oceanTop, blendRate);
+  smoothDiurnal.oceanPhotic.lerp(target.oceanPhotic, blendRate);
+  smoothDiurnal.oceanMeso.lerp(target.oceanMeso, blendRate);
+  smoothDiurnal.oceanSeabed.lerp(target.oceanSeabed, blendRate);
+  smoothDiurnal.waterColor.lerp(target.waterColor, blendRate);
+  smoothDiurnal.waterEmissive.lerp(target.waterEmissive, blendRate);
+  smoothDiurnal.bgColor.lerp(target.bgColor, blendRate);
+  smoothDiurnal.keyColor.lerp(target.keyColor, blendRate);
+  smoothDiurnal.keyIntensity = THREE.MathUtils.lerp(smoothDiurnal.keyIntensity, target.keyIntensity, blendRate);
+  smoothDiurnal.hemiSky.lerp(target.hemiSky, blendRate);
+  smoothDiurnal.hemiGround.lerp(target.hemiGround, blendRate);
+  smoothDiurnal.causticsOpacity = THREE.MathUtils.lerp(smoothDiurnal.causticsOpacity, target.causticsOpacity, blendRate);
+  smoothDiurnal.starOpacity = THREE.MathUtils.lerp(smoothDiurnal.starOpacity, target.starOpacity, blendRate);
+  smoothDiurnal.sunOpacity = THREE.MathUtils.lerp(smoothDiurnal.sunOpacity, target.sunOpacity, blendRate);
+  smoothDiurnal.moonOpacity = THREE.MathUtils.lerp(smoothDiurnal.moonOpacity, target.moonOpacity, blendRate);
+  smoothDiurnal.biolumIntensity = THREE.MathUtils.lerp(smoothDiurnal.biolumIntensity, target.biolumIntensity, blendRate);
+  smoothDiurnal.sunCore.lerp(target.sunCore, blendRate);
+  smoothDiurnal.sunCorona.lerp(target.sunCorona, blendRate);
+  smoothDiurnal.sunAura.lerp(target.sunAura, blendRate);
+
+  // 3. Update HUD Elements
+  const dayBadge = document.getElementById('missionDayBadge');
+  const utcTime = document.getElementById('missionUtcTime');
+  const solarBadge = document.getElementById('missionSolarBadge');
+  const cycleIndex = document.getElementById('missionCycleIndex');
+  const cycleElapsed = document.getElementById('missionCycleElapsed');
+  const solarIcon = document.getElementById('solarIcon');
+  const solarText = document.getElementById('solarText');
+
+  if (dayBadge) dayBadge.textContent = `DAY ${String(missionDay).padStart(2, '0')}`;
+  if (utcTime) utcTime.textContent = timeStr;
+  if (solarIcon) solarIcon.textContent = target.icon;
+  if (solarText) solarText.textContent = target.phaseName.toUpperCase();
+  if (solarBadge) {
+    solarBadge.className = `mission-solar-badge ${target.badgeClass}`;
+  }
+  if (cycleIndex) cycleIndex.textContent = `#${String(appState.missionCycleIndex).padStart(2, '0')} / 5`;
+  if (cycleElapsed) cycleElapsed.textContent = cycleElapsedStr;
+
+  const liveMissionTime = document.getElementById('liveMissionTime');
+  const liveDiurnal = document.getElementById('liveDiurnal');
+  const liveDiveCycle = document.getElementById('liveDiveCycle');
+  const liveCycleElapsed = document.getElementById('liveCycleElapsed');
+
+  if (liveMissionTime) liveMissionTime.textContent = `Day ${String(missionDay).padStart(2, '0')}, ${timeStr}`;
+  if (liveDiurnal) liveDiurnal.textContent = `${target.icon} ${target.phaseName}`;
+  if (liveDiveCycle) liveDiveCycle.textContent = `Cycle #${String(appState.missionCycleIndex).padStart(2, '0')} of 5 (Day ${missionDay})`;
+  if (liveCycleElapsed) liveCycleElapsed.textContent = `${cycleElapsedStr} of 04h 48m`;
+
+  // 4. Celestial Sun Motion & Atmospheric Extinction
+  const sNorm = (appState.activeSolarHour - 5.0) / 14.0;
+  const sunX = -6.4 + sNorm * 12.8;
+  const sunElev = Math.sin(Math.PI * Math.max(0, Math.min(1, sNorm)));
+  const sunY = 1.32 + sunElev * 2.18;
+  sunGroup.position.set(sunX, Math.max(0.6, sunY), -1.78);
+
+  sunDisk.material.color.copy(smoothDiurnal.sunCore);
+  sunCorona.material.color.copy(smoothDiurnal.sunCorona);
+  sunAura.material.color.copy(smoothDiurnal.sunAura);
+  const flareFactor = ((appState.sunsetSliders ? appState.sunsetSliders.flare : 100) / 100);
+  sunDisk.material.opacity = smoothDiurnal.sunOpacity;
+  sunCorona.material.opacity = smoothDiurnal.sunOpacity * 0.65 * flareFactor;
+  sunAura.material.opacity = smoothDiurnal.sunOpacity * 0.25 * flareFactor;
+  sunGroup.visible = smoothDiurnal.sunOpacity > 0.01;
+
+  // 5. Celestial Moon Motion
+  const mNorm = appState.activeSolarHour >= 17.0 ? (appState.activeSolarHour - 17.0) / 14.0 : (appState.activeSolarHour + 7.0) / 14.0;
+  const moonX = -6.4 + mNorm * 12.8;
+  const moonElev = Math.sin(Math.PI * Math.max(0, Math.min(1, mNorm)));
+  const moonY = 1.32 + moonElev * 1.95;
+  moonGroup.position.set(moonX, Math.max(0.6, moonY), -1.78);
+
+  moonDisk.material.opacity = smoothDiurnal.moonOpacity;
+  moonHalo.material.opacity = smoothDiurnal.moonOpacity * 0.45;
+  moonAura.material.opacity = smoothDiurnal.moonOpacity * 0.18;
+  moonGroup.visible = smoothDiurnal.moonOpacity > 0.01;
+
+  // Key Light direction tracks sun/moon smoothly
+  if (smoothDiurnal.sunOpacity > 0.3) {
+    keyLight.position.set(sunX * 0.7, Math.max(1.5, sunY), 4.2);
+  } else {
+    keyLight.position.set(moonX * 0.7, Math.max(1.5, moonY), 4.2);
+  }
+
+  // 6. Starfield Twinkling
+  starMat.opacity = Math.max(0, smoothDiurnal.starOpacity + Math.sin(t * 1.8) * 0.08 * smoothDiurnal.starOpacity);
+
+  // 7. Dynamic Continuous Sky Atmosphere Canvas
+  skyCtx.clearRect(0, 0, 128, 256);
+  const sGrad = skyCtx.createLinearGradient(0, 0, 0, 256);
+  sGrad.addColorStop(0.0, '#' + smoothDiurnal.skyTop.getHexString());
+  sGrad.addColorStop(0.48, '#' + smoothDiurnal.skyMid.getHexString());
+  sGrad.addColorStop(1.0, '#' + smoothDiurnal.skyHoriz.getHexString());
+  skyCtx.fillStyle = sGrad;
+  skyCtx.fillRect(0, 0, 128, 256);
+  skyTexture.needsUpdate = true;
+
+  // 8. Dynamic Continuous Ocean Depth Canvas
+  oceanCtx.clearRect(0, 0, 128, 256);
+  const oGrad = oceanCtx.createLinearGradient(0, 0, 0, 256);
+  oGrad.addColorStop(0.0, '#' + smoothDiurnal.oceanTop.getHexString());
+  oGrad.addColorStop(0.18, '#' + smoothDiurnal.oceanPhotic.getHexString());
+  oGrad.addColorStop(0.45, '#' + smoothDiurnal.oceanMeso.getHexString());
+  oGrad.addColorStop(1.0, '#' + smoothDiurnal.oceanSeabed.getHexString());
+  oceanCtx.fillStyle = oGrad;
+  oceanCtx.fillRect(0, 0, 128, 256);
+  oceanTexture.needsUpdate = true;
+
+  // 9. Water Surface & Environmental Lighting Ambiance
+  waterSurfaceMat.color.copy(smoothDiurnal.waterColor);
+  waterSurfaceMat.emissive.copy(smoothDiurnal.waterEmissive);
+  keyLight.color.copy(smoothDiurnal.keyColor);
+  keyLight.intensity = smoothDiurnal.keyIntensity;
+  hemiLight.color.copy(smoothDiurnal.hemiSky);
+  hemiLight.groundColor.copy(smoothDiurnal.hemiGround);
+  scene.background.copy(smoothDiurnal.bgColor);
+
+  causticsGroup.children.forEach(b => {
+    b.material.opacity = smoothDiurnal.causticsOpacity;
+    b.material.color.copy(smoothDiurnal.keyColor);
+  });
+
+  // 10. Night Navigation Strobe Beacon on Antenna Mast
+  const isNightStrobe = smoothDiurnal.moonOpacity > 0.35;
+  const isSurfaced = (appState.missionProgress < 0.14 || appState.missionProgress > 0.88);
+  const antMast = glider.getObjectByName('Antenna_Tip') || glider.getObjectByName('GPS_Iridium_Antenna_Mast');
+  if (antMast && (isNightStrobe || (isSurfaced && smoothDiurnal.moonOpacity > 0.2))) {
+    const antWorld = new THREE.Vector3();
+    antMast.getWorldPosition(antWorld);
+    strobeLight.position.copy(antWorld);
+    strobeMesh.position.copy(antWorld);
+
+    const strobeFlash = (t * 0.9) % 1.0 < 0.09;
+    strobeLight.intensity = strobeFlash ? 4.5 : 0.0;
+    strobeMat.opacity = strobeFlash ? 1.0 : 0.0;
+  } else {
+    strobeLight.intensity = 0.0;
+    strobeMat.opacity = 0.0;
+  }
+
+  // Bioluminescent Plankton Wake
+  bubbleMat.emissiveIntensity = 0.40 + smoothDiurnal.biolumIntensity * 0.40;
+  if (smoothDiurnal.biolumIntensity > 0.3) {
+    bubbleMat.emissive.setHex(0x15f4ee);
+  } else {
+    bubbleMat.emissive.setHex(0x38d9f5);
+  }
+}
+
+// ==========================================
+// ANIMATION & KINEMATICS ENGINE LOOP
+// ==========================================
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const delta = Math.min(clock.getDelta(), 0.05);
+  const t = clock.getElapsedTime();
+
+  // 1. Water Surface Wave Undulation
+  if (waterMissionGroup.visible) {
+    const wPos = waterSurfaceGeom.attributes.position;
+    for (let i = 0; i < wPos.count; i++) {
+      const x = wPos.getX(i);
+      const y = wPos.getY(i);
+      const wave = Math.sin(x * 1.8 + t * 2.6) * 0.04 + Math.cos(y * 2.4 + t * 1.9) * 0.025 + Math.sin((x + y) * 1.4 + t * 3.2) * 0.015;
+      wPos.setZ(i, wave);
+    }
+    wPos.needsUpdate = true;
+    waterSurfaceGeom.computeVertexNormals();
+
+    // Marine snow floating motion
+    const sPos = snowGeom.attributes.position.array;
+    for (let i = 0; i < snowCount; i++) {
+      sPos[i * 3 + 1] -= delta * 0.04;
+      sPos[i * 3] += Math.sin(t * 0.5 + i) * delta * 0.01;
+      if (sPos[i * 3 + 1] < -2.0) sPos[i * 3 + 1] = 1.3;
+    }
+    snowGeom.attributes.position.needsUpdate = true;
+  }
+
+  // 2. CAD Disassembly Auto-Play Slider
+  if (appState.autoPlay && (appState.viewMode === 'explodeExterior' || appState.viewMode === 'explodeCutaway')) {
+    appState.explosionFactor += delta * 0.35 * appState.autoDir;
+    if (appState.explosionFactor >= 1.0) {
+      appState.explosionFactor = 1.0;
+      appState.autoDir = -1;
+    } else if (appState.explosionFactor <= 0.0) {
+      appState.explosionFactor = 0.0;
+      appState.autoDir = 1;
+    }
+    explodeSlider.value = Math.round(appState.explosionFactor * 100);
+    sliderVal.textContent = Math.round(appState.explosionFactor * 100) + '%';
+  }
+
+  // 3. 360° Turntable Orbit (Nominal Assembled view)
+  if (appState.turntable && appState.viewMode === 'exterior') {
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 1.8;
+  } else {
+    controls.autoRotate = false;
+  }
+
+  // 4. HYDRODYNAMIC MISSION SIMULATION
+  if (appState.viewMode === 'mission' && glider) {
+    if (appState.missionPlaying) {
+      appState.missionProgress += delta * 0.038 * appState.missionSpeed;
+      if (appState.missionProgress >= 1.0) {
+        appState.missionProgress = appState.missionProgress % 1.0;
+        appState.missionCycleIndex++;
+      }
+      explodeSlider.value = Math.round(appState.missionProgress * 100);
+      sliderVal.textContent = Math.round(appState.missionProgress * 100) + '%';
+    }
+
+    updateDiurnalCycle(delta, t);
+
+    const prog = appState.missionProgress;
+    const pos = trajectoryCurve.getPointAt(prog);
+    const tangent = trajectoryCurve.getTangentAt(prog).normalize();
+
+    glider.position.copy(pos);
+
+    // Dynamic orientation: align forward axis along trajectory tangent
+    const alignQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), tangent);
+    glider.quaternion.slerp(alignQuat, 0.18);
+
+    // Depth calculation: Y = 1.35 -> 0m, Y = -1.78 -> 1000m
+    const rawDepth = Math.max(0, Math.min(1000, ((1.35 - pos.y) / 3.13) * 1000));
+    const pitchDeg = (Math.atan2(tangent.y, Math.hypot(tangent.x, tangent.z)) * 180 / Math.PI);
+
+    const badgeEl = document.getElementById('missionBadge');
+    const quoteEl = document.getElementById('missionQuote');
+    const liveDepth = document.getElementById('liveDepth');
+    const livePitch = document.getElementById('livePitch');
+    const liveRpm = document.getElementById('liveRpm');
+    const liveVbe = document.getElementById('liveVbe');
+    const liveBatteryCM = document.getElementById('liveBatteryCM');
+    const liveComms = document.getElementById('liveComms');
+
+    let motorRunning = true;
+    let isSurfaced = false;
+
+    if (prog < 0.14) {
+      isSurfaced = true;
+      motorRunning = false;
+      badgeEl.textContent = "SURFACE TELEMETRY & GPS FIX";
+      quoteEl.textContent = "Telemetry is accomplished with Iridium satellite communications. GPS is used to obtain a position fix while surfaced.";
+      if (liveVbe) liveVbe.textContent = "Maximum Positive (+350 cc)";
+      if (liveBatteryCM) liveBatteryCM.textContent = "-80.0 mm (Aft Pitch)";
+      if (liveComms) liveComms.textContent = "Iridium SBD Connected (100%)";
+    } else if (prog < 0.45) {
+      isSurfaced = false;
+      motorRunning = true;
+      badgeEl.textContent = "GLIDE DESCENT — DIVE TO 1,000M";
+      quoteEl.textContent = "While submerged the vehicle navigates using a 3-axis compass, pressure sensor and altimeter.";
+      if (liveVbe) liveVbe.textContent = "Negative (-350 cc Oil)";
+      if (liveBatteryCM) liveBatteryCM.textContent = "+75.0 mm (Forward Pitch)";
+      if (liveComms) liveComms.textContent = "Acoustic Pinger / Dead-Reckoning";
+    } else if (prog < 0.60) {
+      isSurfaced = false;
+      motorRunning = true;
+      badgeEl.textContent = "DEEPWATER APEX (1,000M) — SEABED INFLECTION";
+      quoteEl.textContent = "Deepwater dives to a maximum depth of 1,000 meters collecting vertical ocean data.";
+      if (liveVbe) liveVbe.textContent = "Pumping Oil (+350 cc Expansion)";
+      if (liveBatteryCM) liveBatteryCM.textContent = "Centering CM (0.0 mm)";
+      if (liveComms) liveComms.textContent = "Altimeter Pinging (Bottom: 15m)";
+    } else if (prog < 0.88) {
+      isSurfaced = false;
+      motorRunning = true;
+      badgeEl.textContent = "ASCENT PROFILE — VERTICAL OCEAN PROFILING";
+      quoteEl.textContent = "CTD sensor suite samples thermocline structure during positive-buoyancy upward glide.";
+      if (liveVbe) liveVbe.textContent = "Positive (+350 cc Displaced)";
+      if (liveBatteryCM) liveBatteryCM.textContent = "-75.0 mm (Aft Pitch)";
+      if (liveComms) liveComms.textContent = "Conductivity / Temp / Depth Active";
+    } else {
+      isSurfaced = true;
+      motorRunning = false;
+      badgeEl.textContent = "SURFACE ARRIVAL — DATA TRANSMISSION";
+      quoteEl.textContent = "After a dive data is transmitted back to the basestation, and new instructions are downloaded.";
+      if (liveVbe) liveVbe.textContent = "Buoyant (Surfaced)";
+      if (liveBatteryCM) liveBatteryCM.textContent = "-80.0 mm (Antenna Raised)";
+      if (liveComms) liveComms.textContent = "Downloading Waypoints...";
+    }
+
+    if (liveDepth) liveDepth.textContent = rawDepth.toFixed(1) + " m";
+    if (livePitch) livePitch.textContent = (pitchDeg > 0 ? "+" : "") + pitchDeg.toFixed(1) + "°";
+    if (liveRpm) liveRpm.textContent = motorRunning ? "840 RPM" : "0 RPM";
+
+    if (propAxis && motorRunning) {
+      propAxis.rotation.x += delta * 65;
+    }
+
+    // Cavitation Bubbles Animation
+    const hubWorld = new THREE.Vector3(-1.18, 0, 0).applyQuaternion(glider.quaternion).add(glider.position);
+    const aftDir = new THREE.Vector3(-1, 0, 0).applyQuaternion(glider.quaternion).normalize();
+    const upDir = new THREE.Vector3(0, 1, 0).applyQuaternion(glider.quaternion).normalize();
+    const rightDir = new THREE.Vector3(0, 0, 1).applyQuaternion(glider.quaternion).normalize();
+
+    cavitationBubbles.visible = motorRunning;
+    vortexRingsGroup.visible = motorRunning;
+
+    if (motorRunning) {
+      bubbleParticles.forEach((b, idx) => {
+        b.age = (b.age + delta) % b.life;
+        const progress = b.age / b.life;
+        const dist = progress * 1.5;
+        b.angle += delta * b.spinSpeed;
+
+        const currentRadius = b.radius + progress * 0.15;
+        const rise = progress * 0.14;
+
+        const bPos = hubWorld.clone()
+          .add(aftDir.clone().multiplyScalar(dist))
+          .add(rightDir.clone().multiplyScalar(Math.cos(b.angle) * currentRadius))
+          .add(upDir.clone().multiplyScalar(Math.sin(b.angle) * currentRadius + rise));
+
+        const scale = (1.0 - progress * 0.65) * (0.8 + Math.sin(idx) * 0.4);
+        const mat4 = new THREE.Matrix4().makeScale(scale, scale, scale);
+        mat4.setPosition(bPos);
+        cavitationBubbles.setMatrixAt(idx, mat4);
+      });
+      cavitationBubbles.instanceMatrix.needsUpdate = true;
+
+      vortexRings.forEach((ring, idx) => {
+        const ringDist = 0.15 + (idx + (t * 4.0) % 1) * 0.28;
+        ring.position.copy(hubWorld).add(aftDir.clone().multiplyScalar(ringDist));
+        ring.quaternion.copy(glider.quaternion);
+        const ringScale = 1.0 + ringDist * 0.8;
+        ring.scale.set(ringScale, ringScale, ringScale);
+        ring.material.opacity = Math.max(0, 0.45 - ringDist * 0.2);
+      });
+    }
+
+    // Satellite pulse rings
+    satelliteGroup.visible = isSurfaced;
+    if (isSurfaced) {
+      const antMast = glider.getObjectByName('Antenna_Tip') || glider.getObjectByName('GPS_Iridium_Antenna_Mast');
+      if (antMast) {
+        const antWorld = new THREE.Vector3();
+        antMast.getWorldPosition(antWorld);
+        satelliteGroup.position.copy(antWorld);
+        satelliteRings.forEach((r, idx) => {
+          const p = (t * 1.6 + idx * 0.25) % 1.0;
+          r.scale.setScalar(0.6 + p * 3.2);
+          r.material.opacity = Math.max(0, 0.85 - p * 0.85);
+          r.position.y = p * 0.6;
+        });
+      }
+    }
+
+    // Camera follow in 3D Chase mode
+    if (appState.missionCamMode === 'chase') {
+      const chaseOffset = new THREE.Vector3(2.4, 0.8, 1.8).applyQuaternion(glider.quaternion);
+      camera.position.lerp(glider.position.clone().add(chaseOffset), 0.08);
+      controls.target.lerp(glider.position, 0.1);
+    }
+  } else if (glider) {
+    glider.rotation.z = 0;
+    glider.position.set(0, 0, 0);
+    glider.quaternion.identity();
+    if (propAxis && appState.viewMode !== 'exterior') {
+      propAxis.rotation.x += delta * 12;
+    }
+  }
+
+  if (appState.viewMode === 'explodeExterior' || appState.viewMode === 'explodeCutaway') {
+    updateExplosion(0.08);
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+  updateLabels();
+}
+
+// Start Application
+setTheme('blueprint');
+animate();
+</script>
+</body>
+</html>

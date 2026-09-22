@@ -1,0 +1,365 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Syne:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── CSS Custom Properties ─────────────────────────────────────────────────── */
+:root {
+  --abyss: #050B14;
+  --deep-panel: #0B1D2E;
+  --thermocline: #1C5C6B;
+  --biolume: #4CE0D2;
+  --instrument-amber: #E8A33D;
+  --coral-delta: #FF6B5B;
+  --foam: #E9F1F3;
+  --foam-dim: #8FA5AC;
+
+  /* OceanEmbed specific colors */
+  --reconstruction: #F59E0B;
+  --argo-obs: #34D399;
+  --surface-signal: #38BDF8;
+  --depth-label: #A78BFA;
+  --validation-good: #10B981;
+  --validation-warn: #F59E0B;
+  --validation-bad: #EF4444;
+  --embedding-purple: #8B5CF6;
+
+  --panel-border: rgba(28, 92, 107, 0.35);
+  --panel-bg: rgba(11, 29, 46, 0.82);
+  --panel-blur: 12px;
+
+  /* Depth gradient for the rail */
+  --depth-surface: #4CE0D2;
+  --depth-mid: #1C5C6B;
+  --depth-abyss: #050B14;
+}
+
+/* ─── Base Reset ─────────────────────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  background: var(--abyss);
+  color: var(--foam);
+  font-family: 'Syne', 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#__next,
+[data-nextjs-scroll-focus-boundary] {
+  width: 100%;
+  height: 100%;
+}
+
+/* ─── Global Themed Scrollbar ────────────────────────────────────────────────── */
+/* Webkit (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: #050B14; /* --abyss */
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1C5C6B; /* --thermocline */
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4CE0D2; /* --biolume */
+}
+
+::-webkit-scrollbar-corner {
+  background: #050B14;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1C5C6B #050B14;
+}
+
+/* ─── Cesium Overrides ───────────────────────────────────────────────────────── */
+.cesium-widget,
+.cesium-widget canvas {
+  width: 100% !important;
+  height: 100% !important;
+  outline: none;
+}
+
+/* Hide Cesium default UI chrome */
+.cesium-widget-credits,
+.cesium-infoBox,
+.cesium-viewer-animationContainer,
+.cesium-viewer-timelineContainer,
+.cesium-viewer-bottom,
+.cesium-viewer-toolbar,
+.cesium-navigationHelpButton-wrapper,
+.cesium-fullscreenButton {
+  display: none !important;
+}
+
+/* ─── Glass Panel Utility ─────────────────────────────────────────────────────── */
+@layer components {
+  .glass-panel {
+    background: rgba(11, 29, 46, 0.25);
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
+    border: 1px solid rgba(76, 224, 210, 0.15);
+    border-top-color: rgba(76, 224, 210, 0.35);
+    border-left-color: rgba(76, 224, 210, 0.25);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), inset 0 -10px 20px rgba(0, 0, 0, 0.1), 0 12px 40px rgba(0, 0, 0, 0.6);
+    position: relative;
+    border-radius: 12px;
+  }
+
+  .glass-panel-strong {
+    background: rgba(11, 29, 46, 0.6);
+    backdrop-filter: blur(48px);
+    -webkit-backdrop-filter: blur(48px);
+    border: 1px solid rgba(76, 224, 210, 0.25);
+    border-top-color: rgba(76, 224, 210, 0.5);
+    border-left-color: rgba(76, 224, 210, 0.35);
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.1), inset 0 -10px 20px rgba(0, 0, 0, 0.2), 0 16px 48px rgba(0, 0, 0, 0.8);
+    position: relative;
+    border-radius: 16px;
+  }
+
+  .temp-colorscale {
+    background: linear-gradient(to right,
+      #3B4CC0 0%,   /* cold */
+      #4CE0D2 25%,  /* cool */
+      #FFFB00 50%,  /* neutral */
+      #F97316 75%,  /* warm */
+      #DC2626 100%  /* hot */
+    );
+  }
+
+  /* Technical corner brackets for HUD aesthetic */
+  .tech-corners::before,
+  .tech-corners::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+  }
+
+  .tech-corners::before {
+    background: 
+      linear-gradient(to right, var(--biolume) 2px, transparent 2px) 0 0,
+      linear-gradient(to bottom, var(--biolume) 2px, transparent 2px) 0 0,
+      linear-gradient(to left, var(--biolume) 2px, transparent 2px) 100% 0,
+      linear-gradient(to bottom, var(--biolume) 2px, transparent 2px) 100% 0;
+    background-size: 8px 8px;
+    background-repeat: no-repeat;
+    opacity: 0.5;
+  }
+
+  .tech-corners::after {
+    background: 
+      linear-gradient(to right, var(--biolume) 2px, transparent 2px) 0 100%,
+      linear-gradient(to top, var(--biolume) 2px, transparent 2px) 0 100%,
+      linear-gradient(to left, var(--biolume) 2px, transparent 2px) 100% 100%,
+      linear-gradient(to top, var(--biolume) 2px, transparent 2px) 100% 100%;
+    background-size: 8px 8px;
+    background-repeat: no-repeat;
+    opacity: 0.5;
+  }
+
+  /* Instrument-style text styles */
+  .mono-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  .label-ui {
+    font-family: 'Syne', 'Inter', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--foam-dim);
+  }
+
+  .display-heading {
+    font-family: 'Syne', 'Space Grotesk', sans-serif;
+    font-weight: 600;
+  }
+
+  /* Biolume glow effect for selected/active state */
+  .biolume-glow {
+    box-shadow: 0 0 12px rgba(76, 224, 210, 0.25), 0 0 2px rgba(76, 224, 210, 0.5);
+  }
+
+  /* Amber glow for instrument readouts */
+  .amber-glow {
+    box-shadow: 0 0 8px rgba(232, 163, 61, 0.2);
+  }
+
+  /* Scrollbar styling */
+  .console-scroll::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .console-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .console-scroll::-webkit-scrollbar-thumb {
+    background: var(--thermocline);
+    border-radius: 2px;
+  }
+
+  .console-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--biolume);
+  }
+
+  /* Depth gradient bar */
+  .depth-gradient {
+    background: linear-gradient(
+      to bottom,
+      var(--biolume) 0%,
+      var(--thermocline) 40%,
+      #0B2A3F 70%,
+      var(--abyss) 100%
+    );
+  }
+
+  /* Focus visible */
+  .focus-biolume:focus-visible {
+    outline: 2px solid var(--biolume);
+    outline-offset: 2px;
+  }
+
+  /* Scan animation overlay */
+  .scan-overlay {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .scan-overlay::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--biolume), transparent);
+    animation: scan 2s linear infinite;
+  }
+
+  @keyframes scan {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(100vh); }
+  }
+
+  @keyframes tab-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .tab-content-enter {
+    animation: tab-fade-in 0.2s ease-out;
+  }
+
+  /* ── Infinite marquee for TrustStrip ─────────────────────────────────────── */
+  @keyframes marquee {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  .animate-marquee {
+    animation: marquee 36s linear infinite;
+    will-change: transform;
+  }
+
+  /* Pause on hover for accessibility */
+  .animate-marquee:hover {
+    animation-play-state: paused;
+  }
+}
+
+/* ─── Reduced Motion ─────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── Radix UI Slider Customization ──────────────────────────────────────────── */
+[data-radix-slider-root] {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+[data-radix-slider-track] {
+  background: rgba(28, 92, 107, 0.4);
+  border-radius: 9999px;
+  position: relative;
+  flex-grow: 1;
+}
+
+[data-radix-slider-range] {
+  background: var(--biolume);
+  border-radius: 9999px;
+  position: absolute;
+}
+
+[data-radix-slider-thumb] {
+  display: block;
+  width: 16px;
+  height: 16px;
+  background: var(--biolume);
+  border: 2px solid var(--deep-panel);
+  border-radius: 50%;
+  cursor: grab;
+  transition: box-shadow 0.15s ease;
+}
+
+[data-radix-slider-thumb]:hover {
+  box-shadow: 0 0 0 6px rgba(76, 224, 210, 0.2);
+}
+
+[data-radix-slider-thumb]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(76, 224, 210, 0.5);
+}
+
+/* ─── Recharts Overrides ─────────────────────────────────────────────────────── */
+.recharts-cartesian-axis-tick text {
+  fill: var(--foam-dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+}
+
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--deep-panel) !important;
+  border: 1px solid var(--thermocline) !important;
+  color: var(--foam) !important;
+  font-family: 'IBM Plex Mono', monospace !important;
+  font-size: 11px !important;
+}
+
+.recharts-cartesian-grid line {
+  stroke: rgba(28, 92, 107, 0.3);
+}

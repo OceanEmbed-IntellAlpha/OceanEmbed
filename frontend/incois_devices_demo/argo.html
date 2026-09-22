@@ -1,0 +1,2854 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Argo Profiling Float — Engineering Technical Reference & Subsurface Simulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #030d17;
+  --bg-panel: rgba(6, 21, 36, 0.88);
+  --border: rgba(94, 214, 255, 0.22);
+  --border-active: rgba(94, 214, 255, 0.7);
+  --text-main: #ebf8ff;
+  --text-muted: #82a8bd;
+  --text-dim: #547c91;
+  --accent: #f5b338; /* Argo Oceanic Safety Yellow / Amber */
+  --accent-glow: rgba(245, 179, 56, 0.28);
+  --line-color: #f5b338;
+  --grid-line: rgba(245, 179, 56, 0.07);
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+body.theme-blueprint {
+  --bg: #f4f6f8;
+  --bg-panel: rgba(255, 255, 255, 0.94);
+  --border: rgba(14, 43, 68, 0.18);
+  --border-active: rgba(14, 43, 68, 0.7);
+  --text-main: #0c2132;
+  --text-muted: #415e75;
+  --text-dim: #718d9f;
+  --accent: #d97706;
+  --accent-glow: rgba(217, 119, 6, 0.15);
+  --line-color: #0c2b44;
+  --grid-line: rgba(12, 43, 68, 0.08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background-color: var(--bg);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  user-select: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+#canvas-container {
+  position: fixed; inset: 0; z-index: 1;
+}
+
+/* Background Engineering Grid */
+.engineering-grid {
+  position: fixed; inset: 0; pointer-events: none; z-index: 2;
+  background-size: 36px 36px;
+  background-image: 
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+}
+
+/* SVG Leader Lines Layer */
+#svgLayer {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 15; overflow: visible;
+}
+
+/* DOM Labels Container */
+#labelContainer {
+  position: fixed; inset: 0; pointer-events: none; z-index: 16;
+}
+
+/* Sleek Floating Technical CAD Labels */
+.eng-badge {
+  position: absolute;
+  pointer-events: auto;
+  padding: 4px 10px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.32);
+  font-size: 9.5px;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.2s ease, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 18;
+}
+.eng-badge.visible {
+  opacity: 1;
+}
+.eng-badge:hover, .eng-badge.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 14px var(--accent-glow);
+  transform: translate(-50%, -50%) scale(1.05);
+}
+.eng-badge-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+.eng-badge-title {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.eng-badge-sub {
+  color: var(--text-dim);
+  font-size: 8.5px;
+}
+
+/* 3D Hotspot Anchor Pins */
+.hotspot-pin {
+  position: absolute;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 10px var(--accent);
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 17;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.hotspot-pin:hover, .hotspot-pin.active {
+  transform: translate(-50%, -50%) scale(1.4);
+  box-shadow: 0 0 16px var(--accent);
+}
+
+/* HUD Panels & Overlay */
+.hud-overlay {
+  position: fixed; inset: 0; pointer-events: none; z-index: 20;
+}
+.hud-panel {
+  pointer-events: auto;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(16px);
+  border-radius: 10px;
+}
+
+/* Top Navigation Bar */
+.top-nav {
+  position: absolute; top: 16px; left: 20px; right: 20px;
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+}
+.brand-box {
+  display: flex; align-items: center; gap: 12px; padding: 8px 14px;
+}
+.brand-logo {
+  font-family: var(--font-mono); font-weight: 800; font-size: 13px;
+  color: var(--accent); letter-spacing: 0.15em; display: flex; align-items: center; gap: 6px;
+}
+.brand-divider { width: 1px; height: 18px; background: var(--border); }
+.brand-meta {
+  font-size: 10.5px; color: var(--text-muted); font-family: var(--font-mono);
+  display: flex; align-items: center; gap: 8px;
+}
+.cross-nav-link {
+  color: #38d9f5; text-decoration: none; font-weight: 700;
+  padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(56, 217, 245, 0.4);
+  transition: all 0.15s;
+}
+.cross-nav-link:hover {
+  background: rgba(56, 217, 245, 0.15); border-color: #38d9f5;
+}
+
+.mode-nav {
+  display: flex; gap: 4px; padding: 4px;
+}
+.btn-nav {
+  border: 1px solid transparent; background: transparent;
+  color: var(--text-muted); font-family: var(--font-mono); font-size: 10.5px;
+  font-weight: 600; padding: 6px 12px; border-radius: 6px; cursor: pointer;
+  transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.04em;
+  display: flex; align-items: center; gap: 6px;
+}
+.btn-nav:hover {
+  color: var(--text-main); background: rgba(255,255,255,0.05);
+}
+.btn-nav.active {
+  background: var(--accent-glow); border-color: var(--accent); color: var(--accent);
+}
+
+.theme-toggle {
+  display: flex; align-items: center; gap: 6px;
+}
+.btn-icon {
+  width: 32px; height: 32px; display: grid; place-items: center;
+  border-radius: 6px; border: 1px solid var(--border); background: transparent;
+  color: var(--text-main); cursor: pointer; transition: 0.15s; font-size: 13px;
+}
+.btn-icon:hover {
+  border-color: var(--accent); background: var(--accent-glow);
+}
+
+/* Left Telemetry Card */
+.left-deck {
+  position: absolute; left: 20px; top: 80px; width: 260px;
+  display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+}
+.info-card {
+  pointer-events: auto; padding: 14px;
+}
+.card-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+}
+.card-title {
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 800;
+  letter-spacing: 0.12em; color: var(--accent);
+}
+.status-pill {
+  font-family: var(--font-mono); font-size: 8.5px; font-weight: 700;
+  padding: 2px 6px; border-radius: 10px; background: rgba(52, 211, 153, 0.15);
+  color: #34d399; border: 1px solid rgba(52, 211, 153, 0.4);
+  display: flex; align-items: center; gap: 4px;
+}
+.status-dot { width: 5px; height: 5px; border-radius: 50%; background: #34d399; }
+.card-desc {
+  font-size: 11px; color: var(--text-muted); line-height: 1.5; margin-bottom: 10px;
+}
+.spec-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  font-family: var(--font-mono); font-size: 9.5px;
+}
+.spec-item {
+  padding: 5px 7px; background: rgba(255,255,255,0.03); border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+.spec-k { color: var(--text-dim); font-size: 8px; text-transform: uppercase; margin-bottom: 2px; }
+.spec-v { color: var(--text-main); font-weight: 700; }
+
+/* Right Component Inspector Drawer */
+.right-drawer {
+  position: absolute; right: 20px; top: 80px; width: 310px;
+  max-height: calc(100vh - 180px); overflow-y: auto;
+  pointer-events: none; transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+  transform: translateX(330px); opacity: 0; z-index: 25;
+}
+.right-drawer.open {
+  pointer-events: auto; transform: translateX(0); opacity: 1;
+}
+
+/* Bottom Control Deck */
+.bottom-deck {
+  position: absolute; left: 20px; right: 20px; bottom: 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+.slider-panel {
+  padding: 10px 18px; display: flex; align-items: center; gap: 14px; flex: 1; max-width: 620px;
+}
+.slider-label {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.1em; color: var(--text-muted); white-space: nowrap;
+}
+.slider-track {
+  flex: 1; display: flex; align-items: center; gap: 10px;
+}
+.slider-track input[type=range] {
+  flex: 1; -webkit-appearance: none; height: 5px; border-radius: 3px;
+  background: rgba(255,255,255,0.12); outline: none; cursor: pointer;
+}
+.slider-track input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
+  background: var(--accent); cursor: pointer; box-shadow: 0 0 10px var(--accent);
+}
+.slider-val {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 800; min-width: 44px; text-align: right;
+}
+.bottom-tools {
+  display: flex; gap: 8px; padding: 6px 10px;
+}
+.btn-tool {
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text-main); font-family: var(--font-mono); font-size: 10px;
+  padding: 6px 12px; border-radius: 6px; cursor: pointer;
+  display: flex; align-items: center; gap: 6px; transition: 0.15s;
+}
+.btn-tool:hover {
+  border-color: var(--accent); background: var(--accent-glow);
+}
+.btn-tool.active {
+  background: var(--accent-glow); border-color: var(--accent); color: var(--accent); font-weight: 700;
+}
+
+/* Technical Drawing Banner */
+.drawing-tag {
+  position: absolute; left: 50%; top: 86px; transform: translateX(-50%);
+  padding: 6px 14px; border: 1px solid var(--border); border-radius: 20px;
+  background: var(--bg-panel); font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent);
+  pointer-events: none; box-shadow: 0 4px 18px rgba(0,0,0,0.25);
+  white-space: nowrap; z-index: 24;
+}
+
+/* Ocean Depth Scale for Profiling Cycle (0 - 2,000m) */
+.depth-ruler {
+  position: absolute; left: 290px; top: 90px; bottom: 85px; width: 170px;
+  pointer-events: none; display: none;
+  border-left: 2px dashed rgba(245, 179, 56, 0.7);
+  z-index: 26;
+}
+.depth-ruler.visible { display: block; }
+.depth-marker {
+  position: absolute; left: 12px; transform: translateY(-50%);
+  font-family: var(--font-mono); font-size: 11px; font-weight: 800;
+  color: #f5b338; text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+  display: flex; align-items: center; gap: 6px;
+}
+.depth-marker::before {
+  content: ''; position: absolute; left: -14px; width: 8px; height: 2px;
+  background: #f5b338; box-shadow: 0 0 6px #f5b338;
+}
+.depth-marker small {
+  font-size: 8.5px; color: #fde68a; font-weight: 600; letter-spacing: 0.05em;
+}
+
+/* Mission Guidance Callout & Diurnal Mission Clock HUD */
+.mission-callout {
+  position: absolute; left: 50%; top: 86px; transform: translateX(-50%);
+  max-width: 680px; width: 85%; padding: 10px 18px;
+  text-align: center; pointer-events: auto; display: none; z-index: 24;
+}
+.mission-callout.visible { display: block; }
+
+.mission-clock-hud {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px; padding-bottom: 6px;
+  border-bottom: 1px solid rgba(245, 179, 56, 0.25);
+  font-family: var(--font-mono);
+}
+.mission-clock-left {
+  display: flex; align-items: center; gap: 8px;
+}
+.mission-day-badge {
+  background: #f5b338; color: #020c14; font-weight: 800; font-size: 10px;
+  padding: 2px 7px; border-radius: 4px; letter-spacing: 0.08em;
+}
+.mission-utc-time {
+  font-size: 12px; font-weight: 700; color: #fef3c7; letter-spacing: 0.05em;
+}
+.mission-solar-badge {
+  font-size: 9.5px; font-weight: 700; padding: 2px 8px; border-radius: 12px;
+  display: flex; align-items: center; gap: 5px; letter-spacing: 0.04em;
+  border: 1px solid transparent;
+}
+.solar-dawn {
+  background: rgba(251, 146, 60, 0.25); color: #fed7aa;
+  border-color: rgba(251, 146, 60, 0.55);
+}
+.solar-day {
+  background: rgba(245, 179, 56, 0.25); color: #fef08a;
+  border-color: rgba(245, 179, 56, 0.55);
+}
+.solar-sunset {
+  background: rgba(244, 63, 94, 0.28); color: #fecdd3;
+  border-color: rgba(244, 63, 94, 0.55);
+}
+.solar-night {
+  background: rgba(99, 102, 241, 0.32); color: #e0e7ff;
+  border-color: rgba(165, 180, 252, 0.55);
+}
+
+.mission-cycle-meta {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  font-size: 9px; color: var(--text-muted); font-family: var(--font-mono);
+  margin-bottom: 6px;
+}
+.mission-cycle-meta span b {
+  color: var(--accent); font-weight: 700;
+}
+
+.mission-badge {
+  display: inline-block; font-family: var(--font-mono); font-size: 9px; font-weight: 800;
+  letter-spacing: 0.16em; text-transform: uppercase; color: #020c14;
+  background: #f5b338; padding: 2px 7px; border-radius: 4px; margin-bottom: 4px;
+}
+.mission-quote {
+  font-size: 11px; font-weight: 600; color: #f0faff; line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+
+/* CTD Realtime Telemetry Graph Widget */
+.ctd-widget {
+  position: absolute; right: 20px; top: 80px; width: 250px;
+  padding: 12px; font-family: var(--font-mono); pointer-events: auto; display: none;
+  z-index: 24;
+}
+.ctd-widget.visible { display: block; }
+.ctd-title {
+  font-size: 9.5px; font-weight: 800; color: #f5b338; letter-spacing: 0.1em;
+  margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;
+}
+.ctd-canvas-box {
+  width: 100%; height: 90px; background: rgba(0,0,0,0.3); border-radius: 6px;
+  border: 1px solid var(--border); margin-bottom: 8px; position: relative;
+}
+#ctdGraphCanvas { width: 100%; height: 100%; display: block; }
+.ctd-readouts {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 8.5px;
+}
+.ctd-pill {
+  background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+  padding: 4px 6px; border-radius: 4px;
+}
+.ctd-k { color: var(--text-dim); font-size: 7.5px; }
+.ctd-v { font-weight: 700; color: #ebf8ff; }
+
+/* Dedicated Internal Motor Inspector Floating Card */
+.motor-panel {
+  position: absolute; right: 20px; bottom: 80px; width: 360px;
+  padding: 14px; border-radius: 12px;
+  background: var(--bg-panel); border: 1px solid var(--border-active);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.6), 0 0 24px var(--accent-glow);
+  z-index: 42; backdrop-filter: blur(20px);
+  animation: sunsetFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  display: none;
+}
+.motor-header {
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 10px;
+}
+.motor-title-box { display: flex; align-items: center; gap: 8px; }
+.motor-title { font-family: var(--font-mono); font-size: 11px; font-weight: 800; color: #f5b338; }
+.motor-status-pill {
+  font-family: var(--font-mono); font-size: 8px; font-weight: 800;
+  padding: 2px 6px; border-radius: 8px; background: rgba(245, 179, 56, 0.2);
+  color: #f5b338; border: 1px solid #f5b338;
+}
+.motor-stats-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px;
+  font-family: var(--font-mono); font-size: 9px;
+}
+.motor-stat-item {
+  background: rgba(0,0,0,0.22); border: 1px solid var(--border);
+  padding: 6px 8px; border-radius: 6px;
+}
+.motor-k { color: var(--text-dim); font-size: 7.5px; margin-bottom: 2px; }
+.motor-v { color: #fef08a; font-weight: 700; }
+
+/* Sunset Customizer Floating Card */
+.sunset-panel {
+  position: absolute; right: 20px; bottom: 80px; width: 390px;
+  padding: 16px; border-radius: 12px;
+  background: var(--bg-panel); border: 1px solid var(--border-active);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 24px var(--accent-glow);
+  z-index: 45; backdrop-filter: blur(20px);
+  animation: sunsetFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes sunsetFadeIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.sunset-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;
+}
+.sunset-title-box { display: flex; align-items: center; gap: 10px; }
+.sunset-icon { font-size: 20px; }
+.sunset-title {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 800;
+  letter-spacing: 0.12em; color: #ff9e42;
+}
+.sunset-subtitle { font-size: 9.5px; color: var(--text-muted); font-family: var(--font-sans); }
+.btn-tool-icon {
+  background: transparent; border: 1px solid var(--border); color: var(--text-muted);
+  width: 24px; height: 24px; border-radius: 6px; cursor: pointer;
+  display: grid; place-items: center; font-size: 11px; transition: 0.15s;
+}
+.btn-tool-icon:hover { color: var(--text-main); border-color: var(--accent); background: var(--accent-glow); }
+.sunset-presets-row {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px;
+}
+.sunset-preset-btn {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  border-radius: 8px; border: 1px solid var(--border); background: rgba(255, 255, 255, 0.03);
+  cursor: pointer; text-align: left; transition: all 0.18s ease; color: var(--text-main);
+}
+.sunset-preset-btn:hover { border-color: var(--accent); background: var(--accent-glow); }
+.sunset-preset-btn.active {
+  border-color: #ff9e42; background: rgba(255, 158, 66, 0.16);
+  box-shadow: 0 0 12px rgba(255, 158, 66, 0.22);
+}
+.preset-swatch {
+  width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.25);
+}
+.preset-info { overflow: hidden; }
+.preset-name {
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 700;
+  letter-spacing: 0.03em; white-space: nowrap;
+}
+.preset-desc {
+  font-size: 8px; color: var(--text-muted); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.sunset-controls-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;
+  padding: 10px; background: rgba(0,0,0,0.22); border-radius: 8px; border: 1px solid var(--border);
+}
+.sunset-control-item label {
+  display: flex; justify-content: space-between; font-family: var(--font-mono);
+  font-size: 8px; font-weight: 700; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 4px;
+}
+.sunset-control-item label span { color: #ff9e42; }
+.slider-track-sm input[type=range] {
+  width: 100%; height: 4px; accent-color: #ff9e42; cursor: pointer;
+}
+.sunset-footer-actions { display: flex; gap: 8px; }
+.btn-sunset-preview {
+  flex: 1; background: rgba(255, 158, 66, 0.18) !important;
+  border-color: #ff9e42 !important; color: #ffa442 !important; font-weight: 700; justify-content: center;
+}
+.btn-sunset-preview:hover { background: rgba(255, 158, 66, 0.35) !important; }
+
+/* Loading Overlay */
+#loadingOverlay {
+  position: fixed; inset: 0; background: var(--bg); z-index: 999;
+  display: grid; place-items: center; transition: opacity 0.4s ease;
+}
+.loading-box { text-align: center; }
+.loading-box h2 {
+  font-size: 14px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent);
+}
+.loading-box p {
+  font-size: 11px; color: var(--text-muted); margin-top: 6px; font-family: var(--font-mono);
+}
+</style>
+</head>
+<body class="theme-blueprint">
+
+<div id="loadingOverlay">
+  <div class="loading-box">
+    <h2>INITIALIZING ARGO FLOAT CAD MODEL</h2>
+    <p>Loading precision GLTF asset & buoyancy kinematics...</p>
+  </div>
+</div>
+
+<div class="engineering-grid"></div>
+<div id="canvas-container"></div>
+<svg id="svgLayer"></svg>
+<div id="labelContainer"></div>
+
+<div class="drawing-tag" id="drawingTag">ARGO PROFILING FLOAT — EXTERIOR EXPLODED ASSEMBLY</div>
+
+<div class="hud-overlay">
+  <!-- Ocean Depth Scale for Profiling Cycle (0 - 2,000m) -->
+  <div class="depth-ruler" id="depthRuler">
+    <div class="depth-marker" style="top: 8%;"><span>0 m</span> <small>SURFACE / AIR</small></div>
+    <div class="depth-marker" style="top: 20%;"><span>200 m</span> <small>PHOTIC BASE</small></div>
+    <div class="depth-marker" style="top: 48%;"><span>1,000 m</span> <small>PARKING DRIFT</small></div>
+    <div class="depth-marker" style="top: 72%;"><span>1,500 m</span> <small>THERMOCLINE</small></div>
+    <div class="depth-marker" style="top: 94%;"><span>2,000 m</span> <small>PROFILE APEX</small></div>
+  </div>
+
+  <!-- Mission Guidance Callout & Diurnal Mission Clock HUD -->
+  <div class="mission-callout" id="missionCallout">
+    <div class="mission-clock-hud">
+      <div class="mission-clock-left">
+        <span class="mission-day-badge" id="missionDayBadge">DAY 01</span>
+        <span class="mission-utc-time" id="missionUtcTime">06:00:00 UTC</span>
+      </div>
+      <div class="mission-solar-badge solar-dawn" id="missionSolarBadge">
+        <span id="solarIcon">🌅</span> <span id="solarText">DAWN (06:00)</span>
+      </div>
+    </div>
+    <div class="mission-cycle-meta">
+      <span>PROFILING CYCLE: <b id="missionCycleIndex">#01 (10-Day)</b></span>
+      <span>PARKING: <b>1,000m DRIFT</b></span>
+      <span>PROFILE APEX: <b>2,000m</b></span>
+      <span>DISPLACEMENT: <b id="missionDisplacement">ΔV: +350 cm³</b></span>
+    </div>
+    <div class="mission-badge" id="missionBadge">SURFACE TELEMETRY & GPS FIX</div>
+    <div class="mission-quote" id="missionQuote">
+      Float is surfaced. Iridium satellite communications transmitting vertical CTD profile. GPS acquiring position fix before 1,000m descent.
+    </div>
+  </div>
+
+  <!-- Realtime CTD Telemetry Widget -->
+  <div class="hud-panel ctd-widget" id="ctdWidget">
+    <div class="ctd-title">
+      <span>SBE-41CP CTD SENSOR</span>
+      <span class="status-pill"><span class="status-dot"></span>SAMPLING</span>
+    </div>
+    <div class="ctd-canvas-box">
+      <canvas id="ctdGraphCanvas" width="220" height="90"></canvas>
+    </div>
+    <div class="ctd-readouts">
+      <div class="ctd-pill">
+        <div class="ctd-k">CONDUCTIVITY / SALINITY</div>
+        <div class="ctd-v" id="ctdSalinityVal">34.82 PSU</div>
+      </div>
+      <div class="ctd-pill">
+        <div class="ctd-k">TEMPERATURE</div>
+        <div class="ctd-v" id="ctdTempVal">18.4 °C</div>
+      </div>
+      <div class="ctd-pill">
+        <div class="ctd-k">HYDROSTATIC PRESSURE</div>
+        <div class="ctd-v" id="ctdPressureVal">12.4 dbar</div>
+      </div>
+      <div class="ctd-pill">
+        <div class="ctd-k">SOUND VELOCITY</div>
+        <div class="ctd-v" id="ctdSoundVel">1518.2 m/s</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dedicated Internal Motor / Buoyancy Engine Inspector Card -->
+  <div class="motor-panel" id="motorPanel">
+    <div class="motor-header">
+      <div class="motor-title-box">
+        <span>⚙️</span>
+        <div class="motor-title">HYDRAULIC BUOYANCY MOTOR</div>
+      </div>
+      <span class="motor-status-pill" id="motorStatusPill">PUMPING OIL</span>
+      <button class="btn-tool-icon" id="btnCloseMotorPanel">✕</button>
+    </div>
+    <div class="motor-stats-grid">
+      <div class="motor-stat-item">
+        <div class="motor-k">PISTON RECIPROCATION</div>
+        <div class="motor-v" id="motorPistonStroke">18 mm @ 12 Hz</div>
+      </div>
+      <div class="motor-stat-item">
+        <div class="motor-k">DISPLACEMENT RATE</div>
+        <div class="motor-v" id="motorFlowRate">4.2 mL / sec</div>
+      </div>
+      <div class="motor-stat-item">
+        <div class="motor-k">CHAMBER PRESSURE</div>
+        <div class="motor-v" id="motorChamberBar">200 bar (2900 psi)</div>
+      </div>
+      <div class="motor-stat-item">
+        <div class="motor-k">BLADDER EXPANSION</div>
+        <div class="motor-v" id="motorBladderVol">+350 cm³ (Inflated)</div>
+      </div>
+    </div>
+    <div style="font-size: 8.5px; color: var(--text-muted); line-height: 1.4; margin-bottom: 8px;">
+      Brushless DC motor drives the high-pressure reciprocating piston pump to displace oil from the internal reservoir into the external bladder, generating positive net buoyancy.
+    </div>
+    <div style="display: flex; gap: 6px;">
+      <button class="btn-tool active" id="btnToggleMotorSim" style="flex: 1; justify-content: center;">❚❚ Pause Piston</button>
+      <button class="btn-tool" id="btnMotorFocusCam">🔍 Zoom Engine</button>
+    </div>
+  </div>
+
+  <!-- Top Navigation Header -->
+  <div class="top-nav">
+    <div class="hud-panel brand-box">
+      <div class="brand-logo">
+        <span>🛰️</span> ARGO FLOAT
+      </div>
+      <div class="brand-divider"></div>
+      <div class="brand-meta">
+        <span>TECHNICAL CAD REFERENCE</span>
+        <span>•</span>
+        <a href="index.html" class="cross-nav-link" title="Switch to Ocean Glider">🌊 Glider</a>
+        <a href="argo_diagram.html" class="cross-nav-link" style="border-color: rgba(245, 179, 56, 0.4); color: #f5b338;" title="Switch to Argo Exploded Slider CAD">📐 Slider CAD</a>
+        <a href="argo_dual_exploded.html" class="cross-nav-link" style="border-color: rgba(2, 132, 199, 0.4); color: #0284c7;" title="Switch to Dual Exploded Poster & Hydraulic Deep-Dive">⚙️ Dual Poster</a>
+      </div>
+    </div>
+
+    <div class="hud-panel mode-nav">
+      <button class="btn-nav active" data-mode="explodeExterior">Exterior Exploded</button>
+      <button class="btn-nav" data-mode="cutaway">Cutaway View</button>
+      <button class="btn-nav" data-mode="explodeCutaway">Interior Exploded</button>
+      <button class="btn-nav" data-mode="exterior">Assembled</button>
+      <button class="btn-nav" data-mode="mission" style="color: #f5b338; border-color: rgba(245, 179, 56, 0.4);">
+        🌊 10-Day Profile Mission
+      </button>
+    </div>
+
+    <div class="hud-panel theme-toggle" style="padding: 6px;">
+      <button class="btn-icon" id="btnTheme" title="Toggle Blueprint / Dark Theme">🌓</button>
+    </div>
+  </div>
+
+  <!-- Left Technical Specifications Card -->
+  <div class="left-deck">
+    <div class="hud-panel info-card" id="telemetryCard">
+      <div class="card-header">
+        <span class="card-title" id="viewModeHeading">EXTERIOR EXPLODED</span>
+        <span class="status-pill"><span class="status-dot" id="statusDot"></span><span id="telemetryStatus">CAD DISASSEMBLY ACTIVE</span></span>
+      </div>
+      <div class="card-desc" id="telemetryDesc">
+        Axial CAD disassembly of the autonomous oceanographic Argo profiling float, isolating sensor head, pressure hull, and buoyancy engine.
+      </div>
+      <div class="spec-grid" id="telemetrySpecs">
+        <div class="spec-item"><div class="spec-k">DISPLACEMENT</div><div class="spec-v">28.5 kg (Neutral)</div></div>
+        <div class="spec-item"><div class="spec-k">MAX DEPTH</div><div class="spec-v">2,000 m (200 bar)</div></div>
+        <div class="spec-item"><div class="spec-k">ENDURANCE</div><div class="spec-v">150-300 Profiles</div></div>
+        <div class="spec-item"><div class="spec-k">CYCLE PERIOD</div><div class="spec-v">10 Days / Profile</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Component Technical Inspector Drawer -->
+  <div class="right-drawer" id="rightDrawer">
+    <div class="hud-panel info-card" id="inspectorCard">
+      <div class="card-header">
+        <span class="card-title" id="inspectorPartName">PART INSPECTION</span>
+        <button class="btn-icon" id="btnCloseDrawer" style="width: 20px; height: 20px; font-size: 11px;">✕</button>
+      </div>
+      <div id="inspectorDetails"></div>
+    </div>
+  </div>
+
+  <!-- Floating Sunset Customizer Panel -->
+  <div class="hud-panel sunset-panel" id="sunsetCustomizerPanel" style="display: none;">
+    <div class="sunset-panel-header">
+      <div class="sunset-title-box">
+        <span class="sunset-icon">🌇</span>
+        <div>
+          <div class="sunset-title">CUSTOMIZE SUNSET PALETTE</div>
+          <div class="sunset-subtitle">Atmospheric Optics & Ocean Surface Reflections</div>
+        </div>
+      </div>
+      <button class="btn-tool-icon" id="btnCloseSunsetPanel" title="Close Panel">✕</button>
+    </div>
+    <div class="sunset-presets-row">
+      <button class="sunset-preset-btn active" data-preset="golden">
+        <span class="preset-swatch" style="background: linear-gradient(135deg, #0a1c3d 0%, #7a365d 50%, #ffa442 100%);"></span>
+        <div class="preset-info">
+          <div class="preset-name">Cinematic Gold</div>
+          <div class="preset-desc">Molten amber & sapphire sea</div>
+        </div>
+      </button>
+      <button class="sunset-preset-btn" data-preset="crimson">
+        <span class="preset-swatch" style="background: linear-gradient(135deg, #130a2a 0%, #9e285a 50%, #ff7347 100%);"></span>
+        <div class="preset-info">
+          <div class="preset-name">Pacific Crimson</div>
+          <div class="preset-desc">Radiant magenta & coral reef</div>
+        </div>
+      </button>
+      <button class="sunset-preset-btn" data-preset="nordic">
+        <span class="preset-swatch" style="background: linear-gradient(135deg, #0e2038 0%, #82577c 50%, #fcb08a 100%);"></span>
+        <div class="preset-info">
+          <div class="preset-name">Nordic Pastel</div>
+          <div class="preset-desc">Blush rose & arctic turquoise</div>
+        </div>
+      </button>
+      <button class="sunset-preset-btn" data-preset="tropical">
+        <span class="preset-swatch" style="background: linear-gradient(135deg, #0a1236 0%, #6e2568 50%, #ff8533 100%);"></span>
+        <div class="preset-info">
+          <div class="preset-name">Maldivian Dusk</div>
+          <div class="preset-desc">Royal amethyst & tangerine</div>
+        </div>
+      </button>
+    </div>
+    
+    <div class="sunset-controls-grid">
+      <div class="sunset-control-item">
+        <label>HORIZON WARMTH <span id="valHorizonWarmth">75%</span></label>
+        <div class="slider-track-sm">
+          <input type="range" id="sunsetHorizonWarmth" min="0" max="100" value="75">
+        </div>
+      </div>
+      <div class="sunset-control-item">
+        <label>SKY MAGENTA TINT <span id="valSkyTint">60%</span></label>
+        <div class="slider-track-sm">
+          <input type="range" id="sunsetSkyTint" min="0" max="100" value="60">
+        </div>
+      </div>
+      <div class="sunset-control-item">
+        <label>WATER DEPTH TINT <span id="valWaterTint">50%</span></label>
+        <div class="slider-track-sm">
+          <input type="range" id="sunsetWaterTint" min="0" max="100" value="50">
+        </div>
+      </div>
+      <div class="sunset-control-item">
+        <label>SUN FLARE RADIANCE <span id="valFlareRadiance">100%</span></label>
+        <div class="slider-track-sm">
+          <input type="range" id="sunsetFlareRadiance" min="50" max="200" value="100">
+        </div>
+      </div>
+    </div>
+
+    <div class="sunset-footer-actions">
+      <button class="btn-tool btn-sunset-preview" id="btnPreviewSunset">🌇 Preview Sunset Now</button>
+      <button class="btn-tool" id="btnResetSunset">↺ Reset</button>
+    </div>
+  </div>
+
+  <!-- Bottom Control Deck -->
+  <div class="bottom-deck">
+    <div class="hud-panel slider-panel" id="sliderPanel">
+      <span class="slider-label" id="sliderLabelText">EXPLOSION DISTANCE</span>
+      <div class="slider-track">
+        <input type="range" id="explodeSlider" min="0" max="100" value="100">
+        <span class="slider-val" id="sliderVal">100%</span>
+      </div>
+      <button class="btn-tool" id="btnPlayExplosion">▶ Auto</button>
+    </div>
+
+    <div class="hud-panel bottom-tools">
+      <button class="btn-tool" id="btnTurntable" style="display: none;">▶ 360° Orbit</button>
+      <button class="btn-tool" id="btnMissionSpeed" style="display: none;">Speed: 1x</button>
+      <button class="btn-tool" id="btnDiurnalMode" style="display: none;">⏱ Diurnal: Auto</button>
+      <button class="btn-tool" id="btnSunsetPalette" style="display: none;" title="Customize Sunset Colors">🌇 Sunset: Cinematic Gold ▾</button>
+      <button class="btn-tool" id="btnMotorInspector" style="display: none;">⚙️ Motor Engine</button>
+      <button class="btn-tool" id="btnMissionCam" style="display: none;">Cam: Wide Cutaway</button>
+      <button class="btn-tool active" id="btnTraceLines">Guidelines: ON</button>
+      <button class="btn-tool active" id="btnLabels">Labels: ON</button>
+      <button class="btn-tool" id="btnReset">Reset View</button>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+// Application State
+const appState = {
+  viewMode: 'explodeExterior',
+  explosionFactor: 1.0,
+  hullCutProgress: 0.5, // 0.0 (closed) to 1.0 (deep cut)
+  autoPlay: false,
+  autoDir: 1,
+  showTraceLines: true,
+  showLabels: true,
+  turntable: false,
+  theme: 'blueprint',
+  selectedPart: null,
+  hoveredPart: null,
+  missionCamMode: 'wide', // 'wide' or 'chase'
+  missionProgress: 0.0,
+  missionPlaying: true,
+  missionSpeed: 1.0,
+  missionCycleIndex: 1,
+  diurnalOverride: 'auto',
+  sunsetPreset: 'golden',
+  sunsetSliders: { horizon: 75, skyTint: 60, waterTint: 50, flare: 100 },
+  motorSimActive: true
+};
+
+// Scene, Camera & Renderer Setup
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.05, 120);
+camera.position.set(0.6, 2.0, -3.4);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.localClippingEnabled = true;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.maxDistance = 25;
+controls.minDistance = 0.3;
+controls.target.set(0, 0.7, 0);
+
+// Lighting Rig
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+scene.add(ambientLight);
+
+const keyLight = new THREE.DirectionalLight(0xfffaee, 2.8);
+keyLight.position.set(4, 8, 4);
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0xaad5ff, 1.4);
+fillLight.position.set(-5, 3, -4);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xffdf99, 1.8);
+rimLight.position.set(0, -6, -5);
+scene.add(rimLight);
+
+const hemiLight = new THREE.HemisphereLight(0xbdeeff, 0x0a2236, 1.2);
+scene.add(hemiLight);
+
+// Navigation Strobe Beacon Light
+const strobeLight = new THREE.PointLight(0xffffff, 0, 15, 2.0);
+scene.add(strobeLight);
+
+const strobeGeo = new THREE.SphereGeometry(0.015, 16, 16);
+const strobeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.0 });
+const strobeMesh = new THREE.Mesh(strobeGeo, strobeMat);
+scene.add(strobeMesh);
+
+// Theme Switcher
+function setTheme(t) {
+  appState.theme = t;
+  document.body.classList.toggle('theme-blueprint', t === 'blueprint');
+  const btn = document.getElementById('btnTheme');
+  btn.textContent = t === 'blueprint' ? '☀️' : '🌙';
+
+  if (appState.viewMode !== 'mission') {
+    if (t === 'blueprint') {
+      scene.background = new THREE.Color(0xf4f6f8);
+      keyLight.intensity = 2.4;
+      fillLight.intensity = 1.2;
+      ambientLight.intensity = 0.9;
+    } else {
+      scene.background = new THREE.Color(0x030d17);
+      keyLight.intensity = 3.2;
+      fillLight.intensity = 1.6;
+      ambientLight.intensity = 0.6;
+    }
+  }
+}
+setTheme('blueprint');
+
+// ==========================================
+// ARGO FLOAT TECHNICAL COMPONENT METADATA
+// ==========================================
+const COMPONENT_CONFIG = {
+  Antenna_Tip: {
+    title: "IRIDIUM & GPS RADOME APEX",
+    sub: "RF Transceiver Terminal & Flash Strobe",
+    category: "Telemetry & Positioning",
+    desc: "Weather-sealed radome tip housing the omnidirectional GPS patch antenna and multi-band Iridium satellite transceiver for bidirectional mission commands and data bursts.",
+    specs: { "FREQUENCY": "1616-1626 MHz (Iridium)", "GPS BAND": "L1 1575.42 MHz", "SURFACE APOGEE": "+0.45 m above waterline", "TRANSMIT POWER": "3.5 W Peak" }
+  },
+  Antenna_Rod: {
+    title: "HIGH-GAIN ANTENNA MAST",
+    sub: "Structural Fiberglass Radiator",
+    category: "Telemetry & Positioning",
+    desc: "Reinforced fiberglass antenna mast extending 0.5m above the top end cap to ensure RF line-of-sight during surface swells and sea-state 4 conditions.",
+    specs: { "LENGTH": "480 mm", "MATERIAL": "Glass-Reinforced Polymer", "DRAG COEFF": "0.18 Cd", "FLEX TOLERANCE": "±35° Deflection" }
+  },
+  Antenna_GPS_Module: {
+    title: "SATELLITE BASE COUPLER",
+    sub: "RF Ground Plane & Antenna Feed",
+    category: "Telemetry & Positioning",
+    desc: "Hermetically sealed base coupler with dual high-pressure glass-to-metal RF penetrators rated to 200 bar hydrostatic pressure.",
+    specs: { "PRESSURE SEAL": "Glass-to-Metal Seal", "IMPEDANCE": "50 Ω Coaxial", "O-RINGS": "Dual Viton 75D", "PENETRATOR RATING": "300 bar Test" }
+  },
+  GPS_Receiver: {
+    title: "LOW-POWER GPS RECEIVER",
+    sub: "Ephemeris Time & Geolocation Engine",
+    category: "Avionics & Navigation",
+    desc: "Ultra-low-power GPS receiver providing fast TTFF (Time-To-First-Fix < 25s) when the float breaks the surface, logging drift trajectory vectors.",
+    specs: { "TTFF COLD": "< 28 s", "POSITION ACCURACY": "± 2.5 m RMS", "SURFACE LOG": "Surface Apogee Geofence", "POWER SLEEP": "< 5 µA" }
+  },
+  CTD_Sensor_Payload: {
+    title: "SBE-41CP CTD OCEANOGRAPHIC SENSOR",
+    sub: "High-Precision Conductivity-Temp-Depth",
+    category: "Scientific Payload",
+    desc: "Industry-standard Sea-Bird SBE-41CP CTD sensor measuring vertical conductivity (salinity), temperature, and pressure profiles from 2,000m depth to the sea surface.",
+    specs: { "CONDUCTIVITY RES": "0.0001 mS/cm (±0.003 PSU)", "TEMP ACCURACY": "±0.002 °C (0.0001 °C Res)", "PRESSURE SENSOR": "0 - 2000 dbar (±2 dbar)", "SAMPLING RATE": "Continuous 1 Hz Ascent" }
+  },
+  CTD_Internal_Rod_1: {
+    title: "PLATINUM RESISTANCE THERMOMETER",
+    sub: "Rapid-Response Thermal Sensor",
+    category: "Scientific Payload",
+    desc: "High-speed aged platinum resistance thermometer with 0.5-second thermal response time to resolve sharp oceanic thermoclines without hysteresis.",
+    specs: { "ELEMENT": "Pt100 Industrial Class A", "TIME CONSTANT": "0.5 sec", "RANGE": "-5 °C to +35 °C", "STABILITY": "< 0.001 °C / year" }
+  },
+  CTD_Internal_Rod_2: {
+    title: "CONDUCTIVITY FLOW CELL",
+    sub: "Electrode-less Inductive Cell",
+    category: "Scientific Payload",
+    desc: "Borosilicate glass conductivity cell with internal platinum electrodes and anti-foulant cylinders to prevent bio-fouling during multi-year drift.",
+    specs: { "CELL TYPE": "Pumped Glass Flow Cell", "VOLUME": "1.2 mL", "ANTI-FOULANT": "Tributyltin Organotin", "ENDURANCE": "> 5 Years" }
+  },
+  CTD_Internal_Rod_3: {
+    title: "PIEZORESISTIVE PRESSURE TRANSDUCER",
+    sub: "High-Accuracy Depth Sensor",
+    category: "Scientific Payload",
+    desc: "Micro-machined silicon piezoresistive pressure bridge sealed in an oil-filled stainless steel diaphragm to record high-resolution depth profiles.",
+    specs: { "RANGE": "0 - 2,000 dbar", "RESOLUTION": "0.1 dbar (~10 cm depth)", "HYSTERESIS": "< 0.02% Span", "COMPENSATION": "Internal Digital Calibration" }
+  },
+  Sensor_Port: {
+    title: "SEAWATER INTAKE PLENUM",
+    sub: "Pumped CTD Hydrodynamic Port",
+    category: "Scientific Payload",
+    desc: "Hydrodynamically streamlined seawater intake with integral exhaust plenum to pump undisturbed seawater through the measuring conductivity cell.",
+    specs: { "FLOW VELOCITY": "25 mL / sec (Pumped)", "PORT ORIENTATION": "Vertical Upward", "MATERIAL": "Polyoxymethylene (Delrin)", "DEBRIS FILTER": "Titanium Mesh 500µm" }
+  },
+  Deployment_Lifting_Bail: {
+    title: "VESSEL DEPLOYMENT LIFTING BAIL",
+    sub: "Marine Recovery Stainless Shackle",
+    category: "Mechanical Airframe",
+    desc: "Heavy-duty electro-polished stainless steel lifting bail designed for crane line release during shipboard deployment and small-boat recovery.",
+    specs: { "PROOF LOAD": "5.0 kN (500 kgf)", "MATERIAL": "316L Stainless Steel", "COATING": "Electro-polished Passivated", "SAFETY FACTOR": "6:1" }
+  },
+  Top_End_Cap: {
+    title: "UPPER PRESSURE END CAP",
+    sub: "Forged Aluminum 7075-T6 Bulkhead",
+    category: "Pressure Vessel",
+    desc: "Precision CNC-machined upper hemispherical end cap securing the CTD sensor, antenna penetrators, and vacuum test port.",
+    specs: { "MATERIAL": "Aluminum 7075-T6 (Hard Anodized)", "COATING": "50 µm Hardcoat Anodize", "SEAL DESIGN": "Radial Dual O-Rings", "BURST RATING": "> 350 bar" }
+  },
+  Control_Electronics_CPU: {
+    title: "AUTONOMOUS MISSION CONTROLLER",
+    sub: "Dual ARM Cortex-M4 Microcontroller",
+    category: "Avionics & Power",
+    desc: "Redundant low-power mission controller orchestrating deep sleep, buoyancy PID feedback loops, sensor acquisition, and data compression algorithms.",
+    specs: { "MCU": "Dual 32-bit ARM Cortex-M4", "FLASH STORAGE": "64 MB Non-Volatile Flash", "ACTIVE POWER": "< 18 mW", "DEEP SLEEP": "< 12 µA" }
+  },
+  Battery_Module_1: {
+    title: "PRIMARY LITHIUM POWER TIER 1",
+    sub: "Lithium Thionyl Chloride (Li-SOCl2)",
+    category: "Avionics & Power",
+    desc: "Hermetically sealed lithium thionyl chloride pack engineered for maximum energy density and ultra-low self-discharge (<1% per year) in 2°C ocean abyssal temperatures.",
+    specs: { "CHEMISTRY": "Li-SOCl2", "VOLTAGE": "14.4 V Nominal", "CAPACITY": "60 Ah per Tier", "ENERGY": "864 Wh" }
+  },
+  Battery_Module_2: { title: "PRIMARY LITHIUM POWER TIER 2", sub: "Power Pack Sub-Assembly", category: "Avionics & Power", desc: "Redundant power pack sub-assembly.", specs: { "VOLTAGE": "14.4 V", "CAPACITY": "60 Ah", "ISOLATION": "Diode Protected" } },
+  Battery_Module_3: { title: "PRIMARY LITHIUM POWER TIER 3", sub: "Power Pack Sub-Assembly", category: "Avionics & Power", desc: "Redundant power pack sub-assembly.", specs: { "VOLTAGE": "14.4 V", "CAPACITY": "60 Ah", "ISOLATION": "Diode Protected" } },
+  Battery_Module_4: { title: "PRIMARY LITHIUM POWER TIER 4", sub: "Power Pack Sub-Assembly", category: "Avionics & Power", desc: "Redundant power pack sub-assembly.", specs: { "VOLTAGE": "14.4 V", "CAPACITY": "60 Ah", "ISOLATION": "Diode Protected" } },
+  Battery_Module_5: { title: "PRIMARY LITHIUM POWER TIER 5", sub: "Power Pack Sub-Assembly", category: "Avionics & Power", desc: "Redundant power pack sub-assembly.", specs: { "VOLTAGE": "14.4 V", "CAPACITY": "60 Ah", "ISOLATION": "Diode Protected" } },
+  Battery_Module_6: {
+    title: "PRIMARY LITHIUM POWER TIER 6",
+    sub: "Combined 360 Ah Deep-Sea Reserve",
+    category: "Avionics & Power",
+    desc: "Top battery pack completing the multi-year energy reserve, enabling up to 300 vertical profiles down to 2,000 meters over a 5-year operating lifespan.",
+    specs: { "TOTAL PACK CAPACITY": "360 Ah (5.2 kWh)", "DESIGN LIFETIME": "5 Years / 300 Dives", "PASSIVATION GUARD": "Internal Bleed Resistors", "TEMP RANGE": "-10 °C to +45 °C" }
+  },
+  Cutaway_Hull_Cover: {
+    title: "REMOVABLE CUTAWAY HULL COWL",
+    sub: "Inspection & Access Cowling",
+    category: "Pressure Vessel",
+    desc: "Precision split-section aluminum shell providing rapid pre-deployment bench access to internal battery fuses, vacuum ports, and controller debug pins.",
+    specs: { "MATERIAL": "Aluminum 6061-T6", "FINISH": "Safety Yellow Powder Coat", "WALL THICKNESS": "6.35 mm", "SEAL": "Internal Face O-Ring" }
+  },
+  Pressure_Hull_Shell: {
+    title: "CYLINDRICAL PRESSURE HULL",
+    sub: "Seamless Extruded Aluminum Cylinder",
+    category: "Pressure Vessel",
+    desc: "Monolithic extruded cylindrical hull designed to resist extreme hydrostatic compressive stress ($200\text{ bar}$) while maintaining slight positive buoyancy compressibility.",
+    specs: { "INNER DIAMETER": "152 mm", "OUTER DIAMETER": "165 mm", "COLLAPSE PRESSURE": "320 bar (3,200 m safety)", "COMPRESSIBILITY": "4.2 × 10^-6 dbar^-1" }
+  },
+  Internal_Rib_1: {
+    title: "HULL REINFORCEMENT RIB RING",
+    sub: "Buckling Arrestor Ring",
+    category: "Pressure Vessel",
+    desc: "Precision internal circumferential rib preventing elastic buckling and hull ovalization under 200 bar external compressive loads.",
+    specs: { "MATERIAL": "Titanium Ti-6Al-4V", "HOOP STRESS": "450 MPa", "WEIGHT": "120 g" }
+  },
+  Piston_Mechanism: {
+    title: "RECIPROCATING HYDRAULIC PISTON MOTOR",
+    sub: "Variable Buoyancy Displacement Engine",
+    category: "Buoyancy Engine",
+    desc: "Precision brushless DC electric motor coupled to an axial reciprocating piston pump. Transmits mineral oil between the internal reservoir and external bladder to regulate net buoyancy.",
+    specs: { "MOTOR TYPE": "Brushless DC Servomotor", "PUMP TYPE": "High-Pressure Axial Piston", "MAX PRESSURE": "220 bar (3,200 psi)", "STROKE VOLUME": "0.45 mL / stroke @ 12 Hz", "ELECTRICAL EFFICIENCY": "78%" }
+  },
+  Internal_Reservoir: {
+    title: "INTERNAL HYDRAULIC OIL RESERVOIR",
+    sub: "Atmospheric Mineral Oil Storage",
+    category: "Buoyancy Engine",
+    desc: "Low-pressure internal reservoir holding 450 mL of high-dielectric mineral oil at 1 bar internal hull atmosphere when the external bladder is deflated.",
+    specs: { "FLUID": "DTE-24 Hydraulic Mineral Oil", "VOLUME CAPACITY": "450 cm³", "VISCOSITY": "32 cSt @ 40 °C", "PRESSURE": "Atmospheric 1.0 bar" }
+  },
+  Buoyancy_Bladder: {
+    title: "EXTERNAL BUOYANCY BLADDER",
+    sub: "Reinforced Polyurethane Expansion Bladder",
+    category: "Buoyancy Engine",
+    desc: "Heavy-duty flexible elastomer bladder mounted on the bottom end cap. Inflates with 350 mL of oil to generate buoyant lift ($+0.35\text{ kgf}$) driving float ascent.",
+    specs: { "MATERIAL": "Polyurethane Thermoplastic", "EXPANSION DELTA": "ΔV = 350 cm³", "BURST SAFETY": "500 bar membrane", "BUOYANCY CHANGE": "± 0.35 kgf (+1.2% Displacement)" }
+  },
+  Bottom_Cap: {
+    title: "LOWER BULKHEAD & VALVE MANIFOLD",
+    sub: "Hydraulic Solenoid Valve Block",
+    category: "Buoyancy Engine",
+    desc: "Lower hemispherical bulkhead integrating the high-pressure latching solenoid valve, check valves, and hydraulic oil feedthrough port.",
+    specs: { "VALVE TYPE": "Bistable Latching Solenoid", "FLOW PATH": "Dual Check-Valve Circuit", "LEAK RATE": "< 10^-7 mbar·L/s", "PRESSURE": "200 bar" }
+  },
+  Lower_Pressure_Case: {
+    title: "SEABED IMPACT COWLING",
+    sub: "Impact Bumper & Bladder Guard",
+    category: "Mechanical Airframe",
+    desc: "Perforated polyurethane protective cowling shielding the expanding rubber bladder from benthic seabed impacts, rocky outcroppings, and sediment abrasion.",
+    specs: { "MATERIAL": "High-Density Polyurethane", "DRAINAGE PORTS": "8 Free-Flooding Slots", "IMPACT ABSORPTION": "150 Joules", "CORROSION": "Inert to Seawater" }
+  }
+};
+
+// Aliases for repeated parts
+COMPONENT_CONFIG.GPS_Ring_1 = COMPONENT_CONFIG.Antenna_GPS_Module;
+COMPONENT_CONFIG.GPS_Ring_2 = COMPONENT_CONFIG.Antenna_GPS_Module;
+COMPONENT_CONFIG.GPS_Ring_3 = COMPONENT_CONFIG.Antenna_GPS_Module;
+COMPONENT_CONFIG.Stability_Collar_1 = COMPONENT_CONFIG.Deployment_Lifting_Bail;
+COMPONENT_CONFIG.Stability_Collar_2 = COMPONENT_CONFIG.Deployment_Lifting_Bail;
+COMPONENT_CONFIG.Internal_Rib_2 = COMPONENT_CONFIG.Internal_Rib_1;
+COMPONENT_CONFIG.Internal_Rib_3 = COMPONENT_CONFIG.Internal_Rib_1;
+COMPONENT_CONFIG.Internal_Rib_4 = COMPONENT_CONFIG.Internal_Rib_1;
+COMPONENT_CONFIG.Internal_Rib_5 = COMPONENT_CONFIG.Internal_Rib_1;
+
+// Radial & Axial CAD Disassembly Offsets
+const EXPLODE_OFFSETS = {
+  // Top CTD & Antenna Group (Move +Y)
+  Antenna_Tip: { x: 0, y: 0.55, z: 0 },
+  Antenna_Rod: { x: 0, y: 0.45, z: 0 },
+  Antenna_GPS_Module: { x: 0, y: 0.35, z: 0 },
+  GPS_Receiver: { x: 0, y: 0.32, z: 0 },
+  GPS_Ring_1: { x: 0, y: 0.33, z: 0 },
+  GPS_Ring_2: { x: 0, y: 0.33, z: 0 },
+  GPS_Ring_3: { x: 0, y: 0.33, z: 0 },
+  CTD_Sensor_Payload: { x: 0, y: 0.28, z: 0 },
+  CTD_Internal_Rod_1: { x: -0.04, y: 0.30, z: 0 },
+  CTD_Internal_Rod_2: { x: 0, y: 0.30, z: 0 },
+  CTD_Internal_Rod_3: { x: 0.04, y: 0.30, z: 0 },
+  Sensor_Port: { x: 0.06, y: 0.29, z: 0 },
+  Deployment_Lifting_Bail: { x: 0.08, y: 0.25, z: 0 },
+  Stability_Collar_1: { x: 0, y: 0.22, z: 0 },
+  Stability_Collar_2: { x: 0, y: 0.20, z: 0 },
+  Top_End_Cap: { x: 0, y: 0.16, z: 0 },
+
+  // Outer Shells (Separate horizontally in Exterior Exploded)
+  Cutaway_Hull_Cover: { x: 0.32, y: 0, z: 0 },
+  Pressure_Hull_Shell: { x: -0.32, y: 0, z: 0 },
+
+  // Bottom Bladder & Cowling (Move -Y)
+  Bottom_Cap: { x: 0, y: -0.15, z: 0 },
+  Buoyancy_Bladder: { x: 0, y: -0.25, z: 0 },
+  Lower_Pressure_Case: { x: 0, y: -0.38, z: 0 }
+};
+
+// Internal Exploded Multi-Tier Offsets
+const TIER_OFFSETS = {
+  // Tier 1: Antenna & CTD Head (+Y 0.85m)
+  Antenna_Tip: { x: 0, y: 0.95, z: 0 },
+  Antenna_Rod: { x: 0, y: 0.90, z: 0 },
+  Antenna_GPS_Module: { x: 0, y: 0.85, z: 0 },
+  GPS_Receiver: { x: 0, y: 0.82, z: 0 },
+  GPS_Ring_1: { x: 0, y: 0.83, z: 0 },
+  GPS_Ring_2: { x: 0, y: 0.83, z: 0 },
+  GPS_Ring_3: { x: 0, y: 0.83, z: 0 },
+  CTD_Sensor_Payload: { x: 0, y: 0.78, z: 0 },
+  CTD_Internal_Rod_1: { x: -0.04, y: 0.80, z: 0 },
+  CTD_Internal_Rod_2: { x: 0, y: 0.80, z: 0 },
+  CTD_Internal_Rod_3: { x: 0.04, y: 0.80, z: 0 },
+  Sensor_Port: { x: 0.06, y: 0.79, z: 0 },
+  Deployment_Lifting_Bail: { x: 0.08, y: 0.75, z: 0 },
+  Stability_Collar_1: { x: 0, y: 0.72, z: 0 },
+  Stability_Collar_2: { x: 0, y: 0.70, z: 0 },
+  Top_End_Cap: { x: 0, y: 0.65, z: 0 },
+
+  // Tier 2: CPU Controller (+Y 0.45m)
+  Control_Electronics_CPU: { x: 0, y: 0.48, z: 0 },
+
+  // Tier 3: Battery Power Stack (Spread vertically)
+  Battery_Module_6: { x: 0, y: 0.38, z: 0 },
+  Battery_Module_5: { x: 0, y: 0.30, z: 0 },
+  Battery_Module_4: { x: 0, y: 0.22, z: 0 },
+  Battery_Module_3: { x: 0, y: 0.14, z: 0 },
+  Battery_Module_2: { x: 0, y: 0.06, z: 0 },
+  Battery_Module_1: { x: 0, y: -0.02, z: 0 },
+
+  // Ribs (Explode radially)
+  Internal_Rib_5: { x: 0.16, y: 0.40, z: 0 },
+  Internal_Rib_4: { x: -0.16, y: 0.28, z: 0 },
+  Internal_Rib_3: { x: 0.16, y: 0.16, z: 0 },
+  Internal_Rib_2: { x: -0.16, y: 0.04, z: 0 },
+  Internal_Rib_1: { x: 0.16, y: -0.08, z: 0 },
+
+  // Outer Shells (Move far outward)
+  Cutaway_Hull_Cover: { x: 0.55, y: 0, z: 0 },
+  Pressure_Hull_Shell: { x: -0.55, y: 0, z: 0 },
+
+  // Tier 4: Hydraulic Motor Engine (Center-low)
+  Piston_Mechanism: { x: 0, y: -0.16, z: 0 },
+  Internal_Reservoir: { x: 0, y: -0.26, z: 0 },
+
+  // Tier 5: Bladder & Lower Cowling (Move -Y)
+  Bottom_Cap: { x: 0, y: -0.40, z: 0 },
+  Buoyancy_Bladder: { x: 0, y: -0.52, z: 0 },
+  Lower_Pressure_Case: { x: 0, y: -0.68, z: 0 }
+};
+
+// ==========================================
+// 3D MODEL LOADING & DATA BINDING
+// ==========================================
+let argoRoot = null;
+const originalPositions = new Map();
+const labelElements = [];
+const labelsLayer = document.getElementById('labelContainer');
+const svgLayer = document.getElementById('svgLayer');
+
+const loader = new GLTFLoader();
+loader.load('argo_float.glb', gltf => {
+  argoRoot = gltf.scene;
+  scene.add(argoRoot);
+
+  // Center model vertically
+  const box = new THREE.Box3().setFromObject(argoRoot);
+  const center = box.getCenter(new THREE.Vector3());
+  argoRoot.position.set(-center.x, -center.y + 0.72, -center.z);
+
+  // Traverse & store original coordinates
+  argoRoot.traverse(child => {
+    if (child.isMesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+
+      if (child.material) {
+        child.material = child.material.clone();
+        child.material.side = THREE.DoubleSide;
+        child.material.roughness = Math.max(0.18, child.material.roughness || 0.3);
+      }
+    }
+
+    if (child.name && child.name !== 'ARGO_FLOAT_ROOT') {
+      originalPositions.set(child.name, child.position.clone());
+      child.userData.originalPos = child.position.clone();
+
+      const cfg = COMPONENT_CONFIG[child.name];
+      if (cfg && !child.name.startsWith('GPS_Ring_') && !child.name.startsWith('Internal_Rib_') && child.name !== 'Battery_Module_2' && child.name !== 'Battery_Module_3' && child.name !== 'Battery_Module_4' && child.name !== 'Battery_Module_5') {
+        createLabelBadge(child, cfg);
+      }
+    }
+  });
+
+  // Hide loading screen
+  const overlay = document.getElementById('loadingOverlay');
+  overlay.style.opacity = '0';
+  setTimeout(() => overlay.style.display = 'none', 400);
+
+  // Initial exploded setup
+  setViewMode('explodeExterior');
+  animate();
+
+}, undefined, err => {
+  console.error("Error loading argo_float.glb:", err);
+  document.querySelector('.loading-box h2').textContent = "ERROR LOADING CAD ASSET";
+  document.querySelector('.loading-box p').textContent = err.message;
+});
+
+// Create Floating Technical Label Badge & Anchor
+function createLabelBadge(node, cfg) {
+  const badge = document.createElement('div');
+  badge.className = 'eng-badge';
+  badge.innerHTML = `
+    <div class="eng-badge-dot"></div>
+    <div>
+      <div class="eng-badge-title">${cfg.title}</div>
+      <div class="eng-badge-sub">${cfg.sub}</div>
+    </div>
+  `;
+
+  const pin = document.createElement('div');
+  pin.className = 'hotspot-pin';
+
+  badge.addEventListener('click', e => {
+    e.stopPropagation();
+    selectPart(node.name);
+  });
+  pin.addEventListener('click', e => {
+    e.stopPropagation();
+    selectPart(node.name);
+  });
+
+  badge.addEventListener('mouseenter', () => highlightPart(node.name, true));
+  badge.addEventListener('mouseleave', () => highlightPart(node.name, false));
+  pin.addEventListener('mouseenter', () => highlightPart(node.name, true));
+  pin.addEventListener('mouseleave', () => highlightPart(node.name, false));
+
+  labelsLayer.appendChild(badge);
+  labelsLayer.appendChild(pin);
+
+  labelElements.push({
+    node: node,
+    cfg: cfg,
+    badge: badge,
+    pin: pin
+  });
+}
+
+// ==========================================
+// 2,000M WATER ENVIRONMENT & SIMULATION
+// ==========================================
+const waterMissionGroup = new THREE.Group();
+waterMissionGroup.visible = false;
+scene.add(waterMissionGroup);
+
+// Dynamic Sky Atmosphere Canvas Texture
+const skyCanvas = document.createElement('canvas');
+skyCanvas.width = 128;
+skyCanvas.height = 256;
+const skyCtx = skyCanvas.getContext('2d');
+const skyTexture = new THREE.CanvasTexture(skyCanvas);
+
+const skyBackdropGeo = new THREE.PlaneGeometry(36, 16);
+const skyBackdropMat = new THREE.MeshBasicMaterial({ map: skyTexture, side: THREE.DoubleSide });
+const skyBackdrop = new THREE.Mesh(skyBackdropGeo, skyBackdropMat);
+skyBackdrop.position.set(0, 9.2, -5.2);
+waterMissionGroup.add(skyBackdrop);
+
+// Dynamic Ocean Depth Canvas Texture
+const oceanCanvas = document.createElement('canvas');
+oceanCanvas.width = 128;
+oceanCanvas.height = 256;
+const oceanCtx = oceanCanvas.getContext('2d');
+const oceanTexture = new THREE.CanvasTexture(oceanCanvas);
+
+const oceanCutawayGeo = new THREE.PlaneGeometry(16, 5.2);
+const oceanCutawayMat = new THREE.MeshBasicMaterial({
+  map: oceanTexture,
+  transparent: true,
+  opacity: 0.88,
+  side: THREE.DoubleSide
+});
+const oceanCutawayMesh = new THREE.Mesh(oceanCutawayGeo, oceanCutawayMat);
+oceanCutawayMesh.position.set(0, -1.2, -0.6);
+waterMissionGroup.add(oceanCutawayMesh);
+
+// Celestial Sun System
+const sunGroup = new THREE.Group();
+const sunDisk = new THREE.Mesh(
+  new THREE.CircleGeometry(0.34, 32),
+  new THREE.MeshBasicMaterial({ color: 0xfffaee, side: THREE.DoubleSide, transparent: true, opacity: 1.0 })
+);
+const sunCorona = new THREE.Mesh(
+  new THREE.RingGeometry(0.32, 0.72, 32),
+  new THREE.MeshBasicMaterial({ color: 0xffaa22, transparent: true, opacity: 0.65, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+);
+const sunAura = new THREE.Mesh(
+  new THREE.RingGeometry(0.68, 1.45, 32),
+  new THREE.MeshBasicMaterial({ color: 0xff7700, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+);
+sunGroup.add(sunDisk, sunCorona, sunAura);
+sunGroup.position.set(-4.0, 2.8, -1.78);
+waterMissionGroup.add(sunGroup);
+
+// Celestial Moon System
+const moonGroup = new THREE.Group();
+const moonDisk = new THREE.Mesh(
+  new THREE.CircleGeometry(0.28, 32),
+  new THREE.MeshBasicMaterial({ color: 0xf0f6ff, side: THREE.DoubleSide, transparent: true, opacity: 0.0 })
+);
+const moonHalo = new THREE.Mesh(
+  new THREE.RingGeometry(0.27, 0.65, 32),
+  new THREE.MeshBasicMaterial({ color: 0x88bbff, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+);
+const moonAura = new THREE.Mesh(
+  new THREE.RingGeometry(0.62, 1.25, 32),
+  new THREE.MeshBasicMaterial({ color: 0x4477bb, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+);
+moonGroup.add(moonDisk, moonHalo, moonAura);
+moonGroup.position.set(4.0, 2.8, -1.78);
+waterMissionGroup.add(moonGroup);
+
+// Starfield Twinkle
+const starCount = 350;
+const starGeo = new THREE.BufferGeometry();
+const starPositions = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount; i++) {
+  starPositions[i * 3 + 0] = (Math.random() - 0.5) * 32;
+  starPositions[i * 3 + 1] = 1.4 + Math.random() * 12;
+  starPositions[i * 3 + 2] = -4.5 + (Math.random() - 0.5) * 4;
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.045, transparent: true, opacity: 0.0 });
+const starPoints = new THREE.Points(starGeo, starMat);
+waterMissionGroup.add(starPoints);
+
+// Water Surface Plane
+const waterSurfaceGeom = new THREE.PlaneGeometry(16, 3.4, 48, 20);
+const waterSurfaceMat = new THREE.MeshStandardMaterial({
+  color: 0x185b7e,
+  emissive: 0x072236,
+  roughness: 0.2,
+  metalness: 0.1,
+  transparent: true,
+  opacity: 0.78,
+  side: THREE.DoubleSide
+});
+const waterSurface = new THREE.Mesh(waterSurfaceGeom, waterSurfaceMat);
+waterSurface.rotation.x = -Math.PI / 2;
+waterSurface.position.set(0, 1.4, -0.1); // Y = 1.4 is Depth = 0m
+waterMissionGroup.add(waterSurface);
+
+// 2000m Seabed Terrain
+const seabedGeom = new THREE.PlaneGeometry(16, 3.4, 32, 16);
+const sPos = seabedGeom.attributes.position;
+for (let i = 0; i < sPos.count; i++) {
+  const x = sPos.getX(i);
+  const y = sPos.getY(i);
+  sPos.setZ(i, Math.sin(x * 1.5) * 0.06 + Math.cos(y * 2.0) * 0.04);
+}
+seabedGeom.computeVertexNormals();
+const seabedMat = new THREE.MeshStandardMaterial({
+  color: 0x0a141e,
+  roughness: 0.9,
+  metalness: 0.05
+});
+const seabed = new THREE.Mesh(seabedGeom, seabedMat);
+seabed.rotation.x = -Math.PI / 2;
+seabed.position.set(0, -3.8, -0.1); // Y = -3.8 is Depth = 2,000m
+waterMissionGroup.add(seabed);
+
+// Subsurface Ocean Current Streamlines (at 1000m parking depth)
+const currentGroup = new THREE.Group();
+const currentParticleCount = 80;
+const currentGeo = new THREE.BufferGeometry();
+const currentPos = new Float32Array(currentParticleCount * 3);
+for (let i = 0; i < currentParticleCount; i++) {
+  currentPos[i * 3 + 0] = (Math.random() - 0.5) * 14;
+  currentPos[i * 3 + 1] = -1.2 + (Math.random() - 0.5) * 0.8; // Parking depth layer
+  currentPos[i * 3 + 2] = (Math.random() - 0.5) * 1.5;
+}
+currentGeo.setAttribute('position', new THREE.BufferAttribute(currentPos, 3));
+const currentMat = new THREE.PointsMaterial({
+  color: 0x38d9f5,
+  size: 0.035,
+  transparent: true,
+  opacity: 0.45,
+  blending: THREE.AdditiveBlending
+});
+const currentParticles = new THREE.Points(currentGeo, currentMat);
+currentGroup.add(currentParticles);
+waterMissionGroup.add(currentGroup);
+
+// Hydraulic Oil Flow Pulse Particles (between Reservoir & Bladder)
+const oilFlowGroup = new THREE.Group();
+const oilCount = 28;
+const oilGeo = new THREE.BufferGeometry();
+const oilPos = new Float32Array(oilCount * 3);
+for (let i = 0; i < oilCount; i++) {
+  oilPos[i * 3 + 0] = (Math.random() - 0.5) * 0.03;
+  oilPos[i * 3 + 1] = 0.16 + (i / oilCount) * 0.16; // Between Y=0.16 and Y=0.32
+  oilPos[i * 3 + 2] = (Math.random() - 0.5) * 0.03;
+}
+oilGeo.setAttribute('position', new THREE.BufferAttribute(oilPos, 3));
+const oilMat = new THREE.PointsMaterial({
+  color: 0xf5b338,
+  size: 0.018,
+  transparent: true,
+  opacity: 0.85,
+  blending: THREE.AdditiveBlending
+});
+const oilParticles = new THREE.Points(oilGeo, oilMat);
+oilFlowGroup.add(oilParticles);
+scene.add(oilFlowGroup);
+
+// Caustics Light Ribbons
+const causticsGroup = new THREE.Group();
+for (let i = 0; i < 7; i++) {
+  const cBeam = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.35 + Math.random() * 0.4, 4.2),
+    new THREE.MeshBasicMaterial({
+      color: 0xbdeeff,
+      transparent: true,
+      opacity: 0.12,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide
+    })
+  );
+  cBeam.position.set(-4.5 + i * 1.5, -0.7, -0.3 + (Math.random() - 0.5) * 0.5);
+  cBeam.rotation.z = -0.12 + Math.random() * 0.08;
+  causticsGroup.add(cBeam);
+}
+waterMissionGroup.add(causticsGroup);
+
+// CTD Graph Canvas Drawing
+const ctdCanvas = document.getElementById('ctdGraphCanvas');
+const ctdCtx = ctdCanvas ? ctdCanvas.getContext('2d') : null;
+
+function renderCtdProfile(currentDepthNorm) {
+  if (!ctdCtx) return;
+  ctdCtx.clearRect(0, 0, 220, 90);
+
+  // Background Grid
+  ctdCtx.strokeStyle = 'rgba(245, 179, 56, 0.15)';
+  ctdCtx.lineWidth = 1;
+  for (let y = 15; y < 90; y += 20) {
+    ctdCtx.beginPath();
+    ctdCtx.moveTo(0, y);
+    ctdCtx.lineTo(220, y);
+    ctdCtx.stroke();
+  }
+
+  // Temperature Curve (Red/Orange): 28°C surface -> 2.2°C deep abyss
+  ctdCtx.strokeStyle = '#f87171';
+  ctdCtx.lineWidth = 2;
+  ctdCtx.beginPath();
+  for (let i = 0; i < 220; i += 4) {
+    const dNorm = i / 220.0;
+    // Thermocline curve
+    const temp = 2.2 + 25.8 * Math.exp(-dNorm * 3.5);
+    const yPx = 90 - ((temp - 2.0) / 28.0) * 80;
+    if (i === 0) ctdCtx.moveTo(i, yPx);
+    else ctdCtx.lineTo(i, yPx);
+  }
+  ctdCtx.stroke();
+
+  // Salinity Curve (Cyan): 34.2 PSU surface -> 35.8 halocline -> 34.7 abyss
+  ctdCtx.strokeStyle = '#38d9f5';
+  ctdCtx.lineWidth = 1.5;
+  ctdCtx.beginPath();
+  for (let i = 0; i < 220; i += 4) {
+    const dNorm = i / 220.0;
+    const sal = 34.2 + 1.6 * Math.sin(dNorm * Math.PI) * Math.exp(-dNorm * 1.8);
+    const yPx = 90 - ((sal - 34.0) / 2.2) * 80;
+    if (i === 0) ctdCtx.moveTo(i, yPx);
+    else ctdCtx.lineTo(i, yPx);
+  }
+  ctdCtx.stroke();
+
+  // Current Depth Indicator Line
+  const curX = currentDepthNorm * 220;
+  ctdCtx.strokeStyle = '#f5b338';
+  ctdCtx.lineWidth = 2;
+  ctdCtx.setLineDash([3, 3]);
+  ctdCtx.beginPath();
+  ctdCtx.moveTo(curX, 0);
+  ctdCtx.lineTo(curX, 90);
+  ctdCtx.stroke();
+  ctdCtx.setLineDash([]);
+}
+
+// ==========================================
+// DIURNAL CONTINUOUS TIME-LAPSE SYSTEM
+// ==========================================
+const SUNSET_PRESETS = {
+  golden: {
+    name: 'Cinematic Gold',
+    skyTop: 0x0a1c3d, skyMid: 0x7a365d, skyHoriz: 0xffa442,
+    oceanTop: 0x165a7e, oceanPhotic: 0x0d3856, oceanMeso: 0x061e33, oceanSeabed: 0x020c18,
+    waterColor: 0x185b7e, waterEmissive: 0x072236, bgColor: 0x071224,
+    keyColor: 0xffbe68, keyIntensity: 2.5, hemiSky: 0xff9e54, hemiGround: 0x03192d,
+    sunCore: 0xfffaee, sunCorona: 0xff9e38, sunAura: 0xff7020
+  },
+  crimson: {
+    name: 'Pacific Crimson',
+    skyTop: 0x130a2a, skyMid: 0x9e285a, skyHoriz: 0xff7347,
+    oceanTop: 0x14496b, oceanPhotic: 0x0b2d47, oceanMeso: 0x051a2d, oceanSeabed: 0x020a14,
+    waterColor: 0x164c6e, waterEmissive: 0x061d30, bgColor: 0x0d071a,
+    keyColor: 0xff8c54, keyIntensity: 2.3, hemiSky: 0xff7052, hemiGround: 0x021626,
+    sunCore: 0xfff4e6, sunCorona: 0xff6b38, sunAura: 0xe63b25
+  },
+  nordic: {
+    name: 'Nordic Pastel',
+    skyTop: 0x0e2038, skyMid: 0x82577c, skyHoriz: 0xfcb08a,
+    oceanTop: 0x1b6d85, oceanPhotic: 0x10455a, oceanMeso: 0x072738, oceanSeabed: 0x02121d,
+    waterColor: 0x1d7088, waterEmissive: 0x082c3c, bgColor: 0x081324,
+    keyColor: 0xffd9a6, keyIntensity: 2.2, hemiSky: 0xfcae92, hemiGround: 0x041e2e,
+    sunCore: 0xfffaed, sunCorona: 0xfca065, sunAura: 0xeb7c55
+  },
+  tropical: {
+    name: 'Maldivian Dusk',
+    skyTop: 0x0a1236, skyMid: 0x6e2568, skyHoriz: 0xff8533,
+    oceanTop: 0x11506b, oceanPhotic: 0x0a334a, oceanMeso: 0x051c2e, oceanSeabed: 0x020c18,
+    waterColor: 0x135878, waterEmissive: 0x052233, bgColor: 0x09071c,
+    keyColor: 0xffa44d, keyIntensity: 2.4, hemiSky: 0xff8240, hemiGround: 0x03182b,
+    sunCore: 0xfff6ea, sunCorona: 0xff8828, sunAura: 0xe64a15
+  }
+};
+
+function getActiveSunsetKeyframe() {
+  const p = SUNSET_PRESETS[appState.sunsetPreset] || SUNSET_PRESETS.golden;
+  const s = appState.sunsetSliders || { horizon: 75, skyTint: 60, waterTint: 50, flare: 100 };
+  const horizFactor = s.horizon / 75.0;
+  const skyHorizColor = new THREE.Color(p.skyHoriz).multiplyScalar(Math.min(1.35, horizFactor));
+  const midFactor = s.skyTint / 60.0;
+  const skyMidColor = new THREE.Color(p.skyMid).multiplyScalar(Math.min(1.35, midFactor));
+  const waterFactor = s.waterTint / 50.0;
+  const waterColor = new THREE.Color(p.waterColor).multiplyScalar(Math.min(1.3, waterFactor));
+  const oceanTopColor = new THREE.Color(p.oceanTop).multiplyScalar(Math.min(1.3, waterFactor));
+
+  return {
+    hour: 18.25,
+    skyTop: p.skyTop, skyMid: skyMidColor, skyHoriz: skyHorizColor,
+    oceanTop: oceanTopColor, oceanPhotic: p.oceanPhotic, oceanMeso: p.oceanMeso, oceanSeabed: p.oceanSeabed,
+    waterColor: waterColor, waterEmissive: p.waterEmissive, bgColor: p.bgColor,
+    keyColor: p.keyColor, keyIntensity: p.keyIntensity, hemiSky: p.hemiSky, hemiGround: p.hemiGround,
+    causticsOpacity: 0.05, starOpacity: 0.15, sunOpacity: 1.0, moonOpacity: 0.1,
+    sunCore: p.sunCore, sunCorona: p.sunCorona, sunAura: p.sunAura,
+    phase: 'sunset', phaseName: `Sunset (${p.name})`, icon: '🌇', badgeClass: 'solar-sunset'
+  };
+}
+
+const DIURNAL_KEYFRAMES = [
+  // 00:00 Midnight
+  {
+    hour: 0.0,
+    skyTop: 0x02050e, skyMid: 0x060f22, skyHoriz: 0x0c1c36,
+    oceanTop: 0x0a1e36, oceanPhotic: 0x051324, oceanMeso: 0x030c17, oceanSeabed: 0x010307,
+    waterColor: 0x08192e, waterEmissive: 0x020710, bgColor: 0x01050e,
+    keyColor: 0x7da4d4, keyIntensity: 0.85, hemiSky: 0x0e1c30, hemiGround: 0x010408,
+    causticsOpacity: 0.0, starOpacity: 0.90, sunOpacity: 0.0, moonOpacity: 1.0,
+    sunCore: 0xffffff, sunCorona: 0xffffff, sunAura: 0xffffff,
+    phase: 'night', phaseName: 'Midnight (Moonlit)', icon: '🌙', badgeClass: 'solar-night'
+  },
+  // 04:45 Dawn
+  {
+    hour: 4.75,
+    skyTop: 0x050d20, skyMid: 0x141838, skyHoriz: 0x362140,
+    oceanTop: 0x0f2a48, oceanPhotic: 0x071b30, oceanMeso: 0x030e1c, oceanSeabed: 0x01040a,
+    waterColor: 0x0d2238, waterEmissive: 0x030a14, bgColor: 0x060b1c,
+    keyColor: 0x8aa5d6, keyIntensity: 0.95, hemiSky: 0x182240, hemiGround: 0x020612,
+    causticsOpacity: 0.0, starOpacity: 0.65, sunOpacity: 0.0, moonOpacity: 0.75,
+    sunCore: 0xfffaee, sunCorona: 0xffbe68, sunAura: 0xff9033,
+    phase: 'dawn', phaseName: 'Nautical Dawn', icon: '🌌', badgeClass: 'solar-dawn'
+  },
+  // 06:15 Sunrise
+  {
+    hour: 6.25,
+    skyTop: 0x12254d, skyMid: 0x743956, skyHoriz: 0xffaa66,
+    oceanTop: 0x186a87, oceanPhotic: 0x0f405c, oceanMeso: 0x07253b, oceanSeabed: 0x02101e,
+    waterColor: 0x1d6d8d, waterEmissive: 0x07283c, bgColor: 0x091629,
+    keyColor: 0xffbd7a, keyIntensity: 2.4, hemiSky: 0xffad6e, hemiGround: 0x041e33,
+    causticsOpacity: 0.05, starOpacity: 0.10, sunOpacity: 1.0, moonOpacity: 0.0,
+    sunCore: 0xfffaee, sunCorona: 0xffbe5c, sunAura: 0xff9438,
+    phase: 'dawn', phaseName: 'Dawn / Sunrise', icon: '🌅', badgeClass: 'solar-dawn'
+  },
+  // 12:00 High Noon
+  {
+    hour: 12.0,
+    skyTop: 0x1558a6, skyMid: 0x469af0, skyHoriz: 0xbce4ff,
+    oceanTop: 0x38d9f5, oceanPhotic: 0x158eb8, oceanMeso: 0x0a4f78, oceanSeabed: 0x021324,
+    waterColor: 0x22b2e0, waterEmissive: 0x0c4866, bgColor: 0x021626,
+    keyColor: 0xfffaed, keyIntensity: 3.5, hemiSky: 0x9deeff, hemiGround: 0x031c33,
+    causticsOpacity: 0.16, starOpacity: 0.0, sunOpacity: 1.0, moonOpacity: 0.0,
+    sunCore: 0xffffff, sunCorona: 0xfffaaa, sunAura: 0xffdc66,
+    phase: 'day', phaseName: 'High Noon (+90°)', icon: '☀️', badgeClass: 'solar-day'
+  },
+  // 18:25 Sunset
+  { hour: 18.25 },
+  // 19:45 Twilight
+  {
+    hour: 19.75,
+    skyTop: 0x081026, skyMid: 0x261838, skyHoriz: 0x52233c,
+    oceanTop: 0x10344d, oceanPhotic: 0x092236, oceanMeso: 0x051424, oceanSeabed: 0x010712,
+    waterColor: 0x10344b, waterEmissive: 0x041320, bgColor: 0x050c1c,
+    keyColor: 0x8a72a8, keyIntensity: 1.1, hemiSky: 0x281c3e, hemiGround: 0x020c18,
+    causticsOpacity: 0.0, starOpacity: 0.70, sunOpacity: 0.0, moonOpacity: 0.85,
+    sunCore: 0xfffaee, sunCorona: 0xff7020, sunAura: 0xd93b16,
+    phase: 'sunset', phaseName: 'Dusk / Twilight', icon: '🌆', badgeClass: 'solar-sunset'
+  },
+  // 24:00 Wrap
+  {
+    hour: 24.0,
+    skyTop: 0x02050e, skyMid: 0x060f22, skyHoriz: 0x0c1c36,
+    oceanTop: 0x0a1e36, oceanPhotic: 0x051324, oceanMeso: 0x030c17, oceanSeabed: 0x010307,
+    waterColor: 0x08192e, waterEmissive: 0x020710, bgColor: 0x01050e,
+    keyColor: 0x7da4d4, keyIntensity: 0.85, hemiSky: 0x0e1c30, hemiGround: 0x010408,
+    causticsOpacity: 0.0, starOpacity: 0.90, sunOpacity: 0.0, moonOpacity: 1.0,
+    sunCore: 0xffffff, sunCorona: 0xffffff, sunAura: 0xffffff,
+    phase: 'night', phaseName: 'Midnight (Moonlit)', icon: '🌙', badgeClass: 'solar-night'
+  }
+];
+
+function getActiveDiurnalKeyframes() {
+  const activeSunset = getActiveSunsetKeyframe();
+  return DIURNAL_KEYFRAMES.map(f => {
+    if (f.hour === 18.25) return activeSunset;
+    return f;
+  });
+}
+
+function interpolateDiurnalState(h) {
+  const keyframes = getActiveDiurnalKeyframes();
+  let k1 = keyframes[0];
+  let k2 = keyframes[1];
+  for (let i = 0; i < keyframes.length - 1; i++) {
+    if (h >= keyframes[i].hour && h <= keyframes[i + 1].hour) {
+      k1 = keyframes[i];
+      k2 = keyframes[i + 1];
+      break;
+    }
+  }
+
+  const span = k2.hour - k1.hour;
+  const rawAlpha = Math.max(0, Math.min(1, (h - k1.hour) / span));
+  const alpha = rawAlpha * rawAlpha * (3.0 - 2.0 * rawAlpha);
+
+  const lerpColor = (c1, c2) => new THREE.Color(c1).lerp(new THREE.Color(c2), alpha);
+  const lerpVal = (v1, v2) => v1 + (v2 - v1) * alpha;
+
+  return {
+    skyTop: lerpColor(k1.skyTop, k2.skyTop),
+    skyMid: lerpColor(k1.skyMid, k2.skyMid),
+    skyHoriz: lerpColor(k1.skyHoriz, k2.skyHoriz),
+    oceanTop: lerpColor(k1.oceanTop, k2.oceanTop),
+    oceanPhotic: lerpColor(k1.oceanPhotic, k2.oceanPhotic),
+    oceanMeso: lerpColor(k1.oceanMeso, k2.oceanMeso),
+    oceanSeabed: lerpColor(k1.oceanSeabed, k2.oceanSeabed),
+    waterColor: lerpColor(k1.waterColor, k2.waterColor),
+    waterEmissive: lerpColor(k1.waterEmissive, k2.waterEmissive),
+    bgColor: lerpColor(k1.bgColor, k2.bgColor),
+    keyColor: lerpColor(k1.keyColor, k2.keyColor),
+    keyIntensity: lerpVal(k1.keyIntensity, k2.keyIntensity),
+    hemiSky: lerpColor(k1.hemiSky, k2.hemiSky),
+    hemiGround: lerpColor(k1.hemiGround, k2.hemiGround),
+    causticsOpacity: lerpVal(k1.causticsOpacity, k2.causticsOpacity),
+    starOpacity: lerpVal(k1.starOpacity, k2.starOpacity),
+    sunOpacity: lerpVal(k1.sunOpacity, k2.sunOpacity),
+    moonOpacity: lerpVal(k1.moonOpacity, k2.moonOpacity),
+    sunCore: lerpColor(k1.sunCore || 0xffffff, k2.sunCore || 0xffffff),
+    sunCorona: lerpColor(k1.sunCorona || 0xffe488, k2.sunCorona || 0xffe488),
+    sunAura: lerpColor(k1.sunAura || 0xffb844, k2.sunAura || 0xffb844),
+    phase: alpha < 0.5 ? k1.phase : k2.phase,
+    phaseName: alpha < 0.5 ? k1.phaseName : k2.phaseName,
+    icon: alpha < 0.5 ? k1.icon : k2.icon,
+    badgeClass: alpha < 0.5 ? k1.badgeClass : k2.badgeClass
+  };
+}
+
+const smoothDiurnal = {
+  skyTop: new THREE.Color(0x1558a6),
+  skyMid: new THREE.Color(0x469af0),
+  skyHoriz: new THREE.Color(0xbce4ff),
+  oceanTop: new THREE.Color(0x38d9f5),
+  oceanPhotic: new THREE.Color(0x158eb8),
+  oceanMeso: new THREE.Color(0x0a4f78),
+  oceanSeabed: new THREE.Color(0x021324),
+  waterColor: new THREE.Color(0x185b7e),
+  waterEmissive: new THREE.Color(0x072236),
+  bgColor: new THREE.Color(0x021626),
+  keyColor: new THREE.Color(0xfffaed),
+  keyIntensity: 3.4,
+  hemiSky: new THREE.Color(0x9deeff),
+  hemiGround: new THREE.Color(0x031c33),
+  causticsOpacity: 0.14,
+  starOpacity: 0.0,
+  sunOpacity: 1.0,
+  moonOpacity: 0.0,
+  sunCore: new THREE.Color(0xfffaee),
+  sunCorona: new THREE.Color(0xfffaaa),
+  sunAura: new THREE.Color(0xffdc66)
+};
+
+function updateDiurnalCycle(delta, t) {
+  // Physical 10-Day Argo Profiling Timeline
+  const SECONDS_PER_DAY = 86400;
+  const TEN_DAYS_SEC = 10 * SECONDS_PER_DAY; // 864,000 s
+  const currentSimSec = appState.missionProgress * TEN_DAYS_SEC;
+
+  const missionDay = 1 + Math.floor(currentSimSec / SECONDS_PER_DAY);
+  const daySec = currentSimSec % SECONDS_PER_DAY;
+  const clockHour = daySec / 3600;
+
+  const ch = Math.floor(clockHour);
+  const cm = Math.floor((clockHour - ch) * 60);
+  const cs = Math.floor((((clockHour - ch) * 60) - cm) * 60);
+  const timeStr = `${String(ch).padStart(2, '0')}:${String(cm).padStart(2, '0')}:${String(cs).padStart(2, '0')} UTC`;
+
+  // Determine Target Solar Hour
+  let targetSolarHour = clockHour;
+  if (appState.diurnalOverride === 'noon') targetSolarHour = 12.0;
+  else if (appState.diurnalOverride === 'sunset') targetSolarHour = 18.25;
+  else if (appState.diurnalOverride === 'night') targetSolarHour = 23.8;
+
+  // Smooth circular glide
+  if (appState.activeSolarHour === undefined) appState.activeSolarHour = targetSolarHour;
+  let dHour = targetSolarHour - appState.activeSolarHour;
+  while (dHour < -12) dHour += 24;
+  while (dHour > 12) dHour -= 24;
+
+  const speedBoost = Math.max(1.0, appState.missionSpeed * 0.4);
+  if (appState.diurnalOverride === 'auto') {
+    if (Math.abs(dHour) > 0.05) {
+      appState.activeSolarHour += dHour * Math.min(1.0, delta * 3.5 * speedBoost);
+    } else {
+      appState.activeSolarHour = targetSolarHour;
+    }
+  } else {
+    appState.activeSolarHour += dHour * Math.min(1.0, delta * 2.8);
+  }
+  appState.activeSolarHour = (appState.activeSolarHour + 24) % 24;
+
+  const target = interpolateDiurnalState(appState.activeSolarHour);
+  const blendRate = Math.min(1.0, delta * 4.8);
+
+  smoothDiurnal.skyTop.lerp(target.skyTop, blendRate);
+  smoothDiurnal.skyMid.lerp(target.skyMid, blendRate);
+  smoothDiurnal.skyHoriz.lerp(target.skyHoriz, blendRate);
+  smoothDiurnal.oceanTop.lerp(target.oceanTop, blendRate);
+  smoothDiurnal.oceanPhotic.lerp(target.oceanPhotic, blendRate);
+  smoothDiurnal.oceanMeso.lerp(target.oceanMeso, blendRate);
+  smoothDiurnal.oceanSeabed.lerp(target.oceanSeabed, blendRate);
+  smoothDiurnal.waterColor.lerp(target.waterColor, blendRate);
+  smoothDiurnal.waterEmissive.lerp(target.waterEmissive, blendRate);
+  smoothDiurnal.bgColor.lerp(target.bgColor, blendRate);
+  smoothDiurnal.keyColor.lerp(target.keyColor, blendRate);
+  smoothDiurnal.keyIntensity = THREE.MathUtils.lerp(smoothDiurnal.keyIntensity, target.keyIntensity, blendRate);
+  smoothDiurnal.hemiSky.lerp(target.hemiSky, blendRate);
+  smoothDiurnal.hemiGround.lerp(target.hemiGround, blendRate);
+  smoothDiurnal.causticsOpacity = THREE.MathUtils.lerp(smoothDiurnal.causticsOpacity, target.causticsOpacity, blendRate);
+  smoothDiurnal.starOpacity = THREE.MathUtils.lerp(smoothDiurnal.starOpacity, target.starOpacity, blendRate);
+  smoothDiurnal.sunOpacity = THREE.MathUtils.lerp(smoothDiurnal.sunOpacity, target.sunOpacity, blendRate);
+  smoothDiurnal.moonOpacity = THREE.MathUtils.lerp(smoothDiurnal.moonOpacity, target.moonOpacity, blendRate);
+  smoothDiurnal.sunCore.lerp(target.sunCore, blendRate);
+  smoothDiurnal.sunCorona.lerp(target.sunCorona, blendRate);
+  smoothDiurnal.sunAura.lerp(target.sunAura, blendRate);
+
+  // HUD updates
+  const dayBadge = document.getElementById('missionDayBadge');
+  const utcTime = document.getElementById('missionUtcTime');
+  const solarBadge = document.getElementById('missionSolarBadge');
+  const solarIcon = document.getElementById('solarIcon');
+  const solarText = document.getElementById('solarText');
+
+  if (dayBadge) dayBadge.textContent = `DAY ${String(missionDay).padStart(2, '0')}`;
+  if (utcTime) utcTime.textContent = timeStr;
+  if (solarIcon) solarIcon.textContent = target.icon;
+  if (solarText) solarText.textContent = target.phaseName.toUpperCase();
+  if (solarBadge) solarBadge.className = `mission-solar-badge ${target.badgeClass}`;
+
+  // Celestial Sun Trajectory
+  const sNorm = (appState.activeSolarHour - 5.0) / 14.0;
+  const sunX = -6.4 + sNorm * 12.8;
+  const sunElev = Math.sin(Math.PI * Math.max(0, Math.min(1, sNorm)));
+  const sunY = 1.32 + sunElev * 2.18;
+  sunGroup.position.set(sunX, Math.max(0.6, sunY), -1.78);
+
+  sunDisk.material.color.copy(smoothDiurnal.sunCore);
+  sunCorona.material.color.copy(smoothDiurnal.sunCorona);
+  sunAura.material.color.copy(smoothDiurnal.sunAura);
+  const flareFactor = ((appState.sunsetSliders ? appState.sunsetSliders.flare : 100) / 100);
+  sunDisk.material.opacity = smoothDiurnal.sunOpacity;
+  sunCorona.material.opacity = smoothDiurnal.sunOpacity * 0.65 * flareFactor;
+  sunAura.material.opacity = smoothDiurnal.sunOpacity * 0.25 * flareFactor;
+  sunGroup.visible = smoothDiurnal.sunOpacity > 0.01;
+
+  // Celestial Moon
+  const mNorm = appState.activeSolarHour >= 17.0 ? (appState.activeSolarHour - 17.0) / 14.0 : (appState.activeSolarHour + 7.0) / 14.0;
+  const moonX = -6.4 + mNorm * 12.8;
+  const moonElev = Math.sin(Math.PI * Math.max(0, Math.min(1, mNorm)));
+  const moonY = 1.32 + moonElev * 1.95;
+  moonGroup.position.set(moonX, Math.max(0.6, moonY), -1.78);
+
+  moonDisk.material.opacity = smoothDiurnal.moonOpacity;
+  moonHalo.material.opacity = smoothDiurnal.moonOpacity * 0.45;
+  moonAura.material.opacity = smoothDiurnal.moonOpacity * 0.18;
+  moonGroup.visible = smoothDiurnal.moonOpacity > 0.01;
+
+  // Directional lighting tracks celestial body
+  if (smoothDiurnal.sunOpacity > 0.3) {
+    keyLight.position.set(sunX * 0.7, Math.max(1.5, sunY), 4.2);
+  } else {
+    keyLight.position.set(moonX * 0.7, Math.max(1.5, moonY), 4.2);
+  }
+
+  // Starfield
+  starMat.opacity = Math.max(0, smoothDiurnal.starOpacity + Math.sin(t * 1.8) * 0.08 * smoothDiurnal.starOpacity);
+
+  // Atmosphere Canvas Gradient
+  skyCtx.clearRect(0, 0, 128, 256);
+  const sGrad = skyCtx.createLinearGradient(0, 0, 0, 256);
+  sGrad.addColorStop(0.0, '#' + smoothDiurnal.skyTop.getHexString());
+  sGrad.addColorStop(0.48, '#' + smoothDiurnal.skyMid.getHexString());
+  sGrad.addColorStop(1.0, '#' + smoothDiurnal.skyHoriz.getHexString());
+  skyCtx.fillStyle = sGrad;
+  skyCtx.fillRect(0, 0, 128, 256);
+  skyTexture.needsUpdate = true;
+
+  // Ocean Depth Canvas Gradient
+  oceanCtx.clearRect(0, 0, 128, 256);
+  const oGrad = oceanCtx.createLinearGradient(0, 0, 0, 256);
+  oGrad.addColorStop(0.0, '#' + smoothDiurnal.oceanTop.getHexString());
+  oGrad.addColorStop(0.18, '#' + smoothDiurnal.oceanPhotic.getHexString());
+  oGrad.addColorStop(0.48, '#' + smoothDiurnal.oceanMeso.getHexString());
+  oGrad.addColorStop(1.0, '#' + smoothDiurnal.oceanSeabed.getHexString());
+  oceanCtx.fillStyle = oGrad;
+  oceanCtx.fillRect(0, 0, 128, 256);
+  oceanTexture.needsUpdate = true;
+
+  // Materials & Environment
+  waterSurfaceMat.color.copy(smoothDiurnal.waterColor);
+  waterSurfaceMat.emissive.copy(smoothDiurnal.waterEmissive);
+  keyLight.color.copy(smoothDiurnal.keyColor);
+  keyLight.intensity = smoothDiurnal.keyIntensity;
+  hemiLight.color.copy(smoothDiurnal.hemiSky);
+  hemiLight.groundColor.copy(smoothDiurnal.hemiGround);
+  scene.background.copy(smoothDiurnal.bgColor);
+
+  causticsGroup.children.forEach(b => {
+    b.material.opacity = smoothDiurnal.causticsOpacity;
+    b.material.color.copy(smoothDiurnal.keyColor);
+  });
+
+  // Night Navigation Strobe on Antenna Tip
+  const isNightStrobe = smoothDiurnal.moonOpacity > 0.35;
+  const isSurfaced = (appState.missionProgress < 0.06 || appState.missionProgress > 0.94);
+  const antTip = argoRoot ? argoRoot.getObjectByName('Antenna_Tip') : null;
+  if (antTip && (isNightStrobe || (isSurfaced && smoothDiurnal.moonOpacity > 0.2))) {
+    const worldPos = new THREE.Vector3();
+    antTip.getWorldPosition(worldPos);
+    strobeLight.position.copy(worldPos);
+    strobeMesh.position.copy(worldPos);
+    const strobeFlash = (t * 0.9) % 1.0 < 0.09;
+    strobeLight.intensity = strobeFlash ? 4.5 : 0.0;
+    strobeMat.opacity = strobeFlash ? 1.0 : 0.0;
+  } else {
+    strobeLight.intensity = 0.0;
+    strobeMat.opacity = 0.0;
+  }
+}
+
+// ==========================================
+// ARGO 10-DAY TRAJECTORY KINEMATICS ENGINE
+// ==========================================
+// Official International Argo Profiling Cycle:
+// - Phase 1 [0% - 6%]: Surface deployment, GPS fix & Iridium satellite uplink (0m)
+// - Phase 2 [6% - 18%]: Descent to 1,000m parking depth (hydraulic valve open, bladder deflates)
+// - Phase 3 [18% - 68%]: Subsurface isobaric drift at 1,000m for 9 days with deep currents
+// - Phase 4 [68% - 78%]: Deep descent from 1,000m to 2,000m profile apex
+// - Phase 5 [78% - 94%]: Ascending CTD profile (motor pump active, piston pumping, bladder expands)
+// - Phase 6 [94% - 100%]: Surface break & satellite telemetry (0m)
+
+function updateArgoTrajectory(progress) {
+  if (!argoRoot) return;
+
+  const SURFACE_Y = 0.85;   // Float at water surface (antenna emerges)
+  const PARKING_Y = -1.2;   // 1,000m parking depth
+  const APEX_Y    = -3.4;   // 2,000m profile apex
+
+  let targetY = SURFACE_Y;
+  let targetX = 0;
+  let pitchRad = 0;
+  let phaseName = "";
+  let quote = "";
+  let displacement = "+350 cm³ (Inflated)";
+  let isMotorPumping = false;
+  let currentDepthMeters = 0;
+
+  if (progress <= 0.06) {
+    // Phase 1: Surface
+    targetY = SURFACE_Y;
+    targetX = -4.2 + (progress / 0.06) * 0.4;
+    currentDepthMeters = 0;
+    phaseName = "SURFACE TELEMETRY & GPS FIX (0m)";
+    quote = "Float surfaced at apogee. GPS position fix acquired. Dual-band Iridium antenna uploading previous CTD profile data to satellite.";
+    displacement = "+350 cm³ (Maximum Buoyancy)";
+  } else if (progress <= 0.18) {
+    // Phase 2: Descent to 1,000m Parking Depth
+    const p = (progress - 0.06) / 0.12;
+    targetY = THREE.MathUtils.lerp(SURFACE_Y, PARKING_Y, p);
+    targetX = -3.8 + p * 0.8;
+    currentDepthMeters = Math.round(p * 1000);
+    phaseName = `DESCENT TO PARKING DEPTH (${currentDepthMeters}m)`;
+    quote = "Latching solenoid valve opened. External bladder deflates into internal reservoir against ambient pressure. Negative buoyancy initiates vertical descent.";
+    displacement = "-350 cm³ (Bladder Deflated)";
+    pitchRad = -0.04; // Slight nose-down vertical descent
+  } else if (progress <= 0.68) {
+    // Phase 3: Subsurface 1,000m Isobaric Drift (9 Days)
+    const p = (progress - 0.18) / 0.50;
+    targetY = PARKING_Y + Math.sin(p * Math.PI * 4.0) * 0.05; // Gentle isobaric hovering
+    targetX = -3.0 + p * 5.8; // Drifting horizontally with deep ocean current
+    currentDepthMeters = 1000 + Math.round(Math.sin(p * Math.PI * 4.0) * 15);
+    phaseName = `SUBSURFACE ISOBARIC DRIFT (${currentDepthMeters}m - DAY ${Math.floor(1 + p * 8.5)})`;
+    quote = "Float neutrally buoyant at 1,000m parking depth. Passively drifting with intermediate ocean currents for 9 days with minimal power consumption.";
+    displacement = "0 cm³ (Neutral Density Match)";
+    pitchRad = Math.sin(p * 20.0) * 0.02; // Very gentle drift sway
+  } else if (progress <= 0.78) {
+    // Phase 4: Deep Descent to 2,000m Profile Apex
+    const p = (progress - 0.68) / 0.10;
+    targetY = THREE.MathUtils.lerp(PARKING_Y, APEX_Y, p);
+    targetX = 2.8 + p * 0.4;
+    currentDepthMeters = Math.round(1000 + p * 1000);
+    phaseName = `DEEP DESCENT TO PROFILE APEX (${currentDepthMeters}m)`;
+    quote = "Secondary bleed valve opens. Float sinks from 1,000m parking depth to the 2,000m profiling turn-around apex near the benthic layer.";
+    displacement = "-350 cm³ (Fully Compressed)";
+  } else if (progress <= 0.94) {
+    // Phase 5: Active Ascending CTD Profiling
+    const p = (progress - 0.78) / 0.16;
+    targetY = THREE.MathUtils.lerp(APEX_Y, SURFACE_Y, p);
+    targetX = 3.2 + p * 0.6;
+    currentDepthMeters = Math.round(2000 - p * 2000);
+    phaseName = `ASCENDING CTD PROFILE (${currentDepthMeters}m) — MOTOR ACTIVE`;
+    quote = "INTERNAL HYDRAULIC MOTOR RUNNING. High-pressure piston pump transfers oil to external bladder. Continuous 1Hz salinity, temperature, and depth data acquisition.";
+    displacement = `+${Math.round(p * 350)} cm³ (Inflating Bladder)`;
+    isMotorPumping = true;
+    pitchRad = 0.04; // Slight nose-up ascent
+  } else {
+    // Phase 6: Surface Break & Uplink
+    const p = (progress - 0.94) / 0.06;
+    targetY = SURFACE_Y + Math.sin(p * Math.PI * 3.0) * 0.03; // Surface wave bobbing
+    targetX = 3.8 + p * 0.4;
+    currentDepthMeters = 0;
+    phaseName = "SURFACE BREAK & DATA UPLINK (0m)";
+    quote = "Float broke the surface. Antenna emerges into air. GPS receiver logs final drift position while Iridium satellite uploads complete CTD profile.";
+    displacement = "+350 cm³ (Maximum Buoyancy)";
+    pitchRad = Math.sin(p * 12.0) * 0.03;
+  }
+
+  // Update Float Kinematics
+  argoRoot.position.set(targetX, targetY, 0);
+  argoRoot.rotation.z = pitchRad;
+  argoRoot.rotation.y += 0.003; // Gentle natural axial rotation
+
+  // Update UI & CTD telemetry
+  const mb = document.getElementById('missionBadge');
+  const mq = document.getElementById('missionQuote');
+  const md = document.getElementById('missionDisplacement');
+  if (mb) mb.textContent = phaseName;
+  if (mq) mq.textContent = quote;
+  if (md) md.textContent = displacement;
+
+  const currentNorm = Math.max(0, Math.min(1, currentDepthMeters / 2000.0));
+  renderCtdProfile(currentNorm);
+
+  const salVal = document.getElementById('ctdSalinityVal');
+  const tempVal = document.getElementById('ctdTempVal');
+  const presVal = document.getElementById('ctdPressureVal');
+  const soundVal = document.getElementById('ctdSoundVel');
+
+  if (salVal) salVal.textContent = `${(34.2 + 1.4 * Math.exp(-currentNorm * 2.0)).toFixed(2)} PSU`;
+  if (tempVal) tempVal.textContent = `${(2.2 + 25.8 * Math.exp(-currentNorm * 3.5)).toFixed(1)} °C`;
+  if (presVal) presVal.textContent = `${currentDepthMeters.toFixed(0)} dbar`;
+  if (soundVal) soundVal.textContent = `${(1485 + currentDepthMeters * 0.016 + 4.6 * Math.exp(-currentNorm * 3.0)).toFixed(1)} m/s`;
+
+  // Bladder volumetric scaling
+  const bladder = argoRoot.getObjectByName('Buoyancy_Bladder');
+  if (bladder) {
+    let bladderScale = 1.0;
+    if (progress <= 0.06 || progress >= 0.94) bladderScale = 1.32;
+    else if (progress >= 0.78 && progress < 0.94) {
+      const p = (progress - 0.78) / 0.16;
+      bladderScale = 1.0 + p * 0.32;
+    }
+    bladder.scale.set(bladderScale, 1.0, bladderScale);
+  }
+
+  // Motor Sim State
+  appState.isMotorActivelyPumping = isMotorPumping;
+}
+
+// ==========================================
+// VIEW MODE SWITCHER & EXPLOSION CONTROL
+// ==========================================
+function setViewMode(mode) {
+  appState.viewMode = mode;
+
+  // Update top buttons
+  document.querySelectorAll('.btn-nav').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+
+  const heading = document.getElementById('viewModeHeading');
+  const drawingTag = document.getElementById('drawingTag');
+  const statusEl = document.getElementById('telemetryStatus');
+  const statusDot = document.getElementById('statusDot');
+  const depthRuler = document.getElementById('depthRuler');
+  const missionCallout = document.getElementById('missionCallout');
+  const ctdWidget = document.getElementById('ctdWidget');
+  const motorPanel = document.getElementById('motorPanel');
+  const sliderPanel = document.getElementById('sliderPanel');
+  const sliderLabelText = document.getElementById('sliderLabelText');
+  const btnPlayExplosion = document.getElementById('btnPlayExplosion');
+  const btnTraceLines = document.getElementById('btnTraceLines');
+  const btnLabels = document.getElementById('btnLabels');
+  const btnTurntable = document.getElementById('btnTurntable');
+  const btnMissionCam = document.getElementById('btnMissionCam');
+  const btnMissionSpeed = document.getElementById('btnMissionSpeed');
+  const btnDiurnalMode = document.getElementById('btnDiurnalMode');
+  const btnSunsetPalette = document.getElementById('btnSunsetPalette');
+  const btnMotorInspector = document.getElementById('btnMotorInspector');
+  const sunsetCustomizerPanel = document.getElementById('sunsetCustomizerPanel');
+  const rightDrawer = document.getElementById('rightDrawer');
+  const explodeSlider = document.getElementById('explodeSlider');
+  const sliderVal = document.getElementById('sliderVal');
+
+  rightDrawer.classList.remove('open');
+  if (sunsetCustomizerPanel) sunsetCustomizerPanel.style.display = 'none';
+  if (motorPanel) motorPanel.style.display = 'none';
+  appState.selectedPart = null;
+
+  const titles = {
+    explodeExterior: "EXTERIOR EXPLODED",
+    cutaway: "CUTAWAY ARCHITECTURE",
+    explodeCutaway: "INTERIOR EXPLODED TIERS",
+    exterior: "NOMINAL ASSEMBLED",
+    mission: "10-DAY PROFILING MISSION"
+  };
+  const tags = {
+    explodeExterior: "ARGO PROFILING FLOAT — CAD EXTERIOR DISASSEMBLY",
+    cutaway: "ARGO PROFILING FLOAT — INTERNAL CUTAWAY ARCHITECTURE",
+    explodeCutaway: "ARGO PROFILING FLOAT — INTERNAL SUB-ASSEMBLY TIERS",
+    exterior: "ARGO PROFILING FLOAT — NOMINAL VEHICLE ASSEMBLED",
+    mission: ""
+  };
+
+  heading.textContent = titles[mode] || mode.toUpperCase();
+  drawingTag.textContent = tags[mode] || "";
+
+  renderTelemetryCard(mode);
+
+  if (mode === 'mission') {
+    statusEl.textContent = "2,000M OCEAN SIMULATION";
+    statusDot.style.background = '#f5b338';
+    depthRuler.classList.add('visible');
+    missionCallout.classList.add('visible');
+    ctdWidget.classList.add('visible');
+    drawingTag.style.display = 'none';
+
+    sliderPanel.style.display = 'flex';
+    sliderLabelText.textContent = "PROFILING TIMELINE";
+    btnPlayExplosion.style.display = 'flex';
+    btnPlayExplosion.textContent = appState.missionPlaying ? '❚❚ Pause' : '▶ Play';
+    btnMissionCam.style.display = 'flex';
+    btnMissionSpeed.style.display = 'flex';
+    btnDiurnalMode.style.display = 'flex';
+    btnSunsetPalette.style.display = 'flex';
+    btnMotorInspector.style.display = 'flex';
+    btnTurntable.style.display = 'none';
+    btnTraceLines.style.display = 'none';
+    btnLabels.style.display = 'none';
+
+    waterMissionGroup.visible = true;
+    oilFlowGroup.visible = true;
+    document.querySelector('.engineering-grid').style.display = 'none';
+    setTheme('dark');
+
+    camera.position.set(0, -0.6, 6.2);
+    controls.target.set(0, -0.8, 0);
+    controls.update();
+
+  } else if (mode === 'cutaway') {
+    statusEl.textContent = "INTERNAL SUBSYSTEMS REVEALED";
+    statusDot.style.background = '#38d9f5';
+    depthRuler.classList.remove('visible');
+    missionCallout.classList.remove('visible');
+    ctdWidget.classList.remove('visible');
+    drawingTag.style.display = 'block';
+
+    sliderPanel.style.display = 'flex';
+    sliderLabelText.textContent = "HULL CUT SECTION";
+    btnPlayExplosion.style.display = 'none';
+    btnMissionCam.style.display = 'none';
+    btnMissionSpeed.style.display = 'none';
+    btnDiurnalMode.style.display = 'none';
+    btnSunsetPalette.style.display = 'none';
+    btnMotorInspector.style.display = 'flex';
+    btnTurntable.style.display = 'none';
+    btnTraceLines.style.display = 'none';
+    btnLabels.style.display = 'flex';
+
+    waterMissionGroup.visible = false;
+    oilFlowGroup.visible = false;
+    document.querySelector('.engineering-grid').style.display = 'block';
+    if (appState.theme === 'blueprint') setTheme('blueprint');
+
+    camera.position.set(1.4, 1.6, -2.4);
+    controls.target.set(0, 0.7, 0);
+    controls.update();
+
+    explodeSlider.value = Math.round(appState.hullCutProgress * 100);
+    sliderVal.textContent = Math.round(appState.hullCutProgress * 100) + '%';
+    updateHullCut(appState.hullCutProgress);
+
+  } else if (mode === 'exterior') {
+    statusEl.textContent = "OPERATIONAL VEHICLE SPECIFICATION";
+    statusDot.style.background = '#34d399';
+    depthRuler.classList.remove('visible');
+    missionCallout.classList.remove('visible');
+    ctdWidget.classList.remove('visible');
+    drawingTag.style.display = 'block';
+
+    sliderPanel.style.display = 'none';
+    btnMissionCam.style.display = 'none';
+    btnMissionSpeed.style.display = 'none';
+    btnDiurnalMode.style.display = 'none';
+    btnSunsetPalette.style.display = 'none';
+    btnMotorInspector.style.display = 'none';
+    btnTurntable.style.display = 'flex';
+    btnTraceLines.style.display = 'none';
+    btnLabels.style.display = 'flex';
+
+    waterMissionGroup.visible = false;
+    oilFlowGroup.visible = false;
+    document.querySelector('.engineering-grid').style.display = 'block';
+    if (appState.theme === 'blueprint') setTheme('blueprint');
+
+    camera.position.set(1.5, 1.4, -2.2);
+    controls.target.set(0, 0.7, 0);
+    controls.update();
+
+    resetPositions();
+
+  } else {
+    // explodeExterior and explodeCutaway
+    statusEl.textContent = mode === 'explodeExterior' ? "CAD DISASSEMBLY ACTIVE" : "5 SUB-ASSEMBLY TIERS SEPARATED";
+    statusDot.style.background = '#34d399';
+    depthRuler.classList.remove('visible');
+    missionCallout.classList.remove('visible');
+    ctdWidget.classList.remove('visible');
+    drawingTag.style.display = 'block';
+
+    sliderPanel.style.display = 'flex';
+    sliderLabelText.textContent = mode === 'explodeExterior' ? "EXPLOSION DISTANCE" : "INTERNAL SEPARATION";
+    btnPlayExplosion.style.display = 'flex';
+    btnPlayExplosion.textContent = appState.autoPlay ? '❚❚ Pause' : '▶ Auto';
+    btnMissionCam.style.display = 'none';
+    btnMissionSpeed.style.display = 'none';
+    btnDiurnalMode.style.display = 'none';
+    btnSunsetPalette.style.display = 'none';
+    btnMotorInspector.style.display = 'flex';
+    btnTurntable.style.display = 'none';
+    btnTraceLines.style.display = 'flex';
+    btnLabels.style.display = 'flex';
+
+    waterMissionGroup.visible = false;
+    oilFlowGroup.visible = false;
+    document.querySelector('.engineering-grid').style.display = 'block';
+    if (appState.theme === 'blueprint') setTheme('blueprint');
+
+    if (mode === 'explodeExterior') {
+      camera.position.set(1.4, 1.8, -3.2);
+      controls.target.set(0, 0.7, 0);
+    } else {
+      camera.position.set(1.8, 2.0, -3.6);
+      controls.target.set(0, 0.6, 0);
+    }
+    controls.update();
+
+    explodeSlider.value = Math.round(appState.explosionFactor * 100);
+    sliderVal.textContent = Math.round(appState.explosionFactor * 100) + '%';
+    updateExplosion(appState.explosionFactor, mode);
+  }
+
+  updateLabels();
+}
+
+function resetPositions() {
+  if (!argoRoot) return;
+  argoRoot.position.set(0, 0, 0);
+  argoRoot.rotation.set(0, 0, 0);
+
+  argoRoot.traverse(child => {
+    if (child.userData.originalPos) {
+      child.position.copy(child.userData.originalPos);
+    }
+    if (child.name === 'Cutaway_Hull_Cover') child.visible = true;
+    if (child.name === 'Pressure_Hull_Shell') child.visible = true;
+  });
+}
+
+function updateExplosion(factor, mode) {
+  if (!argoRoot) return;
+  const offsets = (mode === 'explodeCutaway') ? TIER_OFFSETS : EXPLODE_OFFSETS;
+
+  argoRoot.traverse(child => {
+    const orig = child.userData.originalPos;
+    if (!orig) return;
+
+    const off = offsets[child.name];
+    if (off) {
+      child.position.set(
+        orig.x + off.x * factor,
+        orig.y + off.y * factor,
+        orig.z + off.z * factor
+      );
+    } else {
+      child.position.copy(orig);
+    }
+  });
+
+  updateLabels();
+}
+
+function updateHullCut(progress) {
+  if (!argoRoot) return;
+  resetPositions();
+
+  const cover = argoRoot.getObjectByName('Cutaway_Hull_Cover');
+  const shell = argoRoot.getObjectByName('Pressure_Hull_Shell');
+
+  if (cover) {
+    cover.visible = progress < 0.95;
+    cover.position.x = cover.userData.originalPos.x + progress * 0.45;
+    cover.rotation.y = progress * 1.2;
+  }
+  if (shell) {
+    shell.visible = true;
+  }
+  updateLabels();
+}
+
+// Left Card Telemetry Content
+function renderTelemetryCard(mode) {
+  const desc = document.getElementById('telemetryDesc');
+  const specs = document.getElementById('telemetrySpecs');
+
+  if (mode === 'mission') {
+    desc.textContent = "10-day physical oceanographic profiling cycle: vertical descent to 1,000m parking depth, 9-day subsurface isobaric drift with intermediate currents, 2,000m apex turnaround, and active CTD ascending profile.";
+    specs.innerHTML = `
+      <div class="spec-item"><div class="spec-k">MISSION TIMELINE</div><div class="spec-v">10 Days / 240 Hours</div></div>
+      <div class="spec-item"><div class="spec-k">PARKING DEPTH</div><div class="spec-v">1,000 m (Isobaric Drift)</div></div>
+      <div class="spec-item"><div class="spec-k">MAX PROFILE DEPTH</div><div class="spec-v">2,000 m (Benthic Apex)</div></div>
+      <div class="spec-item"><div class="spec-k">BUOYANCY ENGINE</div><div class="spec-v">Hydraulic Piston Pump</div></div>
+    `;
+  } else if (mode === 'cutaway') {
+    desc.textContent = "Radial cutaway revealing the internal avionics stack: dual ARM Cortex CPU controller, 6 stacked lithium thionyl chloride primary battery modules, internal hydraulic oil reservoir, and reciprocating piston pump.";
+    specs.innerHTML = `
+      <div class="spec-item"><div class="spec-k">POWER STACK</div><div class="spec-v">6x Li-SOCl2 (360 Ah)</div></div>
+      <div class="spec-item"><div class="spec-k">CONTROLLER</div><div class="spec-v">Dual ARM Cortex-M4</div></div>
+      <div class="spec-item"><div class="spec-k">OIL RESERVOIR</div><div class="spec-v">450 mL Mineral Oil</div></div>
+      <div class="spec-item"><div class="spec-k">PRESSURE HULL</div><div class="spec-v">Extruded Al 6061-T6</div></div>
+    `;
+  } else if (mode === 'explodeCutaway') {
+    desc.textContent = "5-tier vertical sub-assembly explosion: separates top CTD sensor payload and antenna mast, CPU controller, 6 lithium battery tiers, hydraulic piston displacement motor, and external expansion bladder.";
+    specs.innerHTML = `
+      <div class="spec-item"><div class="spec-k">TIER 1 (HEAD)</div><div class="spec-v">CTD Array & Iridium Mast</div></div>
+      <div class="spec-item"><div class="spec-k">TIER 2 (AVIONICS)</div><div class="spec-v">CPU & Mission Scheduler</div></div>
+      <div class="spec-item"><div class="spec-k">TIER 3 (POWER)</div><div class="spec-v">6x Primary Battery Modules</div></div>
+      <div class="spec-item"><div class="spec-k">TIER 4 (ENGINE)</div><div class="spec-v">Piston Motor & Bladder</div></div>
+    `;
+  } else {
+    desc.textContent = "Axial CAD disassembly of the autonomous oceanographic Argo profiling float, isolating sensor head, pressure hull, and buoyancy engine.";
+    specs.innerHTML = `
+      <div class="spec-item"><div class="spec-k">DISPLACEMENT</div><div class="spec-v">28.5 kg (Neutral)</div></div>
+      <div class="spec-item"><div class="spec-k">MAX DEPTH</div><div class="spec-v">2,000 m (200 bar)</div></div>
+      <div class="spec-item"><div class="spec-k">ENDURANCE</div><div class="spec-v">150-300 Profiles</div></div>
+      <div class="spec-item"><div class="spec-k">CYCLE PERIOD</div><div class="spec-v">10 Days / Profile</div></div>
+    `;
+  }
+}
+
+// Technical Component Inspector
+function selectPart(nodeName) {
+  const cfg = COMPONENT_CONFIG[nodeName];
+  if (!cfg) return;
+
+  appState.selectedPart = nodeName;
+  const rightDrawer = document.getElementById('rightDrawer');
+  const partNameEl = document.getElementById('inspectorPartName');
+  const detailsEl = document.getElementById('inspectorDetails');
+
+  partNameEl.textContent = cfg.title;
+
+  let specsHtml = '';
+  if (cfg.specs) {
+    specsHtml = '<div class="spec-grid" style="margin-top: 10px;">';
+    for (const [k, v] of Object.entries(cfg.specs)) {
+      specsHtml += `<div class="spec-item"><div class="spec-k">${k}</div><div class="spec-v">${v}</div></div>`;
+    }
+    specsHtml += '</div>';
+  }
+
+  detailsEl.innerHTML = `
+    <div style="font-size: 10px; color: var(--accent); font-weight: 700; margin-bottom: 4px;">${cfg.category} • ${cfg.sub}</div>
+    <div class="card-desc" style="margin-bottom: 8px;">${cfg.desc}</div>
+    ${specsHtml}
+  `;
+
+  rightDrawer.classList.add('open');
+  highlightPart(nodeName, true);
+}
+
+function highlightPart(nodeName, on) {
+  if (!argoRoot) return;
+  const obj = argoRoot.getObjectByName(nodeName);
+
+  labelElements.forEach(l => {
+    if (l.node.name === nodeName) {
+      if (l.badge) l.badge.classList.toggle('active', on);
+      if (l.pin) l.pin.classList.toggle('active', on);
+    }
+  });
+
+  if (!obj) return;
+  obj.traverse(child => {
+    if (child.isMesh && child.material) {
+      if (on) {
+        if (!child.userData.originalEmissive) {
+          child.userData.originalEmissive = child.material.emissive ? child.material.emissive.clone() : new THREE.Color(0,0,0);
+        }
+        child.material.emissive = new THREE.Color(appState.theme === 'blueprint' ? 0xd97706 : 0xf5b338);
+        child.material.emissiveIntensity = 0.45;
+      } else {
+        if (child.userData.originalEmissive) {
+          child.material.emissive.copy(child.userData.originalEmissive);
+          child.material.emissiveIntensity = 0.0;
+        }
+      }
+    }
+  });
+}
+
+// Update DOM Labels & SVG Leader Lines
+function updateLabels() {
+  if (!argoRoot || !appState.showLabels || appState.viewMode === 'mission') {
+    labelElements.forEach(item => {
+      item.badge.classList.remove('visible');
+      item.pin.classList.remove('visible');
+    });
+    svgLayer.innerHTML = '';
+    return;
+  }
+
+  const svgLines = [];
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+
+  labelElements.forEach(item => {
+    const worldPos = new THREE.Vector3();
+    item.node.getWorldPosition(worldPos);
+
+    // Project 3D point to screen
+    const screenPos = worldPos.clone().project(camera);
+    if (screenPos.z > 1) {
+      item.badge.classList.remove('visible');
+      item.pin.classList.remove('visible');
+      return;
+    }
+
+    const pinX = (screenPos.x * 0.5 + 0.5) * width;
+    const pinY = (-(screenPos.y * 0.5) + 0.5) * height;
+
+    // Direct Anchor Pin
+    item.pin.style.left = `${pinX}px`;
+    item.pin.style.top = `${pinY}px`;
+    item.pin.classList.add('visible');
+
+    // Radial Badge Placement
+    const isLeft = pinX < width / 2;
+    const badgeX = isLeft ? Math.max(160, pinX - 140) : Math.min(width - 160, pinX + 140);
+    const badgeY = Math.max(90, Math.min(height - 110, pinY + (pinY > height / 2 ? -25 : 25)));
+
+    item.badge.style.left = `${badgeX}px`;
+    item.badge.style.top = `${badgeY}px`;
+    item.badge.classList.add('visible');
+
+    // SVG Leader Line
+    if (appState.showTraceLines) {
+      const lineColor = (appState.selectedPart === item.node.name) ? 'var(--accent)' : 'rgba(245, 179, 56, 0.4)';
+      svgLines.push(`
+        <path d="M ${pinX} ${pinY} L ${(pinX + badgeX) / 2} ${badgeY} L ${badgeX} ${badgeY}" 
+              fill="none" stroke="${lineColor}" stroke-width="1.2" stroke-dasharray="3,3" />
+      `);
+    }
+  });
+
+  svgLayer.innerHTML = svgLines.join('');
+}
+
+// ==========================================
+// INTERACTIVE CONTROLS & LISTENERS
+// ==========================================
+document.querySelectorAll('.btn-nav').forEach(btn => {
+  btn.addEventListener('click', () => setViewMode(btn.dataset.mode));
+});
+
+const explodeSlider = document.getElementById('explodeSlider');
+const sliderVal = document.getElementById('sliderVal');
+explodeSlider.addEventListener('input', () => {
+  const val = parseFloat(explodeSlider.value) / 100;
+  sliderVal.textContent = `${explodeSlider.value}%`;
+
+  if (appState.viewMode === 'mission') {
+    appState.missionProgress = val;
+    updateArgoTrajectory(val);
+  } else if (appState.viewMode === 'cutaway') {
+    appState.hullCutProgress = val;
+    updateHullCut(val);
+  } else {
+    appState.explosionFactor = val;
+    updateExplosion(val, appState.viewMode);
+  }
+});
+
+const btnPlayExplosion = document.getElementById('btnPlayExplosion');
+btnPlayExplosion.addEventListener('click', () => {
+  if (appState.viewMode === 'mission') {
+    appState.missionPlaying = !appState.missionPlaying;
+    btnPlayExplosion.textContent = appState.missionPlaying ? '❚❚ Pause' : '▶ Play';
+  } else {
+    appState.autoPlay = !appState.autoPlay;
+    btnPlayExplosion.textContent = appState.autoPlay ? '❚❚ Pause' : '▶ Auto';
+  }
+});
+
+const btnTurntable = document.getElementById('btnTurntable');
+btnTurntable.addEventListener('click', () => {
+  appState.turntable = !appState.turntable;
+  btnTurntable.classList.toggle('active', appState.turntable);
+  btnTurntable.textContent = appState.turntable ? '❚❚ Stop Orbit' : '▶ 360° Orbit';
+});
+
+const btnTraceLines = document.getElementById('btnTraceLines');
+btnTraceLines.addEventListener('click', () => {
+  appState.showTraceLines = !appState.showTraceLines;
+  btnTraceLines.classList.toggle('active', appState.showTraceLines);
+  btnTraceLines.textContent = appState.showTraceLines ? 'Guidelines: ON' : 'Guidelines: OFF';
+  updateLabels();
+});
+
+const btnLabels = document.getElementById('btnLabels');
+btnLabels.addEventListener('click', () => {
+  appState.showLabels = !appState.showLabels;
+  btnLabels.classList.toggle('active', appState.showLabels);
+  btnLabels.textContent = appState.showLabels ? 'Labels: ON' : 'Labels: OFF';
+  updateLabels();
+});
+
+const MISSION_SPEEDS = [
+  { val: 1.0, label: 'Speed: 1x' },
+  { val: 2.0, label: 'Speed: 2x' },
+  { val: 5.0, label: 'Speed: 5x' },
+  { val: 10.0, label: 'Speed: 10x' },
+  { val: 30.0, label: 'Speed: 30x (Time-Lapse)' }
+];
+let speedIdx = 0;
+const btnMissionSpeed = document.getElementById('btnMissionSpeed');
+btnMissionSpeed.addEventListener('click', () => {
+  speedIdx = (speedIdx + 1) % MISSION_SPEEDS.length;
+  appState.missionSpeed = MISSION_SPEEDS[speedIdx].val;
+  btnMissionSpeed.textContent = MISSION_SPEEDS[speedIdx].label;
+});
+
+const DIURNAL_MODES = [
+  { id: 'auto', label: '⏱ Diurnal: Auto' },
+  { id: 'noon', label: '☀️ Force Noon' },
+  { id: 'sunset', label: '🌅 Force Sunset' },
+  { id: 'night', label: '🌙 Force Night' }
+];
+let diurnalModeIdx = 0;
+const btnDiurnalMode = document.getElementById('btnDiurnalMode');
+btnDiurnalMode.addEventListener('click', () => {
+  diurnalModeIdx = (diurnalModeIdx + 1) % DIURNAL_MODES.length;
+  appState.diurnalOverride = DIURNAL_MODES[diurnalModeIdx].id;
+  btnDiurnalMode.textContent = DIURNAL_MODES[diurnalModeIdx].label;
+});
+
+const btnMissionCam = document.getElementById('btnMissionCam');
+btnMissionCam.addEventListener('click', () => {
+  appState.missionCamMode = (appState.missionCamMode === 'wide') ? 'chase' : 'wide';
+  btnMissionCam.textContent = (appState.missionCamMode === 'wide') ? 'Cam: Wide Profile' : 'Cam: 3D Float Follow';
+});
+
+// Dedicated Motor Inspector Controls
+const btnMotorInspector = document.getElementById('btnMotorInspector');
+const motorPanel = document.getElementById('motorPanel');
+const btnCloseMotorPanel = document.getElementById('btnCloseMotorPanel');
+const btnToggleMotorSim = document.getElementById('btnToggleMotorSim');
+const btnMotorFocusCam = document.getElementById('btnMotorFocusCam');
+
+btnMotorInspector.addEventListener('click', () => {
+  const isShown = motorPanel.style.display === 'block';
+  motorPanel.style.display = isShown ? 'none' : 'block';
+});
+btnCloseMotorPanel.addEventListener('click', () => {
+  motorPanel.style.display = 'none';
+});
+btnToggleMotorSim.addEventListener('click', () => {
+  appState.motorSimActive = !appState.motorSimActive;
+  btnToggleMotorSim.classList.toggle('active', appState.motorSimActive);
+  btnToggleMotorSim.textContent = appState.motorSimActive ? '❚❚ Pause Piston' : '▶ Start Piston';
+  document.getElementById('motorStatusPill').textContent = appState.motorSimActive ? 'PUMPING OIL' : 'RESTING';
+});
+btnMotorFocusCam.addEventListener('click', () => {
+  if (!argoRoot) return;
+  const p = argoRoot.getObjectByName('Piston_Mechanism');
+  if (p) {
+    const wp = new THREE.Vector3();
+    p.getWorldPosition(wp);
+    camera.position.set(wp.x + 0.6, wp.y + 0.2, wp.z + 0.7);
+    controls.target.copy(wp);
+    controls.update();
+  }
+});
+
+// Sunset Customizer Panel Controls
+const btnSunsetPalette = document.getElementById('btnSunsetPalette');
+const sunsetCustomizerPanel = document.getElementById('sunsetCustomizerPanel');
+const btnCloseSunsetPanel = document.getElementById('btnCloseSunsetPanel');
+
+btnSunsetPalette.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const isShown = sunsetCustomizerPanel.style.display === 'block';
+  sunsetCustomizerPanel.style.display = isShown ? 'none' : 'block';
+});
+btnCloseSunsetPanel.addEventListener('click', (e) => {
+  e.stopPropagation();
+  sunsetCustomizerPanel.style.display = 'none';
+});
+
+document.querySelectorAll('.sunset-preset-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.sunset-preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const presetId = btn.dataset.preset;
+    appState.sunsetPreset = presetId;
+    const p = SUNSET_PRESETS[presetId];
+    if (p && btnSunsetPalette) {
+      btnSunsetPalette.textContent = `🌇 Sunset: ${p.name} ▾`;
+    }
+  });
+});
+
+const sunsetHorizonWarmth = document.getElementById('sunsetHorizonWarmth');
+const sunsetSkyTint = document.getElementById('sunsetSkyTint');
+const sunsetWaterTint = document.getElementById('sunsetWaterTint');
+const sunsetFlareRadiance = document.getElementById('sunsetFlareRadiance');
+
+const valHorizonWarmth = document.getElementById('valHorizonWarmth');
+const valSkyTint = document.getElementById('valSkyTint');
+const valWaterTint = document.getElementById('valWaterTint');
+const valFlareRadiance = document.getElementById('valFlareRadiance');
+
+function updateSunsetSliders() {
+  appState.sunsetSliders = {
+    horizon: parseInt(sunsetHorizonWarmth.value),
+    skyTint: parseInt(sunsetSkyTint.value),
+    waterTint: parseInt(sunsetWaterTint.value),
+    flare: parseInt(sunsetFlareRadiance.value)
+  };
+  if (valHorizonWarmth) valHorizonWarmth.textContent = `${sunsetHorizonWarmth.value}%`;
+  if (valSkyTint) valSkyTint.textContent = `${sunsetSkyTint.value}%`;
+  if (valWaterTint) valWaterTint.textContent = `${sunsetWaterTint.value}%`;
+  if (valFlareRadiance) valFlareRadiance.textContent = `${sunsetFlareRadiance.value}%`;
+}
+
+if (sunsetHorizonWarmth) {
+  [sunsetHorizonWarmth, sunsetSkyTint, sunsetWaterTint, sunsetFlareRadiance].forEach(el => {
+    el.addEventListener('input', updateSunsetSliders);
+  });
+}
+
+const btnPreviewSunset = document.getElementById('btnPreviewSunset');
+if (btnPreviewSunset) {
+  btnPreviewSunset.addEventListener('click', (e) => {
+    e.stopPropagation();
+    appState.diurnalOverride = 'sunset';
+    diurnalModeIdx = 2;
+    btnDiurnalMode.textContent = '🌅 Force Sunset';
+  });
+}
+
+const btnResetSunset = document.getElementById('btnResetSunset');
+if (btnResetSunset) {
+  btnResetSunset.addEventListener('click', (e) => {
+    e.stopPropagation();
+    sunsetHorizonWarmth.value = 75;
+    sunsetSkyTint.value = 60;
+    sunsetWaterTint.value = 50;
+    sunsetFlareRadiance.value = 100;
+    updateSunsetSliders();
+    const goldenBtn = document.querySelector('.sunset-preset-btn[data-preset="golden"]');
+    if (goldenBtn) goldenBtn.click();
+  });
+}
+
+document.getElementById('btnTheme').addEventListener('click', () => {
+  setTheme(appState.theme === 'blueprint' ? 'dark' : 'blueprint');
+});
+
+document.getElementById('btnCloseDrawer').addEventListener('click', () => {
+  document.getElementById('rightDrawer').classList.remove('open');
+  if (appState.selectedPart) {
+    highlightPart(appState.selectedPart, false);
+    appState.selectedPart = null;
+  }
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  if (appState.viewMode === 'mission') {
+    appState.missionProgress = 0.0;
+    appState.diurnalOverride = 'auto';
+    diurnalModeIdx = 0;
+    btnDiurnalMode.textContent = '⏱ Diurnal: Auto';
+    camera.position.set(0, -0.6, 6.2);
+    controls.target.set(0, -0.8, 0);
+    controls.update();
+  } else if (appState.viewMode === 'cutaway') {
+    camera.position.set(1.4, 1.6, -2.4);
+    controls.target.set(0, 0.7, 0);
+    controls.update();
+    appState.hullCutProgress = 0.5;
+    explodeSlider.value = 50;
+    sliderVal.textContent = '50%';
+    updateHullCut(0.5);
+  } else {
+    camera.position.set(1.4, 1.8, -3.2);
+    controls.target.set(0, 0.7, 0);
+    controls.update();
+    appState.explosionFactor = 1.0;
+    explodeSlider.value = 100;
+    sliderVal.textContent = '100%';
+    setViewMode(appState.viewMode);
+  }
+});
+
+// Raycasting for direct 3D mesh click/hover
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+window.addEventListener('pointermove', e => {
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+  if (!argoRoot || appState.viewMode === 'mission') return;
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(argoRoot.children, true);
+
+  let hitNode = null;
+  for (let hit of intersects) {
+    if (hit.object.visible && hit.object.name) {
+      hitNode = hit.object.name;
+      break;
+    }
+  }
+
+  if (hitNode !== appState.hoveredPart) {
+    if (appState.hoveredPart) highlightPart(appState.hoveredPart, false);
+    appState.hoveredPart = hitNode;
+    if (appState.hoveredPart) highlightPart(appState.hoveredPart, true);
+  }
+});
+
+window.addEventListener('click', e => {
+  if (e.target.closest('.hud-panel') || e.target.closest('.hotspot-pin') || e.target.closest('.eng-badge')) return;
+  if (!argoRoot || appState.viewMode === 'mission') return;
+
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(argoRoot.children, true);
+
+  for (let hit of intersects) {
+    if (hit.object.visible && hit.object.name) {
+      selectPart(hit.object.name);
+      break;
+    }
+  }
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  updateLabels();
+});
+
+// ==========================================
+// ANIMATION & KINEMATICS LOOP
+// ==========================================
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const delta = Math.min(clock.getDelta(), 0.05);
+  const t = clock.getElapsedTime();
+
+  // 1. Water Surface Wave Undulation
+  if (waterMissionGroup.visible) {
+    const wPos = waterSurfaceGeom.attributes.position;
+    for (let i = 0; i < wPos.count; i++) {
+      const u = wPos.getX(i);
+      const v = wPos.getY(i);
+      const zWave = Math.sin(u * 1.8 + t * 2.2) * 0.035 +
+                    Math.cos(v * 2.4 + t * 1.6) * 0.025 +
+                    Math.sin((u + v) * 3.2 + t * 3.4) * 0.015;
+      wPos.setZ(i, zWave);
+    }
+    waterSurfaceGeom.computeVertexNormals();
+    waterSurfaceGeom.attributes.position.needsUpdate = true;
+
+    // Subsurface current particles drift
+    const cp = currentGeo.attributes.position;
+    for (let i = 0; i < currentParticleCount; i++) {
+      let x = cp.getX(i) + delta * 0.45;
+      if (x > 7) x = -7;
+      cp.setX(i, x);
+    }
+    cp.needsUpdate = true;
+  }
+
+  // 2. Internal Hydraulic Motor & Piston Reciprocation
+  if (argoRoot) {
+    const piston = argoRoot.getObjectByName('Piston_Mechanism');
+    const isPumping = appState.motorSimActive && (appState.viewMode !== 'mission' || appState.isMotorActivelyPumping);
+
+    if (piston && piston.userData.originalPos) {
+      if (isPumping) {
+        const strokeOffset = Math.sin(t * 16.0) * 0.016; // 16 Hz stroke oscillation
+        piston.position.y = (piston.userData.originalPos.y || 0.34) + strokeOffset;
+      } else {
+        piston.position.y = (piston.userData.originalPos.y || 0.34);
+      }
+    }
+
+    // Hydraulic Oil Flow Pulse Particles
+    if (oilFlowGroup.visible && isPumping) {
+      const op = oilGeo.attributes.position;
+      for (let i = 0; i < oilCount; i++) {
+        let y = op.getY(i) - delta * 0.35; // Flowing from reservoir down to bladder
+        if (y < 0.14) y = 0.34;
+        op.setY(i, y);
+      }
+      op.needsUpdate = true;
+    }
+  }
+
+  // 3. Trajectory Timeline Animation
+  if (appState.viewMode === 'mission' && appState.missionPlaying) {
+    // 10-day cycle loop
+    const cycleRate = (0.012 * appState.missionSpeed) * delta;
+    appState.missionProgress += cycleRate;
+    if (appState.missionProgress > 1.0) {
+      appState.missionProgress = 0.0;
+      appState.missionCycleIndex += 1;
+    }
+
+    explodeSlider.value = Math.round(appState.missionProgress * 100);
+    sliderVal.textContent = Math.round(appState.missionProgress * 100) + '%';
+    updateArgoTrajectory(appState.missionProgress);
+
+    // 3D Chase Camera mode
+    if (appState.missionCamMode === 'chase' && argoRoot) {
+      const fp = argoRoot.position;
+      const targetCam = new THREE.Vector3(fp.x + 1.2, fp.y + 0.5, fp.z + 2.2);
+      camera.position.lerp(targetCam, delta * 3.5);
+      controls.target.lerp(fp, delta * 4.0);
+    }
+  }
+
+  // 4. Auto CAD Explosion Loop
+  if (appState.autoPlay && (appState.viewMode === 'explodeExterior' || appState.viewMode === 'explodeCutaway')) {
+    appState.explosionFactor += appState.autoDir * delta * 0.45;
+    if (appState.explosionFactor > 1.0) {
+      appState.explosionFactor = 1.0;
+      appState.autoDir = -1;
+    } else if (appState.explosionFactor < 0.0) {
+      appState.explosionFactor = 0.0;
+      appState.autoDir = 1;
+    }
+    explodeSlider.value = Math.round(appState.explosionFactor * 100);
+    sliderVal.textContent = Math.round(appState.explosionFactor * 100) + '%';
+    updateExplosion(appState.explosionFactor, appState.viewMode);
+  }
+
+  // 5. Turntable Orbit
+  if (appState.turntable && argoRoot) {
+    argoRoot.rotation.y += delta * 0.6;
+  }
+
+  // 6. Diurnal Lighting Cycle Update
+  if (waterMissionGroup.visible) {
+    updateDiurnalCycle(delta, t);
+  }
+
+  controls.update();
+  updateLabels();
+  renderer.render(scene, camera);
+}
+
+</script>
+</body>
+</html>
