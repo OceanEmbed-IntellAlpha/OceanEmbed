@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
-from fastapi import APIRouter
+from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, HTTPException, status
 
 from backend.api.schemas.experiments import (
     ExperimentEntry,
@@ -165,3 +165,26 @@ async def get_experiments() -> ExperimentsResponse:
         variable_ablation=ablation_list,
         key_findings=findings,
     )
+
+
+def _normalize_id(val: str) -> str:
+    return val.lower().replace("phase", "").replace("-", "").replace("_", "").replace(".", "").strip()
+
+
+@router.get(
+    "/experiments/{experiment_id}",
+    response_model=ExperimentEntry,
+    summary="Get individual experiment details",
+    description="Returns full benchmark metadata for a specific experiment ID.",
+)
+async def get_experiment(experiment_id: str) -> ExperimentEntry:
+    data = await get_experiments()
+    target_norm = _normalize_id(experiment_id)
+    for exp in data.experiments:
+        if exp.id.lower() == experiment_id.lower() or _normalize_id(exp.id) == target_norm:
+            return exp
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Experiment '{experiment_id}' not found.",
+    )
+

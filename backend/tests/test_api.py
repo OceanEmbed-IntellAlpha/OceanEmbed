@@ -188,6 +188,22 @@ def test_experiments(client: TestClient):
     assert v4["test_rmse"] == 0.5246
 
 
+def test_experiment_by_id_valid(client: TestClient):
+    # Test lookup by standard ID and normalized variations
+    for exp_id in ["phase6.2-v4", "6.2-V4", "v1", "ridge"]:
+        res = client.get(f"/api/v1/experiments/{exp_id}")
+        assert res.status_code == 200
+        data = res.json()
+        assert "id" in data
+        assert "test_rmse" in data
+
+
+def test_experiment_by_id_not_found(client: TestClient):
+    res = client.get("/api/v1/experiments/nonexistent")
+    assert res.status_code == 404
+
+
+
 # ── Frontend Compatibility Alias Tests ──────────────────────────────────────
 
 def test_frontend_predict_alias(client: TestClient):
