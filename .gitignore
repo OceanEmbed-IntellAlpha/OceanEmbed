@@ -10,6 +10,9 @@ data/
 *.npz
 *.h5
 
+# Notebook plots
+notebooks/plots/
+
 # Python
 __pycache__/
 *.py[cod]
