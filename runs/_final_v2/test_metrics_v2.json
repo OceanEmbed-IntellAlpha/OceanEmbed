@@ -1,4 +1,5 @@
 {
+  "_provenance": "Phase 6 final model test metrics computed on 2026-09-22 via backend/ocean_embed/baselines/run_variable_ablation.py. Values verified against ablation results present at the time.",
   "id": "phase6_var_4",
   "name": "V4: All 7 channels",
   "short_name": "All 7 vars",

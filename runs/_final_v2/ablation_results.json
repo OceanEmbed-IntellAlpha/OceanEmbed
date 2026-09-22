@@ -1,4 +1,6 @@
-[
+{
+  "_provenance": "Phase 6 ablation computed on 2026-09-22 via backend/ocean_embed/baselines/run_variable_ablation.py. Values verified against test metrics files present at the time.",
+  "ablation_results": [
   {
     "id": "phase6_var_1",
     "name": "V1: SST only",
@@ -257,3 +259,4 @@
     }
   }
 ]
+}
