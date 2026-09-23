@@ -33,12 +33,13 @@ export default function ResearchPage() {
             Datasets & Validation
           </h1>
           <p className="text-foam/80 max-w-2xl text-xl leading-relaxed font-light">
-            OceanEmbed leverages high-resolution satellite products to train a latent embedding of the ocean surface, using GLORYS12V1 as the volumetric target. Independent ARGO profiles confirm real-world performance.
+            OceanEmbed trains a U-Net encoder-decoder on 13 years of satellite-derived surface observations,
+            using GLORYS12V1 as the volumetric target. Independent ARGO profiles confirm real-world performance.
           </p>
 
           {/* Data Spec Strip */}
           <div className="mt-12 w-full flex flex-wrap items-center gap-3 justify-center md:justify-start">
-            {['North Indian Ocean', '5°N–30°N | 45°E–105°E', '0.25° × 0.25°', 'Daily', '15 Depths', '0–1000m'].map((spec, i) => (
+            {['North Indian Ocean', '5°N–30°N | 45°E–105°E', '0.25° × 0.25°', 'Daily', '15 Depths', '0.49–902 m'].map((spec, i) => (
               <div key={i} className="px-4 py-2 rounded-md border border-white/10 bg-black/30 backdrop-blur-sm font-mono text-[10px] md:text-xs text-white uppercase tracking-widest shadow-sm hover:border-instrument-amber/30 hover:bg-instrument-amber/10 transition-colors cursor-default">
                 {spec}
               </div>
@@ -67,14 +68,28 @@ export default function ResearchPage() {
             </h2>
             <div className="prose prose-invert prose-p:text-foam/80 prose-p:leading-relaxed max-w-none">
               <p>
-                Our core architecture is a <strong>Spatio-Temporal Autoencoder (STAE)</strong> tailored for oceanic data. 
-                Surface fields (SST, SSS, SSH, U, V) are stacked temporally to capture both spatial gradients and temporal evolution.
+                Our production model is a <strong>U-Net encoder-decoder</strong> (~7.85M parameters)
+                operating on 7 surface channels plus 7 validity masks at 0.25° resolution.
               </p>
               <p>
-                The <strong>Encoder</strong> utilizes Convolutional Neural Networks (CNN) coupled with Vision Transformer (ViT) attention blocks to extract both local mesoscale eddies and broad basin-wide signals. This produces a low-dimensional <em>Ocean Embedding</em>.
+                The <strong>Encoder</strong> consists of 3 convolutional stages with BatchNorm,
+                ReLU, and 2×2 max-pooling, extracting progressively coarser spatial features from
+                mesoscale eddies to basin-wide gradients. Skip connections preserve fine-scale detail
+                across the bottleneck.
               </p>
               <p>
-                The <strong>Depth-Aware Decoder</strong> takes this latent embedding and projects it across 15 vertical layers (0m to 1000m). A custom loss function penalizes instability in the vertical density profile, ensuring oceanographic consistency.
+                The <strong>Decoder</strong> upsamples the bottleneck feature map back to full 0.25°
+                grid resolution using bilinear upsampling and convolution with skip connections from
+                the encoder.
+              </p>
+              <p>
+                The output head produces <strong>15 depth levels from 0.49 m to 902 m</strong> as
+                temperature anomalies relative to a day-of-year climatology, which is added back at
+                inference to produce absolute temperatures.
+              </p>
+              <p className="text-sm text-foam/60 italic">
+                Loss: MSE (auxiliary thermocline and smoothness losses tested but rejected via ablation,
+                improving test RMSE from 0.605°C to 0.594°C).
               </p>
             </div>
           </div>
@@ -98,31 +113,31 @@ export default function ResearchPage() {
                 <tbody className="divide-y divide-white/5">
                   <tr className="hover:bg-instrument-amber/10 transition-colors group cursor-default">
                     <td className="p-4 text-white group-hover:text-instrument-amber transition-colors">N. Indian Ocean</td>
-                    <td className="p-4 text-foam">12,450</td>
-                    <td className="p-4 text-validation-good font-semibold">0.82°C</td>
-                    <td className="p-4 text-foam">+0.08°C</td>
-                    <td className="p-4 text-foam">0.95</td>
+                    <td className="p-4 text-foam">8,883</td>
+                    <td className="p-4 text-validation-good font-semibold">1.572°C</td>
+                    <td className="p-4 text-foam">−0.298°C</td>
+                    <td className="p-4 text-foam">0.980</td>
                   </tr>
                   <tr className="hover:bg-instrument-amber/10 transition-colors group cursor-default">
                     <td className="p-4 text-white group-hover:text-instrument-amber transition-colors">Bay of Bengal</td>
-                    <td className="p-4 text-foam">4,120</td>
-                    <td className="p-4 text-validation-good font-semibold">0.78°C</td>
-                    <td className="p-4 text-foam">+0.05°C</td>
-                    <td className="p-4 text-foam">0.96</td>
+                    <td className="p-4 text-foam">2,779</td>
+                    <td className="p-4 text-validation-good font-semibold">1.390°C</td>
+                    <td className="p-4 text-foam">−0.209°C</td>
+                    <td className="p-4 text-foam">0.988</td>
                   </tr>
                   <tr className="hover:bg-instrument-amber/10 transition-colors group cursor-default">
                     <td className="p-4 text-white group-hover:text-instrument-amber transition-colors">Arabian Sea</td>
-                    <td className="p-4 text-foam">8,330</td>
-                    <td className="p-4 text-validation-warn font-semibold">0.89°C</td>
-                    <td className="p-4 text-foam">+0.12°C</td>
-                    <td className="p-4 text-foam">0.93</td>
+                    <td className="p-4 text-foam">5,943</td>
+                    <td className="p-4 text-validation-warn font-semibold">1.646°C</td>
+                    <td className="p-4 text-foam">−0.338°C</td>
+                    <td className="p-4 text-foam">0.973</td>
                   </tr>
                 </tbody>
               </table>
             </div>
             <p className="mt-5 text-[10px] font-mono text-foam-dim/60 uppercase tracking-widest flex items-center gap-2">
               <span className="w-1 h-1 rounded-full bg-instrument-amber/50" />
-              Validated on independent profiles not used during training.
+              Validated on 8,883 independent ARGO profiles (2020–2022) not used during training.
             </p>
           </div>
         </section>

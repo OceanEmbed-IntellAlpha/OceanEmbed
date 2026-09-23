@@ -46,16 +46,16 @@ export function HeroSection() {
 
           {/* Authoritative Subheading */}
           <p className="font-sans text-base sm:text-lg text-foam/80 font-normal max-w-lg leading-relaxed mb-8">
-            Reconstructing 2,000 meters of vertical ocean temperature from satellite altimetry and surface radiometry with a lightweight 1.7M parameter neural operator.
+            Reconstructing 1000 meters of vertical ocean temperature from satellite altimetry and surface radiometry with a 7.85M parameter neural operator.
           </p>
 
           {/* Minimal Scientific Telemetry Spec */}
           <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 text-xs font-mono text-foam/60 mb-10">
-            <span>0–2,000m Sounding</span>
+            <span>0–1000m Sounding</span>
             <span className="text-white/20">/</span>
             <span>0.25° Daily Grid</span>
             <span className="text-white/20">/</span>
-            <span className="text-emerald-400 font-medium">R² = 0.962 Accuracy</span>
+            <span className="text-emerald-400 font-medium">Test RMSE = 0.525 °C</span>
           </div>
 
           {/* Agency-Grade "Button-in-Button" CTAs */}
