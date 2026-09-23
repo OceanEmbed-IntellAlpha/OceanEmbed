@@ -1,6 +1,7 @@
 import xarray as xr
 import logging
 from pathlib import Path
+from dask.diagnostics import ProgressBar
 
 logger = logging.getLogger("Generator")
 
@@ -12,33 +13,29 @@ class TensorGenerator:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
-    def generate_surface_features(self, datasets: dict) -> xr.Dataset:
+    def generate_feature(self, ds: xr.Dataset, feature_name: str) -> xr.Dataset:
         """
-        Takes a dictionary of {variable_name: xr.Dataset}.
-        Merges them along the 'time', 'latitude', and 'longitude' coordinates.
-        Exports the result as a Zarr store for rapid Deep Learning DataLoader access.
+        Takes a single xr.Dataset and saves it as an individual Zarr store.
         """
-        logger.info("Merging surface feature datasets...")
-        
-        # Ensure all datasets have the same spatial and temporal coordinates
-        # We can just merge the datasets directly, preserving all variables (e.g. u, v, uwnd, vwnd)
-        data_arrays = list(datasets.values())
-        
-        # Merge into a single Dataset
-        merged_ds = xr.merge(data_arrays, compat="override")
+        logger.info(f"Generating Zarr store for {feature_name}...")
         
         # Rechunk for optimal reading along the time dimension (useful for training batches)
         # e.g., chunks of (time: 30, lat: 101, lon: 241)
-        merged_ds = merged_ds.chunk({"time": 30, "latitude": -1, "longitude": -1})
+        # Handle cases where spatial dimensions might differ slightly by not specifying exact chunk sizes for lat/lon initially
+        if "depth" in ds.dims:
+            ds = ds.chunk({"time": 30, "depth": -1, "latitude": -1, "longitude": -1})
+        else:
+            ds = ds.chunk({"time": 30, "latitude": -1, "longitude": -1})
         
-        out_path = self.output_dir / "surface_features.zarr"
-        logger.info(f"Saving merged tensor to {out_path}")
+        out_path = self.output_dir / f"{feature_name}.zarr"
+        logger.info(f"Saving {feature_name} tensor to {out_path}")
         
         # Save to Zarr store (overwriting if exists)
-        merged_ds.to_zarr(out_path, mode="w")
-        logger.info("Successfully generated surface_features.zarr")
+        with ProgressBar():
+            ds.to_zarr(out_path, mode="w")
+        logger.info(f"Successfully generated {feature_name}.zarr")
         
-        return merged_ds
+        return ds
         
     def generate_targets(self, glorys_ds: xr.Dataset) -> xr.Dataset:
         """
@@ -50,7 +47,8 @@ class TensorGenerator:
         glorys_ds = glorys_ds.chunk({"time": 30, "depth": -1, "latitude": -1, "longitude": -1})
         
         logger.info(f"Saving target tensor to {out_path}")
-        glorys_ds.to_zarr(out_path, mode="w")
+        with ProgressBar():
+            glorys_ds.to_zarr(out_path, mode="w")
         logger.info("Successfully generated target_glorys.zarr")
         
         return glorys_ds

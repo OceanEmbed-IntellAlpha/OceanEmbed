@@ -16,6 +16,17 @@ import sys
 from pathlib import Path
 import logging
 import yaml
+import dask
+import shutil
+
+# Configure Dask to limit memory and CPU usage on 16GB laptops
+dask.config.set({
+    "distributed.worker.memory.target": 0.60,
+    "distributed.worker.memory.spill": 0.70,
+    "distributed.worker.memory.pause": 0.80,
+    "scheduler": "threads",
+    "num_workers": 2  # limit to 2 concurrent tasks
+})
 
 # Add backend to path
 backend_dir = Path(__file__).resolve().parent.parent.parent
@@ -36,10 +47,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("RunPipeline")
 
 
-def main():
-    # Resolve config path relative to this script, not CWD
-    script_dir = Path(__file__).resolve().parent
-    config_path = script_dir / "pipeline_config.yaml"
+def process_dataset(config_path: Path, choice: str):
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
 
@@ -47,76 +55,146 @@ def main():
     processor = GridProcessor(config)
     generator = TensorGenerator()
 
-    # ── Phase 1: Download all required datasets ───────────────────────────────
     logger.info("=" * 60)
-    logger.info("PHASE 1: DOWNLOADING RAW DATA")
-    logger.info("=" * 60)
-
-    downloader.download_cmems("sst")
-    downloader.download_cmems("sss")
-    downloader.download_cmems("ssh")
-    downloader.download_cmems("target_glorys")
-    downloader.download_podaac("currents")
-    downloader.download_podaac("winds")
-
-    # ── Phase 2: Preprocess and Load all datasets ─────────────────────────────
-    logger.info("=" * 60)
-    logger.info("PHASE 2: PREPROCESSING (Subset → Regrid 0.25° → QC → Align Time)")
-    logger.info("=" * 60)
-
-    logger.info("Processing SST (OSTIA)...")
-    sst_ds = OSTIAAdapter(str(downloader.raw_dir / "sst.nc"), processor).load()
-
-    logger.info("Processing SSS (CMEMS)...")
-    sss_ds = CMEMSAdapter(str(downloader.raw_dir / "sss.nc"), processor).load()
-
-    logger.info("Processing SSH (DUACS)...")
-    ssh_ds = DUACSAdapter(str(downloader.raw_dir / "ssh.nc"), processor).load()
-
-    logger.info("Processing Currents (OSCAR)...")
-    currents_ds = OSCARAdapter(str(downloader.raw_dir / "currents"), processor).load()
-
-    logger.info("Processing Winds (CCMP)...")
-    winds_ds = CCMPAdapter(str(downloader.raw_dir / "winds"), processor).load()
-
-    surface_datasets = {
-        "sst": sst_ds,
-        "sss": sss_ds,
-        "ssh": ssh_ds,
-        "currents": currents_ds,
-        "winds": winds_ds,
-    }
-
-    # ── Phase 3: Generate training-ready Zarr Tensors ─────────────────────────
-    logger.info("=" * 60)
-    logger.info("PHASE 3: GENERATING TRAINING-READY ZARR STORES")
-    logger.info("=" * 60)
-
-    generator.generate_surface_features(surface_datasets)
-
-    logger.info("Processing Target (GLORYS12V1)...")
-    target_depths = config.get("depths", [0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000])
-    glorys_ds = GLORYSAdapter(str(downloader.raw_dir / "target_glorys.nc"), processor, target_depths).load()
-    generator.generate_targets(glorys_ds)
-
-    # ── Phase 4: Download Argo validation data (optional) ─────────────────────
-    logger.info("=" * 60)
-    logger.info("PHASE 4: DOWNLOADING ARGO VALIDATION DATA")
+    logger.info(f"PROCESSING {choice.upper()}")
     logger.info("=" * 60)
 
     try:
-        downloader.download_argo()
+        if choice == "sst":
+            raw_path = downloader.raw_dir / "sst.nc"
+            ds = OSTIAAdapter(str(raw_path), processor).load()
+            generator.generate_feature(ds, "sst")
+            del ds
+            if raw_path.exists():
+                raw_path.unlink()
+                logger.info(f"Deleted raw data: {raw_path}")
+
+        elif choice == "sss":
+            raw_path = downloader.raw_dir / "sss.nc"
+            ds = CMEMSAdapter(str(raw_path), processor).load()
+            generator.generate_feature(ds, "sss")
+            del ds
+            if raw_path.exists():
+                raw_path.unlink()
+                logger.info(f"Deleted raw data: {raw_path}")
+
+        elif choice == "ssh":
+            raw_path = downloader.raw_dir / "ssh.nc"
+            ds = DUACSAdapter(str(raw_path), processor).load()
+            generator.generate_feature(ds, "ssh")
+            del ds
+            if raw_path.exists():
+                raw_path.unlink()
+                logger.info(f"Deleted raw data: {raw_path}")
+
+        elif choice == "currents":
+            base_name = "currents"
+            single_path = downloader.raw_dir / f"{base_name}.nc"
+            chunked_files = sorted(list(downloader.raw_dir.glob(f"{base_name}_*.nc")))
+            
+            if chunked_files:
+                path_to_load = [str(p) for p in chunked_files]
+                paths_to_delete = chunked_files
+            else:
+                path_to_load = str(single_path)
+                paths_to_delete = [single_path] if single_path.exists() else []
+
+            ds = OSCARAdapter(path_to_load, processor).load()
+            generator.generate_feature(ds, "currents")
+            del ds
+            for p in paths_to_delete:
+                if p.exists():
+                    p.unlink()
+                    logger.info(f"Deleted raw data: {p}")
+
+        elif choice == "winds":
+            base_name = "winds"
+            single_path = downloader.raw_dir / f"{base_name}.nc"
+            chunked_files = sorted(list(downloader.raw_dir.glob(f"{base_name}_*.nc")))
+            
+            if chunked_files:
+                path_to_load = [str(p) for p in chunked_files]
+                paths_to_delete = chunked_files
+            else:
+                path_to_load = str(single_path)
+                paths_to_delete = [single_path] if single_path.exists() else []
+
+            ds = CCMPAdapter(path_to_load, processor).load()
+            generator.generate_feature(ds, "winds")
+            del ds
+            for p in paths_to_delete:
+                if p.exists():
+                    p.unlink()
+                    logger.info(f"Deleted raw data: {p}")
+
+        elif choice == "target_glorys":
+            base_name = "target_glorys"
+            single_path = downloader.raw_dir / f"{base_name}.nc"
+            chunked_files = sorted(list(downloader.raw_dir.glob(f"{base_name}_*.nc")))
+            
+            if chunked_files:
+                path_to_load = [str(p) for p in chunked_files]
+                paths_to_delete = chunked_files
+            else:
+                path_to_load = str(single_path)
+                paths_to_delete = [single_path] if single_path.exists() else []
+
+            target_depths = config.get("depths", [0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000])
+            ds = GLORYSAdapter(path_to_load, processor, target_depths).load()
+            generator.generate_targets(ds)
+            del ds
+            for p in paths_to_delete:
+                if p.exists():
+                    p.unlink()
+                    logger.info(f"Deleted raw data: {p}")
+
     except Exception as e:
-        logger.warning(f"Argo download skipped or failed: {e}. Validation data can be added later.")
+        logger.error(f"Failed to process {choice}: {e}")
 
-    # ── Done ──────────────────────────────────────────────────────────────────
-    logger.info("=" * 60)
-    logger.info("PIPELINE COMPLETED SUCCESSFULLY")
-    logger.info("Output files:")
-    logger.info("  Surface features: data/processed/surface_features.zarr")
-    logger.info("  Target GLORYS:    data/processed/target_glorys.zarr")
-    logger.info("=" * 60)
+def main():
+    script_dir = Path(__file__).resolve().parent
+    config_path = script_dir / "pipeline_config.yaml"
 
+    print("\n" + "="*50)
+    print("OceanEmbed Preprocessing Pipeline")
+    print("="*50)
+    print("Available datasets to preprocess:")
+    print("  1. sst")
+    print("  2. sss")
+    print("  3. ssh")
+    print("  4. currents")
+    print("  5. winds")
+    print("  6. target_glorys")
+    print("  7. all (Process all downloaded data sequentially)")
+    print("  0. exit")
+    print("="*50)
+
+    choice = input("Enter the number or name of the dataset to preprocess: ").strip().lower()
+
+    mapping = {
+        "1": "sst", "sst": "sst",
+        "2": "sss", "sss": "sss",
+        "3": "ssh", "ssh": "ssh",
+        "4": "currents", "currents": "currents",
+        "5": "winds", "winds": "winds",
+        "6": "target_glorys", "target_glorys": "target_glorys",
+        "7": "all", "all": "all"
+    }
+
+    selected = mapping.get(choice)
+
+    if not selected:
+        if choice in ["0", "exit", "quit"]:
+            print("Exiting.")
+        else:
+            print("Invalid choice.")
+        return
+
+    if selected == "all":
+        for ds_name in ["sst", "sss", "ssh", "currents", "winds", "target_glorys"]:
+            process_dataset(config_path, ds_name)
+    else:
+        process_dataset(config_path, selected)
 
 if __name__ == "__main__":
     main()

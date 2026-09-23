@@ -1,46 +1,142 @@
 # ---------------------------------------------------------
 # ETL Pipeline Configuration for OceanEmbed (SIH26066)
 # ---------------------------------------------------------
+# Problem Statement: SIH 2026 — Satellite Embedding-Based DL
+# Framework for Subsurface Temperature Reconstruction
+# Region: North Indian Ocean (5N–30N, 45E–105E)
+# ---------------------------------------------------------
 
-# The temporal range to download and process.
-# For development/testing, use a short range (e.g. 1 month).
-# For production training, extend to match data_config.yaml splits
-# (train: 1993–2018, val: 2019–2020, test: 2021–2022).
+# ── Global download window ────────────────────────────────
+# Download ALL data over this master window, then split into
+# train/val/test in data_config.yaml.
+# Full production run: 2010-01-01 → 2023-12-31 (~14 years)
+# Quick dev/smoke test: set start_date to 2020-01-01 and
+#   end_date to 2020-01-31 to test the pipeline on 1 month.
 time_range:
-  start_date: "2020-01-01"
-  end_date: "2020-01-31"
+  start_date: "2010-01-01"   # Full production window start
+  end_date:   "2023-12-31"   # Full production window end
 
-# The spatial domain (North Indian Ocean)
+# ── Chronological train / val / test split dates ──────────
+# These are used by ocean_embed/configs/data_config.yaml
+# and the DataLoader to slice the Zarr store by date.
+# Stored here as single source of truth.
+splits:
+  train:
+    start: "2010-01-01"
+    end:   "2019-12-31"    # 10 years (core model learning)
+  validation:
+    start: "2020-01-01"
+    end:   "2021-12-31"    # 2 years  (hyperparameter tuning)
+  test:
+    start: "2022-01-01"
+    end:   "2023-12-31"    # 2 years  (final unbiased evaluation)
+  argo_validation:
+    start: "2022-01-01"    # Independent ARGO evaluation
+    end:   "2023-12-31"    # Same as test period — no leakage
+
+# ── Spatial domain (North Indian Ocean) ──────────────────
 domain:
   lat_min: 5.0
   lat_max: 30.0
   lon_min: 45.0
   lon_max: 105.0
-  resolution: 0.25  # Standard 0.25 deg output resolution
+  resolution: 0.25          # Standard 0.25° output resolution
 
-# Standard depths for GLORYS target (in meters)
+# ── Standard target depth levels (in meters) ──────────────
 depths: [0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000]
 
-# Product IDs and dataset names for Copernicus Marine (CMEMS)
+# ── Copernicus Marine Service (CMEMS) Products ────────────
+# All downloads use the copernicusmarine Python library.
+# Register at: https://data.marine.copernicus.eu/register
 cmems_products:
+
+  # SST: OSTIA L4 Analysed (native 0.05°, daily)
+  # DOI: https://doi.org/10.48670/moi-00168
+  # Preprocessor: regrid to 0.25° (bilinear)
   sst:
     dataset_id: "METOFFICE-GLO-SST-L4-REP-OBS-SST"
+    variable:   "analysed_sst"
+    output_file: "sst.nc"
+
+  # SSS: SMOS + SMAP merged (native 0.125°, daily)
+  # DOI: https://doi.org/10.48670/moi-00051
+  # IMPORTANT: SMAP data only available from 2015-04-01.
+  # Preprocessor: regrid to 0.25°; use smos_sss before 2015.
   sss:
     dataset_id: "cmems_obs-mob_glo_phy-sss_my_multi_P1D"
+    variable:   "sos"
+    output_file: "sss.nc"
+    # Fallback for pre-SMAP period (2010-01-01 → 2015-03-31)
+    smos_only_dataset_id: "cmems_obs-mob_glo_phy-sss_my_smos_P1D"
+    smap_start_date: "2015-04-01"   # SMAP launch — use merged after this
+
+  # SSH/SLA: DUACS L4 multi-satellite (native 0.125°, daily)
+  # DOI: https://doi.org/10.48670/moi-00145
+  # Preprocessor: regrid to 0.25°
   ssh:
-    dataset_id: "c3s_obs-sl_glo_phy-ssh_my_twosat-l4-duacs-0.25deg_P1D"
+    dataset_id: "cmems_obs-sl_glo_phy-ssh_my_allsat-l4-duacs-0.125deg_P1D"
+    variables:  ["sla", "adt", "ugos", "vgos"]  # SLA, ADT, geostrophic currents
+    output_file: "ssh.nc"
+
+  # Target: GLORYS12 v1 reanalysis (native ~0.083°, daily)
+  # DOI: https://doi.org/10.48670/moi-00021
+  # Preprocessor: regrid to 0.25°; extract standard depth levels
   target_glorys:
     dataset_id: "cmems_mod_glo_phy_my_0.083deg_P1D-m"
+    variable:   "thetao"      # Potential temperature
+    output_file: "target_glorys.nc"
+    depth_min:  0.0
+    depth_max:  1000.0
 
-# PO.DAAC / NASA Earthdata Products
+# ── NASA PO.DAAC / Earthdata Products ────────────────────
+# Downloads via earthaccess Python library.
+# Register at: https://urs.earthdata.nasa.gov/users/new
 podaac_products:
+
+  # Ocean Surface Currents (OSCAR V2.0)
+  # URL: https://podaac.jpl.nasa.gov/dataset/OSCAR_L4_OC_FINAL_V2.0
+  # Native: 0.25°, 5-daily → temporal interpolation to daily
   currents:
     short_name: "OSCAR_L4_OC_FINAL_V2.0"
+    variables:  ["u", "v"]
+    temporal_interp: "linear"    # 5-day → daily linear interpolation
+
+  # 10m Surface Winds (CCMP V3.1 — 6-hourly gridded)
+  # URL: https://podaac.jpl.nasa.gov/dataset/CCMP_WINDS_10M6HR_L4_V3.1
+  # Native: 0.25°, 6-hourly → daily mean (4 snapshots averaged)
   winds:
     short_name: "CCMP_WINDS_10M6HR_L4_V3.1"
+    variables:  ["uwnd", "vwnd"]
+    temporal_agg: "daily_mean"   # 6-hr → daily mean
 
-# Argo validation data
+# ── Argo In-situ Validation Data ──────────────────────────
+# Used ONLY for final evaluation (test period: 2022–2023).
+# Do NOT use for training or validation splits.
 argo:
-  # Download from IFREMER GDAC via HTTPS
-  gdac_url: "https://data-argo.ifremer.fr/geo/indian_ocean"
-  local_dir: "argo_profiles"
+  # Filter profiles to NIO domain
+  lat_min: 5.0
+  lat_max: 30.0
+  lon_min: 45.0
+  lon_max: 105.0
+  # Default download period (can be overridden interactively in downloader.py)
+  start_date: "2010-01-01"
+  end_date:   "2023-12-31"
+
+  # IFREMER GDAC (Raw profiles)
+  ifremer:
+    enabled: true
+    gdac_url:  "https://data-argo.ifremer.fr/geo/indian_ocean"
+    local_dir: "argo_profiles/ifremer"
+
+  # INCOIS Gridded Argo (Value-added product)
+  incois:
+    enabled: true
+    # For production, we use the 10-day datasets for better temporal resolution.
+    # Available datasets on INCOIS ERDDAP:
+    # - incois_argo_10d_VAM (Variational Analysis Method, 10-day)
+    # - incois_argo_10day_McCreary (Kessler-McCreary, 10-day)
+    # - incois_argo_mnt_VAM (VAM, Monthly)
+    # - incois_argo_mnt_McCreary (Kessler-McCreary, Monthly)
+    dataset_id: "incois_argo_10d_VAM"
+    erddap_base_url: "https://erddap.incois.gov.in/erddap/griddap"
+    local_dir: "argo_profiles/incois"

@@ -34,7 +34,10 @@ class GLORYSAdapter:
         self.target_depths = target_depths
 
     def load(self) -> xr.Dataset:
-        ds = xr.open_dataset(self.data_path, chunks={"time": "auto"})
+        if isinstance(self.data_path, list):
+            ds = xr.open_mfdataset(self.data_path, chunks={"time": "auto"})
+        else:
+            ds = xr.open_dataset(self.data_path, chunks={"time": "auto"})
 
         # GLORYS is 0.083 deg, so we must aggressively regrid
         ds = self.processor.subset(ds, lat_name="latitude", lon_name="longitude")
