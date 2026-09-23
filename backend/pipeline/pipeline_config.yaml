@@ -13,26 +13,8 @@
 # Quick dev/smoke test: set start_date to 2020-01-01 and
 #   end_date to 2020-01-31 to test the pipeline on 1 month.
 time_range:
-  start_date: "2010-01-01"   # Full production window start
-  end_date:   "2023-12-31"   # Full production window end
-
-# ── Chronological train / val / test split dates ──────────
-# These are used by ocean_embed/configs/data_config.yaml
-# and the DataLoader to slice the Zarr store by date.
-# Stored here as single source of truth.
-splits:
-  train:
-    start: "2010-01-01"
-    end:   "2019-12-31"    # 10 years (core model learning)
-  validation:
-    start: "2020-01-01"
-    end:   "2021-12-31"    # 2 years  (hyperparameter tuning)
-  test:
-    start: "2022-01-01"
-    end:   "2023-12-31"    # 2 years  (final unbiased evaluation)
-  argo_validation:
-    start: "2022-01-01"    # Independent ARGO evaluation
-    end:   "2023-12-31"    # Same as test period — no leakage
+  start_date: "2019-01-01"
+  end_date: "2020-12-31"
 
 # ── Spatial domain (North Indian Ocean) ──────────────────
 domain:

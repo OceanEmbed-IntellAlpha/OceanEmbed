@@ -10,19 +10,26 @@
 #  2000; CCMP V3.1 starts 1993; GLORYS12 starts 1993;
 #  SMOS starts 2010-01; SMAP starts 2015-04)
 splits:
+  # 13-year dataset splits (2010–2023)
+  train_range: ["2010-01-01", "2020-12-31"]
+  val_range:   ["2021-01-01", "2021-12-31"]
+  test_range:  ["2022-01-01", "2022-12-31"]
+  # (2023 held out for regime analysis: 2023-01-01 to 2023-12-31)
+
+  # Legacy date blocks (used by config_driven_split if train_range absent)
   train:
     start: "2010-01-01"
-    end:   "2019-12-31"    # 10 years — core model learning
+    end: "2020-12-31"
   validation:
-    start: "2020-01-01"
-    end:   "2021-12-31"    # 2 years  — hyperparameter tuning / early stopping
+    start: "2021-01-01"
+    end: "2021-12-31"
   test:
     start: "2022-01-01"
-    end:   "2023-12-31"    # 2 years  — final unbiased evaluation
-  # ARGO kept fully independent — test period profiles only
+    end: "2022-12-31"
+  # ARGO validation is kept fully separate (independent profiles)
   argo_validation:
-    start: "2022-01-01"
-    end:   "2023-12-31"
+    start: "2010-01-01"
+    end: "2022-12-31"
 
 # ── Normalization ─────────────────────────────────────
 # Statistics MUST be computed from training data only (2010–2019).
@@ -69,7 +76,7 @@ preprocessing:
 # ── Sample generation ─────────────────────────────────────
 samples:
   temporal_window: 3  # days: t-2, t-1, t
-  output_depths: [0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000]
+  output_depths: [0.494025, 5.078224, 9.572997, 18.49556, 29.44473, 47.37369, 77.85385, 92.32607, 130.666, 155.8507, 186.1256, 318.1274, 541.0889, 643.5668, 902.3393]
   # Samples saved as .zarr or .npz for efficient loading
 
 # ── Missing data simulation ───────────────────────────────

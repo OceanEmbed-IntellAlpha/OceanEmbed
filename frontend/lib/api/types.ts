@@ -84,3 +84,35 @@ export interface DatasetCard {
   doi?: string;
   url?: string;
 }
+
+// Research Lab experiment types matching backend /api/v1/experiments
+export interface ExperimentEntry {
+  id: string;
+  name: string;
+  architecture: string;
+  formulation: string;
+  test_rmse: number;
+  test_r2: number;
+  delta_vs_clim: number;
+  verdict: string;
+}
+
+export interface VariableAblationEntry {
+  variant_id: string;
+  name: string;
+  n_variables: number;
+  variables: string[];
+  test_rmse: number;
+  test_mae: number;
+  test_r2: number;
+  ml_rmse: number;
+  thermocline_rmse: number;
+  deep_rmse: number;
+}
+
+export interface ExperimentsResponse {
+  experiments: ExperimentEntry[];
+  variable_ablation: VariableAblationEntry[];
+  key_findings: string[];
+}
+

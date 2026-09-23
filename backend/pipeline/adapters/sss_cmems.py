@@ -39,6 +39,10 @@ class CMEMSAdapter:
 
         ds = ds[["sos"]]
 
+        # CMEMS SSS includes a singleton depth dim (shape=1); squeeze it to (time, lat, lon)
+        if "depth" in ds.dims:
+            ds = ds.squeeze("depth", drop=True)
+
         # QC: flag values outside oceanographic range
         ds["sos"] = ds["sos"].where(
             (ds["sos"] >= SSS_VALID_MIN) & (ds["sos"] <= SSS_VALID_MAX)

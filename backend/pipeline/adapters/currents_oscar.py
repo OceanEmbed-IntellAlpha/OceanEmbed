@@ -49,6 +49,9 @@ class OSCARAdapter:
         ds = self.processor.regrid(ds, lat_name="latitude", lon_name="longitude", method="linear")
         ds = self.processor.align_time(ds, time_name="time")
 
+        # OSCAR native dim order is (time, longitude, latitude); transpose to standard (time, latitude, longitude)
+        ds = ds.transpose("time", "latitude", "longitude")
+
         ds = ds[["u", "v"]]
 
         # QC: flag unrealistic current speeds

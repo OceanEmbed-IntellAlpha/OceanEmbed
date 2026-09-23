@@ -1,47 +1,47 @@
 [
   {
     "region": "north_indian_ocean",
-    "nProfiles": 1542,
-    "rmse": 0.92,
-    "bias": 0.08,
-    "correlation": 0.95,
+    "nProfiles": 8883,
+    "rmse": 1.5719,
+    "bias": -0.2984,
+    "correlation": 0.9796,
     "rmseByDepth": [
-      {"depth": 0, "rmse": 0.4},
-      {"depth": 50, "rmse": 0.9},
-      {"depth": 100, "rmse": 1.2},
-      {"depth": 200, "rmse": 0.8},
-      {"depth": 500, "rmse": 0.5},
-      {"depth": 1000, "rmse": 0.3}
+      {"depth": 0.49, "rmse": 1.4071},
+      {"depth": 42.55, "rmse": 1.4838},
+      {"depth": 99.45, "rmse": 1.5778},
+      {"depth": 188.5, "rmse": 0.9354},
+      {"depth": 290.24, "rmse": 2.9290},
+      {"depth": 902.34, "rmse": 0.3003}
     ]
   },
   {
     "region": "bay_of_bengal",
-    "nProfiles": 624,
-    "rmse": 0.84,
-    "bias": 0.12,
-    "correlation": 0.96,
+    "nProfiles": 2779,
+    "rmse": 1.3903,
+    "bias": -0.2092,
+    "correlation": 0.9885,
     "rmseByDepth": [
-      {"depth": 0, "rmse": 0.3},
-      {"depth": 50, "rmse": 0.8},
-      {"depth": 100, "rmse": 1.1},
-      {"depth": 200, "rmse": 0.7},
-      {"depth": 500, "rmse": 0.4},
-      {"depth": 1000, "rmse": 0.2}
+      {"depth": 0.49, "rmse": 0.4375},
+      {"depth": 42.55, "rmse": 0.9924},
+      {"depth": 99.45, "rmse": 1.9833},
+      {"depth": 188.5, "rmse": 0.8608},
+      {"depth": 290.24, "rmse": 2.3361},
+      {"depth": 902.34, "rmse": 0.1879}
     ]
   },
   {
     "region": "arabian_sea",
-    "nProfiles": 815,
-    "rmse": 1.01,
-    "bias": 0.05,
-    "correlation": 0.94,
+    "nProfiles": 5943,
+    "rmse": 1.6463,
+    "bias": -0.3378,
+    "correlation": 0.9732,
     "rmseByDepth": [
-      {"depth": 0, "rmse": 0.5},
-      {"depth": 50, "rmse": 1.0},
-      {"depth": 100, "rmse": 1.4},
-      {"depth": 200, "rmse": 0.9},
-      {"depth": 500, "rmse": 0.6},
-      {"depth": 1000, "rmse": 0.4}
+      {"depth": 0.49, "rmse": 7.2240},
+      {"depth": 42.55, "rmse": 1.6603},
+      {"depth": 99.45, "rmse": 1.3564},
+      {"depth": 188.5, "rmse": 0.9612},
+      {"depth": 290.24, "rmse": 3.1427},
+      {"depth": 902.34, "rmse": 0.3526}
     ]
   }
 ]

@@ -1,0 +1,50 @@
+# Credentials — NEVER commit
+.env
+backend/.env
+frontend/.env
+
+# Data
+data/
+*.nc
+*.nc4
+*.zarr/
+*.npz
+*.h5
+
+# Notebook plots
+notebooks/plots/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
+
+# Training artifacts
+runs/
+checkpoints/
+artifacts/
+logs/
+*.pt
+*.pth
+*.ckpt
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Carve-out: frozen artifacts (no large .pt files)
+!runs/_final_v1/
+!runs/_final_v1/*
+runs/_final_v1/*.pt
+
+!runs/_final_v1_unet/
+!runs/_final_v1_unet/*
+runs/_final_v1_unet/*.pt
+
+!runs/_final_v2/
+!runs/_final_v2/*
+runs/_final_v2/*.pt
+
