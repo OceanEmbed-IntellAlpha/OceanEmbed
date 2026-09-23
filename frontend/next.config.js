@@ -1,7 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Allow importing Cesium JS files
-  transpilePackages: ['cesium', 'resium'],
+  // Allow importing Cesium and GSAP JS files
+  transpilePackages: ['cesium', 'resium', 'gsap', '@gsap/react'],
+  experimental: {
+    serverComponentsExternalPackages: ['is-sea'],
+  },
 
   webpack: (config, { isServer, webpack }) => {
     if (!isServer) {

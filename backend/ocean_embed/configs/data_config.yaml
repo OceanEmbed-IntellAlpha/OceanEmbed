@@ -1,9 +1,14 @@
 # OceanEmbed — Data Configuration
 # configs/data_config.yaml
+#
+# ⚠️  Single source of truth for all temporal splits.
+# Keep these dates in sync with pipeline_config.yaml → splits.
 
-# ── Chronological splits ───────────────────────────────────
-# Periods determined by GLORYS12V1 availability (1993–present)
-# Adjust once actual data is downloaded and availability confirmed.
+# ── Chronological splits ───────────────────────────────
+# Anchor: first year all datasets are available = 2010
+# (DUACS MY starts 1993; OSTIA REP starts 1981; OSCAR V2 starts
+#  2000; CCMP V3.1 starts 1993; GLORYS12 starts 1993;
+#  SMOS starts 2010-01; SMAP starts 2015-04)
 splits:
   # 13-year dataset splits (2010–2023)
   train_range: ["2010-01-01", "2020-12-31"]
@@ -26,12 +31,12 @@ splits:
     start: "2010-01-01"
     end: "2022-12-31"
 
-# ── Normalization ─────────────────────────────────────────
-# Statistics are computed from training data only.
-# Paths are populated by the preprocessing pipeline.
+# ── Normalization ─────────────────────────────────────
+# Statistics MUST be computed from training data only (2010–2019).
+# The pipeline writes stats here after first run.
 normalization:
   stats_file: "./data/interim/normalization_stats.yaml"
-  method: "standardize"  # standardize | minmax
+  method: "standardize"  # standardize (z-score) recommended
 
 # ── Preprocessing ─────────────────────────────────────────
 preprocessing:
@@ -60,11 +65,13 @@ preprocessing:
     target_frequency: "1D"         # Daily
     aggregation_method: "mean"     # for wind, currents
 
-  # Dask chunk sizes (memory management)
+  # Dask chunk sizes
+  # Tuned for 14-year NIO domain (~101 lat × 241 lon grid).
+  # 30-day time chunks keep each chunk ~50–100 MB in memory.
   dask_chunks:
-    time: 30
-    lat: 50
-    lon: 50
+    time: 30      # ~1 month of daily data per chunk
+    lat: 101      # full lat extent (5–30N at 0.25° = 101 points)
+    lon: 241      # full lon extent (45–105E at 0.25° = 241 points)
 
 # ── Sample generation ─────────────────────────────────────
 samples:

@@ -294,63 +294,36 @@ export default function GlobeWaterColumn({ viewer }: GlobeWaterColumnProps) {
     primitivesRef.current.push(topEdge);
 
     // ════════════════════════════════════════════════════════════════════════
-    // 3. 3D VOLUMETRIC COLUMN BODY
+    // 3. TARGET RETICLE CORNERS (Subtle surface brackets)
     // ════════════════════════════════════════════════════════════════════════
-    // Translucent glowing block that extrudes down to the current animation depth
-    const bodyMat = new Cesium.Material({
-      fabric: {
-        type: 'Color',
-        uniforms: {
-          color: new Cesium.Color(0.1, 0.6, 0.7, 0.15) // Deep cyan, highly transparent
-        }
-      }
-    });
-    materialsRef.current.push(bodyMat);
-
-    const bodyGeom = new Cesium.GeometryInstance({
-      geometry: new Cesium.RectangleGeometry({
-        rectangle: Cesium.Rectangle.fromDegrees(west, south, east, north),
-        height: 0,
-        extrudedHeight: -extrusion,
-        vertexFormat: Cesium.MaterialAppearance.MaterialSupport.ALL.vertexFormat
-      })
-    });
-
-    const bodyPrim = v.scene.primitives.add(
-      new Cesium.Primitive({
-        geometryInstances: bodyGeom,
-        appearance: new Cesium.MaterialAppearance({
-          material: bodyMat,
-          translucent: true,
-          flat: true
-        }),
-        asynchronous: false
-      })
-    );
-    primitivesRef.current.push(bodyPrim);
-
-    // ════════════════════════════════════════════════════════════════════════
-    // 4. VERTICAL GLOWING CORNER EDGES
-    // ════════════════════════════════════════════════════════════════════════
+    const bracketSpan = FOOTPRINT_DEG * 0.2;
     const corners = [
-      [west, south], [east, south], [east, north], [west, north]
+      // SW corner
+      [ [west, south + bracketSpan], [west, south], [west + bracketSpan, south] ],
+      // SE corner
+      [ [east - bracketSpan, south], [east, south], [east, south + bracketSpan] ],
+      // NE corner
+      [ [east, north - bracketSpan], [east, north], [east - bracketSpan, north] ],
+      // NW corner
+      [ [west + bracketSpan, north], [west, north], [west, north - bracketSpan] ],
     ];
-    
-    corners.forEach(([cLon, cLat]) => {
-      const edge = v.entities.add({
-        polyline: {
-          positions: Cesium.Cartesian3.fromDegreesArrayHeights([
-            cLon, cLat, 0,
-            cLon, cLat, -extrusion
-          ]),
-          width: 3,
-          material: new Cesium.PolylineDashMaterialProperty({
-            color: edgeColor.withAlpha(0.6),
-            dashLength: 15
-          })
-        }
+
+    corners.forEach((pts) => {
+      const coords: number[] = [];
+      pts.forEach(([cLon, cLat]) => {
+        coords.push(cLon, cLat, 300);
       });
-      primitivesRef.current.push(edge);
+      const bracket = v.entities.add({
+        polyline: {
+          positions: Cesium.Cartesian3.fromDegreesArrayHeights(coords),
+          width: 3,
+          material: new Cesium.PolylineGlowMaterialProperty({
+            glowPower: 0.35,
+            color: edgeColor,
+          }),
+        },
+      });
+      primitivesRef.current.push(bracket);
     });
 
     // ════════════════════════════════════════════════════════════════════════
@@ -360,9 +333,7 @@ export default function GlobeWaterColumn({ viewer }: GlobeWaterColumnProps) {
       if (!cesiumRef.current || !viewerRef.current) return;
       const CesiumMod = cesiumRef.current;
       const viewer = viewerRef.current as typeof v;
-      const curDepth = depthRef.current;
-      const pingH = -(curDepth * VERT_EXAGGERATION);
-      if (Math.abs(pingH) > currentExtrusionRef.current) return;
+      const pingH = 600;
 
       const pingMat = new CesiumMod.Material({
         fabric: {

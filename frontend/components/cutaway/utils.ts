@@ -49,7 +49,7 @@ export function yFromDepth(d: number): number {
 }
 
 /** Linear interpolation through a depth profile */
-export function interpolate(depths: number[], values: number[], target: number): number {
+export function interpolate(depths: readonly number[], values: readonly number[], target: number): number {
   if (!depths.length) return 0;
   if (target <= depths[0]) return values[0];
   if (target >= depths[depths.length - 1]) return values[values.length - 1];

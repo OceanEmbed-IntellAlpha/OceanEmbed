@@ -36,6 +36,10 @@ export interface ExplorerState {
   // Explorer mode
   mode: ExplorerMode;
 
+  // 3D Ocean Column & Zoom Transition
+  columnVizOpen: boolean;
+  zoomPhase: 'idle' | 'zooming' | 'blended';
+
   // Panels
   profileOpen: boolean;
   validationOpen: boolean;
@@ -45,12 +49,15 @@ export interface ExplorerState {
   playSpeed: 1 | 2 | 4;
 
   setSelectedPoint: (lat: number | null, lon: number | null) => void;
+  clearSelectedPoint: () => void;
+  setColumnVizOpen: (open: boolean) => void;
+  setZoomPhase: (phase: 'idle' | 'zooming' | 'blended') => void;
   selectFloat: (id: string | null) => void;
   setCursor: (lat: number | null, lon: number | null) => void;
   setDate: (date: string) => void;
   setDepth: (depth: DepthLevel) => void;
   setMode: (mode: ExplorerMode) => void;
-  toggleLayer: (layer: keyof Omit<ExplorerState, 'mode' | 'baseLayer' | 'selectedLat' | 'selectedLon' | 'cursorLat' | 'cursorLon' | 'selectedDate' | 'selectedDepth' | 'profileOpen' | 'validationOpen' | 'isPlaying' | 'playSpeed'>) => void;
+  toggleLayer: (layer: keyof Omit<ExplorerState, 'mode' | 'baseLayer' | 'selectedLat' | 'selectedLon' | 'cursorLat' | 'cursorLon' | 'selectedDate' | 'selectedDepth' | 'profileOpen' | 'validationOpen' | 'isPlaying' | 'playSpeed' | 'columnVizOpen' | 'zoomPhase'>) => void;
   setBaseLayer: (layer: 'ocean' | 'satellite' | 'bathymetry') => void;
   setProfileOpen: (open: boolean) => void;
   setValidationOpen: (open: boolean) => void;
@@ -83,6 +90,9 @@ const DEFAULT_STATE = {
   baseLayer: 'ocean' as const,
   mode: 'surface' as ExplorerMode,
   
+  columnVizOpen: false,
+  zoomPhase: 'idle' as const,
+
   profileOpen: false,
   validationOpen: false,
   
@@ -93,7 +103,22 @@ const DEFAULT_STATE = {
 export const useExplorerStore = create<ExplorerState>()((set) => ({
   ...DEFAULT_STATE,
 
-  setSelectedPoint: (lat, lon) => set({ selectedLat: lat, selectedLon: lon, profileOpen: (lat !== null && lon !== null) }),
+  setSelectedPoint: (lat, lon) => set({ 
+    selectedLat: lat, 
+    selectedLon: lon, 
+    profileOpen: (lat !== null && lon !== null),
+    columnVizOpen: (lat !== null && lon !== null),
+    zoomPhase: (lat !== null && lon !== null) ? 'zooming' : 'idle',
+  }),
+  clearSelectedPoint: () => set({
+    selectedLat: null,
+    selectedLon: null,
+    profileOpen: false,
+    columnVizOpen: false,
+    zoomPhase: 'idle',
+  }),
+  setColumnVizOpen: (open) => set({ columnVizOpen: open }),
+  setZoomPhase: (phase) => set({ zoomPhase: phase }),
   selectFloat: (id) => set({ selectedFloatId: id }),
   setCursor: (lat, lon) => set({ cursorLat: lat, cursorLon: lon }),
   setDate: (date) => set({ selectedDate: date }),

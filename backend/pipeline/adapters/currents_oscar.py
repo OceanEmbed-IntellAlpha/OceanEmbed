@@ -32,8 +32,11 @@ class OSCARAdapter:
         self.processor = processor
 
     def load(self) -> xr.Dataset:
-        # Load multiple granules if data_path is a directory
-        ds = xr.open_mfdataset(f"{self.data_path}/*.nc", combine="by_coords")
+        # Load the single subsetted NetCDF file or list of chunked files
+        if isinstance(self.data_path, list):
+            ds = xr.open_mfdataset(self.data_path)
+        else:
+            ds = xr.open_dataset(self.data_path)
 
         # OSCAR variables are lon/lat but dimensions are longitude/latitude.
         # Rename and index to promote them to proper Dimension Coordinates
