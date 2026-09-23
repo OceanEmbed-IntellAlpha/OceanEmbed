@@ -37,6 +37,12 @@
       "skillPath": "skills/premium-frontend-ui/SKILL.md",
       "computedHash": "e7f3d02a0233beafdd6fe5335427388109b9699ebcdc6a8782a8bada2826d916"
     },
+    "research": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/research/SKILL.md",
+      "computedHash": "2c8b768d5f0309eaea9f92ef740101e813645b39aef88fb82733a52eae23dc0b"
+    },
     "threejs-lighting": {
       "source": "cloudai-x/threejs-skills",
       "sourceType": "github",

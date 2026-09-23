@@ -1,6 +1,10 @@
 export type ExperimentStatus = 'BASELINE' | 'TESTING' | 'COMPLETED' | 'KEEP' | 'REJECTED' | 'INCONCLUSIVE' | 'VALIDATION' | 'PENDING';
 
 export type ExperimentCategory =
+  | 'Data formulation'
+  | 'Loss ablation'
+  | 'Architecture'
+  | 'Variable ablation'
   | 'Data & Inputs'
   | 'Spatial Representation'
   | 'Ocean Embedding'
