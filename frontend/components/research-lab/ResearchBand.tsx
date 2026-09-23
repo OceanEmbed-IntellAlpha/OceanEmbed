@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useRef } from 'react';
-import { ChevronLeft, ChevronRight, Sparkles, Filter } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Sparkles, Filter, Search, X } from 'lucide-react';
 import { Experiment, ExperimentCategory } from '@/lib/api/research-types';
 import { ExperimentMiniCard } from './ExperimentMiniCard';
 
@@ -34,10 +34,18 @@ export function ResearchBand({
   onCategoryChange,
 }: ResearchBandProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const filtered = experiments.filter(e =>
-    activeCategory === 'All' ? true : e.category === activeCategory
-  );
+  const filtered = experiments.filter(e => {
+    const matchesCategory = activeCategory === 'All' ? true : e.category === activeCategory;
+    const matchesSearch = searchQuery.trim() === '' || 
+      e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (e.finding && e.finding.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    return matchesCategory && matchesSearch;
+  });
 
   const handleScroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
@@ -46,7 +54,6 @@ export function ResearchBand({
     }
   };
 
-  // Count items per category
   const getCategoryCount = (cat: 'All' | ExperimentCategory) => {
     if (cat === 'All') return experiments.length;
     return experiments.filter(e => e.category === cat).length;
@@ -58,41 +65,57 @@ export function ResearchBand({
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-2 border-b border-white/[0.06]">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-biolume/10 border border-biolume/25 text-biolume text-[10px] font-mono tracking-[0.2em] uppercase mb-2.5">
-            <Sparkles size={11} className="text-biolume" />
+            <Sparkles size={11} className="text-biolume animate-pulse" />
             Systematic Empirical Runs ({experiments.length} Studies)
           </div>
           <h2 className="font-display text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            Scientific Decision{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-biolume to-thermocline">
-              Explorer
-            </span>
+            Scientific Decision <span className="text-biolume">Explorer</span>
           </h2>
           <p className="text-foam-dim text-xs sm:text-sm mt-1 max-w-xl leading-relaxed font-light">
             Every input variable, depth loss, and temporal window was individually isolated. Click any card to inspect the full hypothesis, findings, and RMSE depth profiles.
           </p>
         </div>
 
-        {/* Scroll Nav Buttons for Desktop */}
-        <div className="flex items-center gap-2 self-start md:self-auto">
-          <span className="font-mono text-[9px] text-white/30 uppercase tracking-[0.2em] mr-2 hidden sm:inline">
-            Scroll Telemetry
-          </span>
-          <button
-            type="button"
-            onClick={() => handleScroll('left')}
-            className="w-8 h-8 rounded-full bg-white/[0.03] hover:bg-white/10 border border-white/10 hover:border-biolume/40 flex items-center justify-center text-white/60 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
-            aria-label="Scroll left"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleScroll('right')}
-            className="w-8 h-8 rounded-full bg-white/[0.03] hover:bg-white/10 border border-white/10 hover:border-biolume/40 flex items-center justify-center text-white/60 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
-            aria-label="Scroll right"
-          >
-            <ChevronRight size={16} />
-          </button>
+        {/* Search Bar & Scroll Nav Buttons */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          {/* Instant Search Bar */}
+          <div className="relative flex items-center">
+            <Search size={14} className="absolute left-3 text-white/40 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search experiments, variables, RMSE..."
+              className="pl-9 pr-8 py-1.5 rounded-xl bg-[#030914] border border-white/10 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-biolume/50 transition-all w-full sm:w-64 font-mono"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 text-white/40 hover:text-white"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleScroll('left')}
+              className="w-8 h-8 rounded-full bg-white/[0.03] hover:bg-white/10 border border-white/10 hover:border-biolume/40 flex items-center justify-center text-white/60 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleScroll('right')}
+              className="w-8 h-8 rounded-full bg-white/[0.03] hover:bg-white/10 border border-white/10 hover:border-biolume/40 flex items-center justify-center text-white/60 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+              aria-label="Scroll right"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -135,11 +158,9 @@ export function ResearchBand({
         </div>
       </div>
 
-      {/* Horizontal Cards Scroller with Edge Fades */}
+      {/* Horizontal Cards Scroller */}
       <div className="relative group/scroller">
-        {/* Left Edge Fade */}
         <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-[#02060A] via-[#02060A]/80 to-transparent z-10 pointer-events-none" />
-        {/* Right Edge Fade */}
         <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-[#02060A] via-[#02060A]/80 to-transparent z-10 pointer-events-none" />
 
         <div
@@ -160,7 +181,7 @@ export function ResearchBand({
           ) : (
             <div className="flex items-center justify-center w-full py-16">
               <p className="font-mono text-xs text-white/30 uppercase tracking-[0.2em]">
-                No experiments found in &quot;{activeCategory}&quot;
+                No matching experiments found
               </p>
             </div>
           )}

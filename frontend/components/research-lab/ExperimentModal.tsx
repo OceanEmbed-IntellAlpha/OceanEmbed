@@ -97,7 +97,7 @@ function RmseChart({ values }: { values: number[] }) {
 
         {/* Depth Labels */}
         <text x={PAD} y={H - 4} fill="#ffffff40" fontSize="8" fontFamily="monospace">0m (Surface)</text>
-        <text x={W - PAD} y={H - 4} textAnchor="end" fill="#ffffff40" fontSize="8" fontFamily="monospace">2000m (Abyssal)</text>
+        <text x={W - PAD} y={H - 4} textAnchor="end" fill="#ffffff40" fontSize="8" fontFamily="monospace">902.3m (Deep)</text>
       </svg>
     </div>
   );
