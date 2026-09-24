@@ -467,7 +467,8 @@ class ModelService:
             raw = np.abs(anom_3d[0])
             raw[~self.clim_service.ocean_mask] = np.nan
             unit = "°C"
-            color_range = (0.0, 3.0)
+            max_val = float(np.nanmax(raw))
+            color_range = (0.0, max(0.1, max_val))
             u_grid = v_grid = None
         elif var_lower == "embedding":
             # Extract first layer CNN features
