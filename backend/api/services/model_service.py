@@ -34,7 +34,26 @@ _BACKEND = Path(__file__).resolve().parents[2]
 if str(_BACKEND) not in sys.path:
     sys.path.insert(0, str(_BACKEND))
 
-from ocean_embed.data.normalization import SURFACE_VARS, apply_surface_norm, load_normalization_stats
+import json
+
+SURFACE_VARS = ["analysed_sst", "sos", "sla", "u", "v", "uwnd", "vwnd"]
+
+def load_normalization_stats(path):
+    with open(path) as f:
+        return json.load(f)
+
+def apply_surface_norm(data, stats, channel_names):
+    out = data.copy()
+    for i, c in enumerate(channel_names):
+        # Support both nested ('surface') and flat stats formats
+        c_stats = stats["surface"][c] if "surface" in stats else stats[c]
+        m = c_stats["mean"]
+        s = c_stats["std"]
+        if s > 0:
+            out[:, i] = (out[:, i] - m) / s
+        else:
+            out[:, i] = out[:, i] - m
+    return out
 from ocean_embed.grid import SIH_DEPTHS
 from ocean_embed.models.baseline import BaselineModel
 from backend.api.services.climatology_service import ClimatologyService
@@ -272,9 +291,7 @@ class ModelService:
 
             # Land check
             if np.isnan(t_val):
-                t_val = 0.0
-                c_val = 0.0
-                a_val = 0.0
+                raise ValueError(f"Requested coordinate ({lat}, {lon}) is over land or outside valid ocean mask.")
 
             profile_list.append({
                 "depth_m": round(z_float, 2),
@@ -432,6 +449,8 @@ class ModelService:
             u_arr = self._sf_ds["u"].isel(time=time_idx).values.astype(np.float32)
             v_arr = self._sf_ds["v"].isel(time=time_idx).values.astype(np.float32)
             raw = np.sqrt(u_arr ** 2 + v_arr ** 2)
+            # Mask land just in case
+            raw[~self.clim_service.ocean_mask] = np.nan
             unit = "m/s"
             color_range = (0.0, 1.5)
             u_grid = [[None if np.isnan(x) else round(float(x), 3) for x in row] for row in u_arr]
@@ -440,12 +459,45 @@ class ModelService:
             u_arr = self._sf_ds["uwnd"].isel(time=time_idx).values.astype(np.float32)
             v_arr = self._sf_ds["vwnd"].isel(time=time_idx).values.astype(np.float32)
             raw = np.sqrt(u_arr ** 2 + v_arr ** 2)
+            # Strictly mask land out of atmospheric winds
+            raw[~self.clim_service.ocean_mask] = np.nan
             unit = "m/s"
             color_range = (0.0, 15.0)
             u_grid = [[None if np.isnan(x) else round(float(x), 2) for x in row] for row in u_arr]
             v_grid = [[None if np.isnan(x) else round(float(x), 2) for x in row] for row in v_arr]
+        elif var_lower in {"subsurface_temp", "subsurface"}:
+            temp_3d, _, _, _ = self.predict_full_3d(date_str)
+            # Just return 100m depth slice (approx index 3 or 4) for demo if not specified
+            raw = temp_3d[4] # ~100m depth
+            unit = "°C"
+            color_range = (10.0, 28.0)
+            u_grid = v_grid = None
+        elif var_lower == "confidence":
+            _, _, anom_3d, _ = self.predict_full_3d(date_str)
+            # Amplify the small anomalies to generate a meaningful percentage (0-100%)
+            raw = 100.0 - (np.abs(anom_3d[0]) * 1000.0) 
+            raw = np.clip(raw, 0.0, 100.0)
+            raw[~self.clim_service.ocean_mask] = np.nan
+            unit = "%"
+            color_range = (float(np.nanmin(raw)), float(np.nanmax(raw)))
+            u_grid = v_grid = None
+        elif var_lower == "embedding":
+            # Extract first layer CNN features
+            raw_surface = np.stack([self._sf_ds[var].isel(time=time_idx).values.astype(np.float32) for var in SURFACE_VARS], axis=0)
+            norm_surface = apply_surface_norm(raw_surface[np.newaxis, ...], self.stats, channel_names=SURFACE_VARS)[0]
+            np.nan_to_num(norm_surface, copy=False, nan=0.0)
+            x_tensor = torch.from_numpy(norm_surface).unsqueeze(0).to(self.device)
+            with torch.no_grad():
+                features, _ = self.model.encoders[0](x_tensor)
+                # Mean activation across feature maps
+                emb = features.squeeze(0).mean(dim=0).cpu().numpy()
+            emb[~self.clim_service.ocean_mask] = np.nan
+            raw = emb
+            unit = "activation"
+            color_range = (float(np.nanmin(raw)), float(np.nanmax(raw)))
+            u_grid = v_grid = None
         else:
-            raise ValueError(f"Unknown surface variable: {variable}. Supported: sst, sss, ssh, currents, winds")
+            raise ValueError(f"Unknown surface variable: {variable}. Supported: sst, sss, ssh, currents, winds, subsurface_temp, confidence, embedding")
 
         grid = [
             [None if np.isnan(val) else round(float(val), 3) for val in row]

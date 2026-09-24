@@ -37,6 +37,22 @@ def get_model_service(request: Request) -> ModelService:
 def get_argo_service() -> ArgoService:
     return ArgoService.get_instance()
 
+@router.get("/is-sea")
+async def check_is_sea(
+    lat: float = Query(...),
+    lon: float = Query(...),
+    service: ModelService = Depends(get_model_service)
+):
+    try:
+        # Check if out of bounds for our model
+        if lat < 5.0 or lat > 30.0 or lon < 45.0 or lon > 105.0:
+            return {"isSea": False}
+        lat_idx, lon_idx, _, _ = service.find_nearest_lat_lon(lat, lon)
+        is_sea = bool(service.clim_service.ocean_mask[lat_idx, lon_idx])
+        return {"isSea": is_sea}
+    except Exception:
+        return {"isSea": False}
+
 
 class PredictRequestBody(BaseModel):
     lat: float = Field(..., ge=5.0, le=30.0, description="Latitude (5°N to 30°N)")
@@ -173,7 +189,7 @@ async def get_nearby_argo(
     lat: float = Query(..., ge=5.0, le=30.0),
     lon: float = Query(..., ge=45.0, le=105.0),
     date: str = Query(...),
-    radius_km: float = Query(200.0, ge=10.0, le=1000.0),
+    radius_km: float = Query(200.0, ge=10.0, le=5000.0),
     argo: ArgoService = Depends(get_argo_service),
 ) -> List[ArgoProfile]:
     if not argo.is_available:

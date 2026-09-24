@@ -63,24 +63,19 @@ export function DateDepthBar() {
       ? { lat: selectedLat, lon: selectedLon, date: selectedDate }
       : null
   );
-  const depths = useMemo(
-    () => profile?.depths ?? [0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000],
-    [profile]
-  );
-  const temperatures = useMemo(
-    () =>
-      profile?.temperature ??
-      [28.6, 28.5, 28.4, 28.1, 27.5, 26.0, 23.4, 20.8, 18.5, 16.2, 14.1, 10.8, 7.2, 6.1, 5.4],
-    [profile]
-  );
+  const depths = useMemo(() => profile?.depths ?? [], [profile]);
+  const temperatures = useMemo(() => profile?.temperature ?? [], [profile]);
 
   const currentTemp = useMemo(
-    () => interpolate(depths, temperatures, selectedDepth),
+    () => {
+      if (!depths.length || !temperatures.length) return null;
+      return interpolate(depths, temperatures, selectedDepth);
+    },
     [depths, temperatures, selectedDepth]
   );
 
   const currentIdx = DEPTH_LEVELS.indexOf(selectedDepth as DepthLevel);
-  const depthColor = tempToColor(currentTemp);
+  const depthColor = currentTemp !== null ? tempToColor(currentTemp) : 'rgba(255,255,255,0.2)';
 
   // Depth zone label
   const zoneLabel = selectedDepth <= 200 ? 'Sunlit' : selectedDepth <= 1000 ? 'Twilight' : 'Midnight';
@@ -142,8 +137,14 @@ export function DateDepthBar() {
         </button>
 
         <div>
-          <div className="text-[9px] font-mono text-white/35 uppercase tracking-widest">Depth Sweep</div>
-          <div className="text-[10px] font-mono text-white/50">{selectedDate}</div>
+          <div className="text-[9px] font-mono text-white/35 uppercase tracking-widest">Date / Sweep</div>
+          <input 
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setDate(e.target.value)}
+            className="text-[10px] font-mono bg-transparent text-white/80 border border-white/10 rounded px-1 py-0.5 outline-none focus:border-sky-500/50"
+            style={{ colorScheme: 'dark' }}
+          />
         </div>
       </div>
 
@@ -259,7 +260,7 @@ export function DateDepthBar() {
         <div className="text-[9px] font-mono text-white/35 uppercase tracking-widest">Temp</div>
         <AnimatePresence mode="wait">
           <motion.div
-            key={currentTemp.toFixed(1)}
+            key={currentTemp !== null ? currentTemp.toFixed(1) : 'none'}
             initial={{ opacity: 0, y: 3 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -3 }}
@@ -267,7 +268,7 @@ export function DateDepthBar() {
             className="text-base font-mono font-bold"
             style={{ color: depthColor }}
           >
-            {currentTemp.toFixed(1)}°C
+            {currentTemp !== null ? `${currentTemp.toFixed(1)}°C` : 'N/A'}
           </motion.div>
         </AnimatePresence>
         <div className="text-[9px] font-mono text-white/25">predicted</div>

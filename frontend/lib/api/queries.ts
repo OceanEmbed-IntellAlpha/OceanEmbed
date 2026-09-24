@@ -10,7 +10,8 @@ import type {
   ExperimentsResponse
 } from './types';
 
-export const BASE_URL = ''; // process.env.NEXT_PUBLIC_API_BASE_URL || '';
+// Force connection to the FastAPI backend directly to bypass the Next.js dev server which lacks API routes
+export const BASE_URL = 'http://localhost:8000';
 
 // ─── Surface Field Query ─────────────────────────────────────────────────────────────
 export function useSurfaceField(params: { variable: SurfaceVariable; date: string } | null) {
@@ -23,7 +24,7 @@ export function useSurfaceField(params: { variable: SurfaceVariable; date: strin
       url.searchParams.set('date', params.date);
       // Hardcode bbox to Indian Ocean for performance
       url.searchParams.set('bbox', '45,-5,105,35');
-      
+
       const res = await fetch(url.toString());
       if (!res.ok) throw new Error(`Field fetch failed: ${res.status}`);
       return res.json();
@@ -54,17 +55,17 @@ export function useSubsurfaceProfile(params: { lat: number; lon: number; date: s
 }
 
 // ─── Nearby Argo Query ──────────────────────────────────────────────────────────────
-export function useNearbyArgo(params: { lat: number; lon: number; date: string } | null) {
+export function useNearbyArgo(params: { lat: number; lon: number; date: string; radius_km?: number } | null) {
   return useQuery<ArgoProfile[], Error>({
-    queryKey: ['nearby_argo', params?.lat, params?.lon, params?.date],
+    queryKey: ['nearby_argo', params?.lat, params?.lon, params?.date, params?.radius_km],
     queryFn: async () => {
       if (!params) throw new Error("No params");
       const url = new URL(`${BASE_URL}/api/argo/nearby`, window.location.href);
       url.searchParams.set('lat', params.lat.toString());
       url.searchParams.set('lon', params.lon.toString());
       url.searchParams.set('date', params.date);
-      url.searchParams.set('radius_km', '200');
-      
+      url.searchParams.set('radius_km', (params.radius_km || 200).toString());
+
       const res = await fetch(url.toString());
       if (!res.ok) throw new Error(`Nearby Argo fetch failed: ${res.status}`);
       return res.json();
@@ -99,7 +100,7 @@ export function useValidationMatchup(params: { lat: number; lon: number; date: s
       url.searchParams.set('lat', params.lat.toString());
       url.searchParams.set('lon', params.lon.toString());
       url.searchParams.set('date', params.date);
-      
+
       const res = await fetch(url.toString());
       if (!res.ok) throw new Error(`Validation matchup fetch failed: ${res.status}`);
       return res.json();

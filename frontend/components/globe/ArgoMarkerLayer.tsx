@@ -20,9 +20,13 @@ const PLATFORM_COLOR = {
 export default function ArgoMarkerLayer({ viewer, onMarkerClick, focusPlatform }: ArgoMarkerLayerProps) {
   const { showArgoPoints, selectedLat, selectedLon, selectedDate, selectedFloatId, selectFloat, setSelectedPoint } = useExplorerStore();
 
+  const queryLat = selectedLat !== null ? selectedLat : 15.0;
+  const queryLon = selectedLon !== null ? selectedLon : 75.0;
+  const queryRadius = selectedLat !== null ? 200 : 2500; // 2500km covers most of the Indian Ocean
+
   const { data: observations } = useNearbyArgo(
-    showArgoPoints && selectedLat !== null && selectedLon !== null 
-      ? { lat: selectedLat, lon: selectedLon, date: selectedDate } 
+    showArgoPoints 
+      ? { lat: queryLat, lon: queryLon, date: selectedDate, radius_km: queryRadius } 
       : null
   );
 

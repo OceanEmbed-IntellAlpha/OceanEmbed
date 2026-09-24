@@ -71,8 +71,7 @@ const DEFAULT_STATE = {
   cursorLat: null,
   cursorLon: null,
   selectedFloatId: null,
-  
-  selectedDate: '2026-05-10',
+  selectedDate: '2023-12-01',
   selectedDepth: 0 as DepthLevel,
   
   showSST: true,
@@ -125,7 +124,23 @@ export const useExplorerStore = create<ExplorerState>()((set) => ({
   setDepth: (depth) => set({ selectedDepth: depth }),
   setMode: (mode) => set({ mode }),
   
-  toggleLayer: (layer) => set((state) => ({ [layer]: !state[layer as keyof ExplorerState] })),
+  toggleLayer: (layer) => set((state) => {
+    const isTurningOn = !state[layer as keyof ExplorerState];
+    const newState = { [layer]: isTurningOn } as Partial<ExplorerState>;
+    
+    // Make all globe heatmap variables mutually exclusive since they share the same base renderer
+    const heatmapLayers = [
+      'showSST', 'showSSS', 'showSSH', 'showCurrents', 'showWinds', 
+      'showSubsurfaceTemp', 'showEmbedding', 'showConfidence'
+    ];
+    if (heatmapLayers.includes(layer as string) && isTurningOn) {
+      heatmapLayers.forEach(l => {
+        if (l !== layer) newState[l as keyof ExplorerState] = false;
+      });
+    }
+    
+    return newState;
+  }),
   setBaseLayer: (layer) => set({ baseLayer: layer }),
   
   setProfileOpen: (open) => set({ profileOpen: open, selectedLat: open ? undefined : null, selectedLon: open ? undefined : null }),
