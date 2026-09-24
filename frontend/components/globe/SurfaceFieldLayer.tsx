@@ -17,7 +17,7 @@ interface ModelFieldLayerProps {
  * Uses scientific colormaps (thermal/viridis/cividis).
  */
 export default function SurfaceFieldLayer({ viewer }: ModelFieldLayerProps) {
-  const { showSST, showSSS, showSubsurfaceTemp, showCurrents, selectedDate, selectedDepth } = useExplorerStore();
+  const { showSST, showSSS, showSSH, showCurrents, showWinds, showSubsurfaceTemp, selectedDate, selectedDepth } = useExplorerStore();
   const entityIdsRef = useRef<unknown[]>([]);
 
   // Determine active variable to fetch. Prioritize Subsurface Temp if enabled.
@@ -25,6 +25,9 @@ export default function SurfaceFieldLayer({ viewer }: ModelFieldLayerProps) {
   if (showSubsurfaceTemp) activeVariable = 'sst';
   else if (showSST) activeVariable = 'sst';
   else if (showSSS) activeVariable = 'sss';
+  else if (showSSH) activeVariable = 'ssh';
+  else if (showCurrents) activeVariable = 'currents';
+  else if (showWinds) activeVariable = 'winds';
 
   const queryParams = activeVariable ? { variable: activeVariable, date: selectedDate } : null;
   const { data: field } = useSurfaceField(queryParams);
@@ -58,6 +61,9 @@ export default function SurfaceFieldLayer({ viewer }: ModelFieldLayerProps) {
       // Select colormap based on variable
       let cmName: ColormapName = 'thermal';
       if (activeVariable === 'sss') cmName = 'haline';
+      else if (activeVariable === 'ssh') cmName = 'viridis';
+      else if (activeVariable === 'currents') cmName = 'deep';
+      else if (activeVariable === 'winds') cmName = 'cividis';
       
       const opacity = 0.6;
 

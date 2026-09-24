@@ -449,6 +449,8 @@ class ModelService:
             u_arr = self._sf_ds["u"].isel(time=time_idx).values.astype(np.float32)
             v_arr = self._sf_ds["v"].isel(time=time_idx).values.astype(np.float32)
             raw = np.sqrt(u_arr ** 2 + v_arr ** 2)
+            # Mask land just in case
+            raw[~self.clim_service.ocean_mask] = np.nan
             unit = "m/s"
             color_range = (0.0, 1.5)
             u_grid = [[None if np.isnan(x) else round(float(x), 3) for x in row] for row in u_arr]
@@ -457,6 +459,8 @@ class ModelService:
             u_arr = self._sf_ds["uwnd"].isel(time=time_idx).values.astype(np.float32)
             v_arr = self._sf_ds["vwnd"].isel(time=time_idx).values.astype(np.float32)
             raw = np.sqrt(u_arr ** 2 + v_arr ** 2)
+            # Strictly mask land out of atmospheric winds
+            raw[~self.clim_service.ocean_mask] = np.nan
             unit = "m/s"
             color_range = (0.0, 15.0)
             u_grid = [[None if np.isnan(x) else round(float(x), 2) for x in row] for row in u_arr]
