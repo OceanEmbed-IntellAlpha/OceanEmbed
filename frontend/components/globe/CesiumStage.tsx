@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useExplorerStore } from '@/lib/store/useExplorerStore';
+import { BASE_URL } from '@/lib/api/queries';
 
 interface CesiumStageProps {
   onViewerReady?: (viewer: unknown) => void;
@@ -15,9 +16,10 @@ interface CesiumStageProps {
 export default function CesiumStage({ onViewerReady, onGlobeClick }: CesiumStageProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<unknown>(null);
-  const setCursor = useExplorerStore((s) => s.setCursor);
+  const { setCursor, cursorLat, cursorLon } = useExplorerStore();
   const handlerRef = useRef<unknown>(null);
   const onGlobeClickRef = useRef(onGlobeClick);
+  const [isValidHover, setIsValidHover] = useState(false);
 
   const initCesium = useCallback(async () => {
     if (!containerRef.current || viewerRef.current) return;
@@ -145,7 +147,7 @@ export default function CesiumStage({ onViewerReady, onGlobeClick }: CesiumStage
             const lon = Cesium.Math.toDegrees(cartographic.longitude);
             
             // Prevent clicking on land by checking against the server API
-            fetch(`/api/is-sea?lat=${lat}&lon=${lon}`)
+            fetch(`${BASE_URL}/api/is-sea?lat=${lat}&lon=${lon}`)
               .then(res => res.json())
               .then(data => {
                 if (data.isSea) {
@@ -192,6 +194,38 @@ export default function CesiumStage({ onViewerReady, onGlobeClick }: CesiumStage
       }
     };
   }, [initCesium]);
+
+  useEffect(() => {
+    // Quick bounds check
+    if (cursorLat === null || cursorLon === null || cursorLat < 5.0 || cursorLat > 30.0 || cursorLon < 45.0 || cursorLon > 105.0) {
+      setIsValidHover(false);
+      if (viewerRef.current) {
+        // If cursor is entirely off the globe or out of bounds, use default or not-allowed
+        (viewerRef.current as any).canvas.style.cursor = (cursorLat === null) ? 'default' : 'not-allowed';
+      }
+      return;
+    }
+    
+    // Debounce backend is-sea check
+    const timer = setTimeout(() => {
+      fetch(`${BASE_URL}/api/is-sea?lat=${cursorLat}&lon=${cursorLon}`)
+        .then(res => res.json())
+        .then(data => {
+          setIsValidHover(!!data.isSea);
+          if (viewerRef.current) {
+            (viewerRef.current as any).canvas.style.cursor = data.isSea ? 'crosshair' : 'not-allowed';
+          }
+        })
+        .catch(() => {
+          setIsValidHover(false);
+          if (viewerRef.current) {
+            (viewerRef.current as any).canvas.style.cursor = 'not-allowed';
+          }
+        });
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [cursorLat, cursorLon]);
 
   return (
     <div

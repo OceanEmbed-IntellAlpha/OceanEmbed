@@ -291,9 +291,7 @@ class ModelService:
 
             # Land check
             if np.isnan(t_val):
-                t_val = 0.0
-                c_val = 0.0
-                a_val = 0.0
+                raise ValueError(f"Requested coordinate ({lat}, {lon}) is over land or outside valid ocean mask.")
 
             profile_list.append({
                 "depth_m": round(z_float, 2),
