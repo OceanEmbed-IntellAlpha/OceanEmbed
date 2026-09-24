@@ -128,14 +128,15 @@ export const useExplorerStore = create<ExplorerState>()((set) => ({
     const isTurningOn = !state[layer as keyof ExplorerState];
     const newState = { [layer]: isTurningOn } as Partial<ExplorerState>;
     
-    // Make surface variables mutually exclusive since they share the same heatmap layer
-    const surfaceLayers = ['showSST', 'showSSS', 'showSSH', 'showCurrents', 'showWinds'];
-    if (surfaceLayers.includes(layer as string) && isTurningOn) {
-      surfaceLayers.forEach(l => {
+    // Make all globe heatmap variables mutually exclusive since they share the same base renderer
+    const heatmapLayers = [
+      'showSST', 'showSSS', 'showSSH', 'showCurrents', 'showWinds', 
+      'showSubsurfaceTemp', 'showEmbedding', 'showConfidence'
+    ];
+    if (heatmapLayers.includes(layer as string) && isTurningOn) {
+      heatmapLayers.forEach(l => {
         if (l !== layer) newState[l as keyof ExplorerState] = false;
       });
-      // Also turn off subsurface temp if turning on a different surface layer
-      if (layer !== 'showSST') newState.showSubsurfaceTemp = false;
     }
     
     return newState;

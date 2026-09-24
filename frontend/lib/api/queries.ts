@@ -55,16 +55,16 @@ export function useSubsurfaceProfile(params: { lat: number; lon: number; date: s
 }
 
 // ─── Nearby Argo Query ──────────────────────────────────────────────────────────────
-export function useNearbyArgo(params: { lat: number; lon: number; date: string } | null) {
+export function useNearbyArgo(params: { lat: number; lon: number; date: string; radius_km?: number } | null) {
   return useQuery<ArgoProfile[], Error>({
-    queryKey: ['nearby_argo', params?.lat, params?.lon, params?.date],
+    queryKey: ['nearby_argo', params?.lat, params?.lon, params?.date, params?.radius_km],
     queryFn: async () => {
       if (!params) throw new Error("No params");
       const url = new URL(`${BASE_URL}/api/argo/nearby`, window.location.href);
       url.searchParams.set('lat', params.lat.toString());
       url.searchParams.set('lon', params.lon.toString());
       url.searchParams.set('date', params.date);
-      url.searchParams.set('radius_km', '200');
+      url.searchParams.set('radius_km', (params.radius_km || 200).toString());
 
       const res = await fetch(url.toString());
       if (!res.ok) throw new Error(`Nearby Argo fetch failed: ${res.status}`);

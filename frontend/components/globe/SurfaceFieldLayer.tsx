@@ -17,19 +17,21 @@ interface ModelFieldLayerProps {
  * Uses scientific colormaps (thermal/viridis/cividis).
  */
 export default function SurfaceFieldLayer({ viewer }: ModelFieldLayerProps) {
-  const { showSST, showSSS, showSSH, showCurrents, showWinds, showSubsurfaceTemp, selectedDate, selectedDepth } = useExplorerStore();
+  const { showSST, showSSS, showSSH, showCurrents, showWinds, showSubsurfaceTemp, showEmbedding, showConfidence, selectedDate, selectedDepth } = useExplorerStore();
   const entityIdsRef = useRef<unknown[]>([]);
 
-  // Determine active variable to fetch. Prioritize Subsurface Temp if enabled.
-  let activeVariable: SurfaceVariable | null = null;
-  if (showSubsurfaceTemp) activeVariable = 'sst';
-  else if (showSST) activeVariable = 'sst';
+  // Determine active variable to fetch.
+  let activeVariable: string | null = null;
+  if (showSST) activeVariable = 'sst';
   else if (showSSS) activeVariable = 'sss';
   else if (showSSH) activeVariable = 'ssh';
   else if (showCurrents) activeVariable = 'currents';
   else if (showWinds) activeVariable = 'winds';
+  else if (showSubsurfaceTemp) activeVariable = 'subsurface_temp';
+  else if (showEmbedding) activeVariable = 'embedding';
+  else if (showConfidence) activeVariable = 'confidence';
 
-  const queryParams = activeVariable ? { variable: activeVariable, date: selectedDate } : null;
+  const queryParams = activeVariable ? { variable: activeVariable as any, date: selectedDate } : null;
   const { data: field } = useSurfaceField(queryParams);
 
   useEffect(() => {
@@ -64,6 +66,9 @@ export default function SurfaceFieldLayer({ viewer }: ModelFieldLayerProps) {
       else if (activeVariable === 'ssh') cmName = 'viridis';
       else if (activeVariable === 'currents') cmName = 'deep';
       else if (activeVariable === 'winds') cmName = 'cividis';
+      else if (activeVariable === 'subsurface_temp') cmName = 'thermal';
+      else if (activeVariable === 'embedding') cmName = 'viridis';
+      else if (activeVariable === 'confidence') cmName = 'thermal'; // Or maybe an inverted one, thermal works
       
       const opacity = 0.6;
 

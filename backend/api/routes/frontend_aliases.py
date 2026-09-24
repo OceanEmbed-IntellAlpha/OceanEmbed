@@ -189,7 +189,7 @@ async def get_nearby_argo(
     lat: float = Query(..., ge=5.0, le=30.0),
     lon: float = Query(..., ge=45.0, le=105.0),
     date: str = Query(...),
-    radius_km: float = Query(200.0, ge=10.0, le=1000.0),
+    radius_km: float = Query(200.0, ge=10.0, le=5000.0),
     argo: ArgoService = Depends(get_argo_service),
 ) -> List[ArgoProfile]:
     if not argo.is_available:

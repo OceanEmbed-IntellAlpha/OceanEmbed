@@ -6,15 +6,17 @@ import { useSurfaceField } from '@/lib/api/queries';
 import { COLORMAPS, ColormapName } from '@/lib/cesium/colormaps';
 
 export function ColormapLegend() {
-  const { showSST, showSSS, showSSH, showCurrents, showWinds, showSubsurfaceTemp, selectedDate } = useExplorerStore();
+  const { showSST, showSSS, showSSH, showCurrents, showWinds, showSubsurfaceTemp, showEmbedding, showConfidence, selectedDate } = useExplorerStore();
 
   let activeVariable: string | null = null;
-  if (showSubsurfaceTemp) activeVariable = 'sst';
-  else if (showSST) activeVariable = 'sst';
+  if (showSST) activeVariable = 'sst';
   else if (showSSS) activeVariable = 'sss';
   else if (showSSH) activeVariable = 'ssh';
   else if (showCurrents) activeVariable = 'currents';
   else if (showWinds) activeVariable = 'winds';
+  else if (showSubsurfaceTemp) activeVariable = 'subsurface_temp';
+  else if (showEmbedding) activeVariable = 'embedding';
+  else if (showConfidence) activeVariable = 'confidence';
 
   const queryParams = activeVariable ? { variable: activeVariable as any, date: selectedDate } : null;
   const { data: field } = useSurfaceField(queryParams);
@@ -29,6 +31,9 @@ export function ColormapLegend() {
   else if (activeVariable === 'ssh') cmName = 'viridis';
   else if (activeVariable === 'currents') cmName = 'deep';
   else if (activeVariable === 'winds') cmName = 'cividis';
+  else if (activeVariable === 'subsurface_temp') cmName = 'thermal';
+  else if (activeVariable === 'embedding') cmName = 'viridis';
+  else if (activeVariable === 'confidence') cmName = 'thermal';
 
   const stops = COLORMAPS[cmName];
   const gradient = `linear-gradient(to right, ${stops.map(c => `rgb(${c.r},${c.g},${c.b})`).join(', ')})`;
@@ -38,7 +43,10 @@ export function ColormapLegend() {
     sss: 'Sea Surface Salinity',
     ssh: 'Sea Level Anomaly',
     currents: 'Surface Currents',
-    winds: 'Surface Winds'
+    winds: 'Surface Winds',
+    subsurface_temp: 'Subsurface Temp',
+    embedding: 'Deep Embedding Space',
+    confidence: 'Model Confidence'
   };
 
   return (
