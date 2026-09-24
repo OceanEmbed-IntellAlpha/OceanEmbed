@@ -25,6 +25,7 @@ const ProfilePanel = dynamic(() => import('./ProfilePanel').then(m => ({ default
 const DepthSidebar = dynamic(() => import('./DepthSidebar').then(m => ({ default: m.DepthSidebar })), { ssr: false });
 const DateDepthBar = dynamic(() => import('./DateDepthBar').then(m => ({ default: m.DateDepthBar })), { ssr: false });
 const SplitOceanViz = dynamic(() => import('@/components/globe/SplitOceanViz'), { ssr: false });
+import { DataStatusOverlay } from './DataStatusOverlay';
 
 export function ExplorerShell() {
   const [viewer, setViewer] = useState<unknown>(null);
@@ -149,6 +150,7 @@ export function ExplorerShell() {
       </div>
 
       <UnderwaterDiveOverlay />
+      <DataStatusOverlay />
 
       {/* Top Bar */}
       <div className="relative z-20">

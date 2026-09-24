@@ -34,7 +34,26 @@ _BACKEND = Path(__file__).resolve().parents[2]
 if str(_BACKEND) not in sys.path:
     sys.path.insert(0, str(_BACKEND))
 
-from ocean_embed.data.normalization import SURFACE_VARS, apply_surface_norm, load_normalization_stats
+import json
+
+SURFACE_VARS = ["analysed_sst", "sos", "sla", "u", "v", "uwnd", "vwnd"]
+
+def load_normalization_stats(path):
+    with open(path) as f:
+        return json.load(f)
+
+def apply_surface_norm(data, stats, channel_names):
+    out = data.copy()
+    for i, c in enumerate(channel_names):
+        # Support both nested ('surface') and flat stats formats
+        c_stats = stats["surface"][c] if "surface" in stats else stats[c]
+        m = c_stats["mean"]
+        s = c_stats["std"]
+        if s > 0:
+            out[:, i] = (out[:, i] - m) / s
+        else:
+            out[:, i] = out[:, i] - m
+    return out
 from ocean_embed.grid import SIH_DEPTHS
 from ocean_embed.models.baseline import BaselineModel
 from backend.api.services.climatology_service import ClimatologyService
