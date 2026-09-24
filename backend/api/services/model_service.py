@@ -60,11 +60,6 @@ from backend.api.services.climatology_service import ClimatologyService
 
 logger = logging.getLogger(__name__)
 
-# Test set 1-sigma RMSE per depth for empirical uncertainty estimation (°C)
-DEPTH_CONFIDENCE_RMSE: List[float] = [
-    0.4149, 0.4113, 0.4069, 0.4260, 0.4592, 0.5271, 0.7512,
-    0.8404, 0.7866, 0.6939, 0.5624, 0.3160, 0.2270, 0.2336, 0.2392
-]
 
 # Predefined oceanographic regions in North Indian Ocean
 PREDEFINED_REGIONS = {
@@ -281,13 +276,11 @@ class ModelService:
                 t_val = float(native_temps[idx])
                 c_val = float(native_clims[idx])
                 a_val = float(native_anoms[idx])
-                conf = float(DEPTH_CONFIDENCE_RMSE[idx])
             else:
                 # 1D linear interpolation
                 t_val = float(np.interp(z_float, self.depths, native_temps))
                 c_val = float(np.interp(z_float, self.depths, native_clims))
                 a_val = float(np.interp(z_float, self.depths, native_anoms))
-                conf = float(np.interp(z_float, self.depths, DEPTH_CONFIDENCE_RMSE))
 
             # Land check
             if np.isnan(t_val):
@@ -298,7 +291,6 @@ class ModelService:
                 "temperature_c": round(t_val, 3),
                 "climatology_c": round(c_val, 3),
                 "anomaly_c": round(a_val, 3),
-                "confidence_c": round(conf, 3),
             })
 
         return {
@@ -319,14 +311,12 @@ class ModelService:
         """Return profile matching frontend SubsurfaceProfile contract."""
         res = self.predict_profile(lat, lon, date_str, custom_depths=None)
         temps = [p["temperature_c"] for p in res["profile"]]
-        confs = [p["confidence_c"] for p in res["profile"]]
         return {
             "lat": lat,
             "lon": lon,
             "date": date_str,
             "depths": [round(float(d), 2) for d in SIH_DEPTHS],
             "temperature": temps,
-            "confidence": confs,
             "source": "model",
         }
 
@@ -472,14 +462,12 @@ class ModelService:
             unit = "°C"
             color_range = (10.0, 28.0)
             u_grid = v_grid = None
-        elif var_lower == "confidence":
+        elif var_lower in {"thermal_anomaly", "anomaly"}:
             _, _, anom_3d, _ = self.predict_full_3d(date_str)
-            # Amplify the small anomalies to generate a meaningful percentage (0-100%)
-            raw = 100.0 - (np.abs(anom_3d[0]) * 1000.0) 
-            raw = np.clip(raw, 0.0, 100.0)
+            raw = np.abs(anom_3d[0])
             raw[~self.clim_service.ocean_mask] = np.nan
-            unit = "%"
-            color_range = (float(np.nanmin(raw)), float(np.nanmax(raw)))
+            unit = "°C"
+            color_range = (0.0, 3.0)
             u_grid = v_grid = None
         elif var_lower == "embedding":
             # Extract first layer CNN features
@@ -497,7 +485,7 @@ class ModelService:
             color_range = (float(np.nanmin(raw)), float(np.nanmax(raw)))
             u_grid = v_grid = None
         else:
-            raise ValueError(f"Unknown surface variable: {variable}. Supported: sst, sss, ssh, currents, winds, subsurface_temp, confidence, embedding")
+            raise ValueError(f"Unknown surface variable: {variable}. Supported: sst, sss, ssh, currents, winds, subsurface_temp, thermal_anomaly, embedding")
 
         grid = [
             [None if np.isnan(val) else round(float(val), 3) for val in row]

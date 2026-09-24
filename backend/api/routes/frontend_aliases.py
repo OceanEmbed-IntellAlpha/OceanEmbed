@@ -87,11 +87,13 @@ async def predict_subsurface(
     description="Direct compatibility alias for frontend `useSurfaceField` hook.",
 )
 async def get_surface_field(
-    variable: str = Query("sst", description="'sst', 'sss', 'ssh', 'currents', 'winds'"),
+    variable: str = Query("sst", description="'sst', 'sss', 'ssh', 'currents', 'winds', 'subsurface_temp', 'thermal_anomaly', 'embedding'"),
     date: str = Query(..., description="Date in YYYY-MM-DD format"),
     bbox: Optional[str] = Query("45,-5,105,35", description="Bounding box string lonMin,latMin,lonMax,latMax"),
     service: ModelService = Depends(get_model_service),
 ) -> FrontendSurfaceField:
+    if variable.lower() == "confidence":
+        raise HTTPException(status_code=400, detail="The 'confidence' variable has been removed. Use 'thermal_anomaly' instead.")
     try:
         res = service.get_frontend_surface_field(variable=variable, date_str=date, bbox_str=bbox)
         return FrontendSurfaceField(**res)

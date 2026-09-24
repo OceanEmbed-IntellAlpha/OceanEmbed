@@ -34,7 +34,7 @@ class MapResponse(BaseModel):
 
 # Schema matching frontend/lib/api/types.ts SurfaceField for /api/field
 class FrontendSurfaceField(BaseModel):
-    variable: str = Field(..., description="'sst', 'sss', 'ssh', 'currents', 'winds'")
+    variable: str = Field(..., description="'sst', 'sss', 'ssh', 'currents', 'winds', 'subsurface_temp', 'thermal_anomaly', 'embedding'")
     date: str
     bbox: Tuple[float, float, float, float] = Field(..., description="[lonMin, latMin, lonMax, latMax]")
     lat: List[float]
