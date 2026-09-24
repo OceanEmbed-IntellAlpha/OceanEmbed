@@ -2,7 +2,7 @@
 export type SurfaceVariable = 'sst' | 'sss' | 'ssh' | 'currents' | 'winds';
 
 // Model output
-export type ModelOutput = 'subsurface_temperature' | 'ocean_embedding' | 'confidence';
+export type ModelOutput = 'subsurface_temperature' | 'ocean_embedding' | 'thermal_anomaly';
 
 // Explorer view mode
 export type ExplorerMode = 'surface' | 'profile' | 'validation' | 'dive';
@@ -32,7 +32,6 @@ export interface SubsurfaceProfile {
   date: string;
   depths: typeof DEPTH_LEVELS[number][];   // [0,5,10,...,1000]
   temperature: number[];                   // reconstructed °C at each depth
-  confidence?: number[];                   // optional uncertainty bounds
   source: 'model';
 }
 

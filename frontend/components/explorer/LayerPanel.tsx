@@ -7,7 +7,7 @@ import { Layers, Activity, Droplet, Wind, Eye, Network } from 'lucide-react';
 export function LayerPanel() {
   const {
     showSST, showSSS, showSSH, showCurrents, showWinds,
-    showSubsurfaceTemp, showEmbedding, showConfidence, showArgoPoints,
+    showSubsurfaceTemp, showEmbedding, showThermalAnomaly, showArgoPoints,
     toggleLayer
   } = useExplorerStore();
 
@@ -70,7 +70,7 @@ export function LayerPanel() {
           <div className="space-y-2">
             <LayerToggle label="Subsurface Temperature" active={showSubsurfaceTemp} field="showSubsurfaceTemp" icon={<Eye size={16}/>} />
             <LayerToggle label="Deep Embedding Space" active={showEmbedding} field="showEmbedding" icon={<Layers size={16}/>} />
-            <LayerToggle label="Model Confidence" active={showConfidence} field="showConfidence" icon={<Activity size={16}/>} />
+            <LayerToggle label="Thermal Anomaly" active={showThermalAnomaly} field="showThermalAnomaly" icon={<Activity size={16}/>} />
           </div>
         </div>
 

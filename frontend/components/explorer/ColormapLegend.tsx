@@ -6,7 +6,7 @@ import { useSurfaceField } from '@/lib/api/queries';
 import { COLORMAPS, ColormapName } from '@/lib/cesium/colormaps';
 
 export function ColormapLegend() {
-  const { showSST, showSSS, showSSH, showCurrents, showWinds, showSubsurfaceTemp, showEmbedding, showConfidence, selectedDate } = useExplorerStore();
+  const { showSST, showSSS, showSSH, showCurrents, showWinds, showSubsurfaceTemp, showEmbedding, showThermalAnomaly, selectedDate } = useExplorerStore();
 
   let activeVariable: string | null = null;
   if (showSST) activeVariable = 'sst';
@@ -16,7 +16,7 @@ export function ColormapLegend() {
   else if (showWinds) activeVariable = 'winds';
   else if (showSubsurfaceTemp) activeVariable = 'subsurface_temp';
   else if (showEmbedding) activeVariable = 'embedding';
-  else if (showConfidence) activeVariable = 'confidence';
+  else if (showThermalAnomaly) activeVariable = 'thermal_anomaly';
 
   const queryParams = activeVariable ? { variable: activeVariable as any, date: selectedDate } : null;
   const { data: field } = useSurfaceField(queryParams);
@@ -33,7 +33,7 @@ export function ColormapLegend() {
   else if (activeVariable === 'winds') cmName = 'cividis';
   else if (activeVariable === 'subsurface_temp') cmName = 'thermal';
   else if (activeVariable === 'embedding') cmName = 'viridis';
-  else if (activeVariable === 'confidence') cmName = 'thermal';
+  else if (activeVariable === 'thermal_anomaly') cmName = 'thermal';
 
   const stops = COLORMAPS[cmName];
   const gradient = `linear-gradient(to right, ${stops.map(c => `rgb(${c.r},${c.g},${c.b})`).join(', ')})`;
@@ -46,7 +46,7 @@ export function ColormapLegend() {
     winds: 'Surface Winds',
     subsurface_temp: 'Subsurface Temp',
     embedding: 'Deep Embedding Space',
-    confidence: 'Model Confidence'
+    thermal_anomaly: 'Thermal Anomaly'
   };
 
   return (
