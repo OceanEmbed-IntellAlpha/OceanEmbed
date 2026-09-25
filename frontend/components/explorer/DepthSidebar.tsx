@@ -240,25 +240,39 @@ export function DepthSidebar() {
             onValueChange={(val) => setDepth(DEPTH_LEVELS[val[0]])}
           >
             {/* The vertical track */}
-            <Slider.Track className="relative w-1.5 grow rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <Slider.Track className="relative w-2 grow rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}>
               {/* Thermal gradient background */}
               <div
                 className="absolute inset-0"
                 style={{
-                  background: 'linear-gradient(to bottom, #f97316 0%, #eab308 20%, #22d3ee 60%, #6366f1 100%)',
-                  opacity: 0.45,
+                  background: 'linear-gradient(to bottom, #f97316 0%, #ff7e1d 15%, #eab308 30%, #22d3ee 65%, #6366f1 100%)',
+                  opacity: 0.55,
+                }}
+              />
+              {/* Thermocline Highlight Zone (50m - 200m: indices ~ 5 to 10 out of 14) */}
+              <div
+                className="absolute w-full animate-pulse-slow"
+                style={{
+                  top: `${(5 / (DEPTH_LEVELS.length - 1)) * 100}%`,
+                  bottom: `${(1 - (10 / (DEPTH_LEVELS.length - 1))) * 100}%`,
+                  background: 'linear-gradient(to bottom, rgba(249,115,22,0.4), rgba(234,179,8,0.4))',
+                  borderTop: '1px solid rgba(249,115,22,0.8)',
+                  borderBottom: '1px solid rgba(234,179,8,0.8)',
+                  boxShadow: '0 0 8px rgba(249,115,22,0.6)',
                 }}
               />
               {/* Fill up to selected depth */}
               <Slider.Range className="absolute w-full" style={{ background: 'rgba(255,255,255,0.45)' }} />
             </Slider.Track>
 
-            {/* Tick marks & Labels */}
+            {/* Tick marks & Labels with Thermocline & Region Highlights */}
             {DEPTH_LEVELS.map((d, i) => {
               const pos = (i / (DEPTH_LEVELS.length - 1)) * 100;
               const isActive = i === currentIdx;
               const tempD = interpolate(depths, temperatures, d);
               const col = tempToColor(tempD);
+              const isThermocline = d >= 50 && d <= 200;
+
               return (
                 <div
                   key={d}
@@ -266,16 +280,18 @@ export function DepthSidebar() {
                   style={{ top: `${pos}%`, transform: 'translateY(-50%)' }}
                 >
                   <span
-                    className={`absolute left-2 text-[9px] font-mono whitespace-nowrap text-right w-6 transition-colors duration-200 ${isActive ? 'font-bold scale-110' : ''}`}
-                    style={{ color: isActive ? col : 'rgba(255,255,255,0.35)' }}
+                    className={`absolute left-2 text-[9px] font-mono whitespace-nowrap text-right w-6 transition-all duration-200 ${isActive ? 'font-bold scale-110 text-white' : isThermocline ? 'font-semibold text-amber-300' : ''}`}
+                    style={{ color: isActive ? col : isThermocline ? '#fba518' : 'rgba(255,255,255,0.35)' }}
                   >
                     {d}
                   </span>
                   <div
-                    className="absolute w-1.5 h-[1px] transition-all duration-200"
+                    className="absolute h-[1.5px] transition-all duration-200"
                     style={{
-                      background: isActive ? col : 'rgba(255,255,255,0.2)',
-                      right: '24px',
+                      width: isActive ? '10px' : isThermocline ? '6px' : '4px',
+                      background: isActive ? col : isThermocline ? '#f97316' : 'rgba(255,255,255,0.2)',
+                      right: '22px',
+                      boxShadow: isThermocline ? '0 0 6px rgba(249,115,22,0.8)' : 'none',
                     }}
                   />
                 </div>
@@ -344,12 +360,35 @@ export function DepthSidebar() {
               </defs>
 
               {/* Zone bands */}
-              <rect x="0" y="6" width={svgW} height={sunlitH} fill="rgba(14,165,233,0.05)" rx="4" />
-              <rect x="0" y={6 + sunlitH} width={svgW} height={twilightH} fill="rgba(30,58,138,0.05)" rx="4" />
+              <rect x="0" y="6" width={svgW} height={(50 / maxDepth) * (svgH - 12)} fill="rgba(14,165,233,0.06)" rx="4" />
+              {/* Thermocline Highlight Band (50m - 200m) */}
+              <rect
+                x="0"
+                y={6 + (50 / maxDepth) * (svgH - 12)}
+                width={svgW}
+                height={((200 - 50) / maxDepth) * (svgH - 12)}
+                fill="rgba(249,115,22,0.15)"
+                stroke="rgba(249,115,22,0.4)"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+                rx="4"
+              />
+              <rect x="0" y={6 + (200 / maxDepth) * (svgH - 12)} width={svgW} height={((1000 - 200) / maxDepth) * (svgH - 12)} fill="rgba(30,58,138,0.08)" rx="4" />
 
-              {/* Zone labels */}
-              <text x="6" y="20" fontSize="8" fill="rgba(14,165,233,0.5)" fontFamily="monospace" fontWeight="bold">SUNLIT ZONE</text>
-              <text x="6" y={6 + sunlitH + 16} fontSize="8" fill="rgba(99,102,241,0.5)" fontFamily="monospace" fontWeight="bold">TWILIGHT ZONE</text>
+              {/* Zone Pill Badges for crisp legibility */}
+              <g id="zone-labels">
+                {/* 0-50m Mixed Layer Badge */}
+                <rect x="6" y="10" width="112" height="14" rx="3" fill="rgba(6, 14, 28, 0.85)" stroke="rgba(14,165,233,0.4)" strokeWidth="0.8" />
+                <text x="10" y="20" fontSize="7.5" fill="#38bdf8" fontFamily="monospace" fontWeight="bold">0–50m • MIXED LAYER</text>
+
+                {/* 50-200m Thermocline Badge */}
+                <rect x="6" y={6 + (50 / maxDepth) * (svgH - 12) + 4} width="168" height="15" rx="3" fill="rgba(6, 14, 28, 0.9)" stroke="rgba(249,115,22,0.6)" strokeWidth="1" />
+                <text x="10" y={6 + (50 / maxDepth) * (svgH - 12) + 15} fontSize="8" fill="#ff9e5e" fontFamily="monospace" fontWeight="bold">50–200m ★ THERMOCLINE (Z₂₀ CORE)</text>
+
+                {/* 200-1000m Twilight Badge */}
+                <rect x="6" y={6 + (200 / maxDepth) * (svgH - 12) + 6} width="162" height="14" rx="3" fill="rgba(6, 14, 28, 0.85)" stroke="rgba(99,102,241,0.4)" strokeWidth="0.8" />
+                <text x="10" y={6 + (200 / maxDepth) * (svgH - 12) + 16} fontSize="7.5" fill="#818cf8" fontFamily="monospace" fontWeight="bold">200–1000m • TWILIGHT MESOPELAGIC</text>
+              </g>
 
               {/* Horizontal temp grid lines */}
               {[8, 14, 20, 26].map((t) => {
@@ -357,7 +396,7 @@ export function DepthSidebar() {
                 return (
                   <g key={t}>
                     <line x1={gx} y1="6" x2={gx} y2={svgH - 6} stroke="rgba(255,255,255,0.07)" strokeDasharray="2 3" />
-                    <text x={gx} y={svgH - 1} fontSize="7" fill="rgba(255,255,255,0.3)" textAnchor="middle" fontFamily="monospace">{t}°</text>
+                    <text x={gx} y={svgH - 1} fontSize="7" fill="rgba(255,255,255,0.35)" textAnchor="middle" fontFamily="monospace">{t}°</text>
                   </g>
                 );
               })}
@@ -386,9 +425,9 @@ export function DepthSidebar() {
                 x2={svgW}
                 y2={cursorY}
                 stroke={zone.accentHex}
-                strokeWidth="1"
+                strokeWidth="1.2"
                 strokeDasharray="4 3"
-                strokeOpacity="0.75"
+                strokeOpacity="0.85"
               />
 
               {/* Cursor dot */}
@@ -405,18 +444,17 @@ export function DepthSidebar() {
 
               {/* Depth label at cursor */}
               <rect
-                x={cursorX + 7}
+                x={Math.min(cursorX + 7, svgW - 75)}
                 y={cursorY - 10}
-                width="50"
+                width="68"
                 height="16"
                 rx="4"
-                fill="rgba(5,10,18,0.85)"
+                fill="rgba(5,10,18,0.92)"
                 stroke={zone.accentHex}
-                strokeWidth="0.8"
-                strokeOpacity="0.8"
+                strokeWidth="1"
               />
               <text
-                x={cursorX + 32}
+                x={Math.min(cursorX + 41, svgW - 41)}
                 y={cursorY + 1}
                 fontSize="8"
                 fill="white"
@@ -424,7 +462,7 @@ export function DepthSidebar() {
                 fontFamily="monospace"
                 fontWeight="bold"
               >
-                {selectedDepth}m · {currentTemp.toFixed(1)}°
+                {selectedDepth}m · {currentTemp.toFixed(1)}°C
               </text>
             </svg>
           </motion.div>

@@ -274,7 +274,7 @@ const GodRaysShader = {
 function MarineSnowSystem({ depth, currentTemp }: { depth: number, currentTemp: number }) {
   const count = 1500; // Dense marine snow
   const { camera } = useThree();
-  
+
   const [textures, geometry] = useMemo(() => {
     // 1. Generate Marine Snow Texture (Soft, irregular clump)
     const cSnow = document.createElement('canvas');
@@ -307,7 +307,7 @@ function MarineSnowSystem({ depth, currentTemp }: { depth: number, currentTemp: 
       grad.addColorStop(0.6, 'rgba(0,255,200,0.2)');
       grad.addColorStop(1, 'rgba(0,0,0,0)');
       ctxO.fillStyle = grad;
-      ctxO.fillRect(0,0,32,32);
+      ctxO.fillRect(0, 0, 32, 32);
     }
     const texOrb = new THREE.CanvasTexture(cOrb);
     texOrb.colorSpace = THREE.SRGBColorSpace;
@@ -320,15 +320,15 @@ function MarineSnowSystem({ depth, currentTemp }: { depth: number, currentTemp: 
     const phases = new Float32Array(count);
     const types = new Float32Array(count);
 
-    for(let i=0; i<count; i++) {
+    for (let i = 0; i < count; i++) {
       const isSnow = i < count * 0.98; // 98% snow, 2% rare bio flashes
-      
+
       // Distribute closely around a cylinder matching the camera bounds
       const r = 2 + Math.random() * 20;
       const theta = Math.random() * Math.PI * 2;
-      pos[i*3] = 10 + Math.cos(theta) * r; // Offset to match camera X orbit
-      pos[i*3+1] = -(Math.random() * 120); // Spread across depth
-      pos[i*3+2] = 10 + Math.sin(theta) * r; // Offset to match camera Z orbit
+      pos[i * 3] = 10 + Math.cos(theta) * r; // Offset to match camera X orbit
+      pos[i * 3 + 1] = -(Math.random() * 120); // Spread across depth
+      pos[i * 3 + 2] = 10 + Math.sin(theta) * r; // Offset to match camera Z orbit
 
       sizes[i] = isSnow ? 10 + Math.random() * 20 : 30 + Math.random() * 20;
       speeds[i] = 0.5 + Math.random() * 1.5;
@@ -342,7 +342,7 @@ function MarineSnowSystem({ depth, currentTemp }: { depth: number, currentTemp: 
     geo.setAttribute('aPhase', new THREE.BufferAttribute(phases, 1));
     geo.setAttribute('aType', new THREE.BufferAttribute(types, 1));
 
-    return [{texSnow, texOrb}, geo];
+    return [{ texSnow, texOrb }, geo];
   }, []);
 
   const uniforms = useMemo(() => ({
@@ -360,11 +360,11 @@ function MarineSnowSystem({ depth, currentTemp }: { depth: number, currentTemp: 
     uniforms.uTime.value = state.clock.getElapsedTime();
     uniforms.uCamDepth.value = THREE.MathUtils.lerp(uniforms.uCamDepth.value, depth * DEPTH_SCALE, delta * 4.0);
     uniforms.uTempColor.value.lerp(getTempColorTarget(currentTemp, 0.8, 0.6), delta * 4.0);
-    
+
     // Pass camera metrics to spotlight
     uniforms.uSpotlightPos.value.copy(camera.position);
     camera.getWorldDirection(uniforms.uSpotlightDir.value);
-    
+
     // Spotlight turns on fully after 300m (30 on depthScale)
     const intensityTarget = depth > 300 ? 1.5 : 0.0;
     uniforms.uSpotlightIntensity.value = THREE.MathUtils.lerp(uniforms.uSpotlightIntensity.value, intensityTarget, delta * 2.0);
@@ -475,12 +475,12 @@ function EnvironmentRig({ depth, currentTemp }: { depth: number, currentTemp: nu
       targetY = 2.0; // Place camera slightly above the water surface at 0m
     }
     camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, delta * 3.0);
-    
+
     // Orbital sway + Slight upward tilt to see the surface and god rays
     const t = state.clock.getElapsedTime();
     camera.position.x = 10.0 + Math.sin(t * 0.2) * 2.0;
     camera.position.z = 10.0 + Math.cos(t * 0.15) * 2.0;
-    
+
     // Camera LookAt Logic
     // At 0m, offset is 0 so camera is perfectly level (horizontal) to see the sharp horizon.
     // As you dive deeper, it gradually tilts upwards to see the surface/rays.
@@ -488,38 +488,40 @@ function EnvironmentRig({ depth, currentTemp }: { depth: number, currentTemp: nu
     const lookUpOffset = THREE.MathUtils.lerp(0.0, 5.0, depthNorm);
     camera.lookAt(0, camera.position.y + lookUpOffset, 0);
 
-    // ── Scientific Wavelength Light Extinction & Atmosphere ──
+    // ── Water Color by Depth Region ──
+    // Each zone has a distinctly different water color so you can SEE the region change.
     const bgColor = new THREE.Color();
     let fogDensityTarget = 0;
 
     if (isAboveWater) {
-      // Very light atmospheric sky to ensure a sharp horizon line against the dark water
-      // Matches the horizon color of the Sky component
-      bgColor.set('#b5d6e6'); 
-      fogDensityTarget = 0.0001; // Almost no fog above water so we can see the horizon
+      bgColor.set('#b5d6e6');
+      fogDensityTarget = 0.0001;
     } else {
-      // Red absorbs first (0-50m). Green absorbs next (50-200m). Blue penetrates to 1000m.
+      // 5-stop gradient with distinct per-region hues
+      const c0   = new THREE.Color('#06b6d4'); //   0m: Bright cyan/turquoise (sunlit surface)
+      const c50  = new THREE.Color('#0891b2'); //  50m: Deeper teal (thermocline start)
+      const c200 = new THREE.Color('#1e3a8a'); // 200m: Rich royal blue (thermocline base)
+      const c500 = new THREE.Color('#0f172a'); // 500m: Dark navy slate (twilight)
+      const c1k  = new THREE.Color('#020617'); //1000m: Near-black abyss
+
       if (depth < 50) {
-        // Epipelagic top: Mix of full spectrum cyan/blue to deep blue
-        const dt = Math.max(0, depth) / 50.0;
-        bgColor.lerpColors(new THREE.Color('#38bdf8'), new THREE.Color('#0277bd'), dt);
+        bgColor.lerpColors(c0, c50, depth / 50.0);
       } else if (depth < 200) {
-        // Epipelagic bottom to Mesopelagic: Green fades, leaving intense monochromatic blue
-        const dt = (depth - 50) / 150.0;
-        bgColor.lerpColors(new THREE.Color('#0277bd'), new THREE.Color('#0d47a1'), dt);
+        bgColor.lerpColors(c50, c200, (depth - 50) / 150.0);
+      } else if (depth < 500) {
+        bgColor.lerpColors(c200, c500, (depth - 200) / 300.0);
       } else {
-        // Bathypelagic: Monochromatic blue fades to absolute black
-        const dt = Math.min(1.0, (depth - 200) / 600.0);
-        bgColor.lerpColors(new THREE.Color('#0d47a1'), new THREE.Color('#010408'), dt);
+        bgColor.lerpColors(c500, c1k, Math.min(1.0, (depth - 500) / 500.0));
       }
-      // Fog density increases aggressively underwater to create volumetric murkiness
-      fogDensityTarget = 0.02 + Math.min(1.0, depth / 400.0) * 0.12;
+
+      // Fog thickens smoothly with depth to tint the 3D objects to match the water
+      fogDensityTarget = 0.02 + Math.min(1.0, depth / 600.0) * 0.06;
     }
-    
-    if (scene.background instanceof THREE.Color) scene.background.lerp(bgColor, delta * 4.0);
+
+    if (scene.background instanceof THREE.Color) scene.background.lerp(bgColor, delta * 3.0);
     if (scene.fog instanceof THREE.FogExp2) {
-      scene.fog.color.lerp(bgColor, delta * 4.0);
-      scene.fog.density = THREE.MathUtils.lerp(scene.fog.density, fogDensityTarget, delta * 4.0);
+      scene.fog.color.lerp(bgColor, delta * 3.0);
+      scene.fog.density = THREE.MathUtils.lerp(scene.fog.density, fogDensityTarget, delta * 3.0);
     }
 
     // Submersible Headlight fades in below 300m
@@ -538,43 +540,138 @@ function EnvironmentRig({ depth, currentTemp }: { depth: number, currentTemp: nu
   );
 }
 
+// ── Volumetric Water Color Layers ──────────────────────────────────────────────
+// Visible color tinting of the water itself per depth region.
+// Overlapping boundaries ensure smooth natural transitions between zones.
+function VolumetricWaterBands() {
+  const bands = useMemo(() => [
+    {
+      // 0–50m: Sunlit surface — bright turquoise water
+      topY: 2,
+      bottomY: -(60 * DEPTH_SCALE),
+      color: '#06b6d4', // cyan-500
+      opacity: 0.14,
+    },
+    {
+      // 50–200m: Thermocline — noticeably deeper teal-blue water
+      topY: -(40 * DEPTH_SCALE),
+      bottomY: -(220 * DEPTH_SCALE),
+      color: '#0369a1', // sky-700
+      opacity: 0.18,
+    },
+    {
+      // 200–600m: Twilight — dark rich navy water
+      topY: -(180 * DEPTH_SCALE),
+      bottomY: -(640 * DEPTH_SCALE),
+      color: '#1e3a8a', // blue-900
+      opacity: 0.2,
+    },
+    {
+      // 600–1200m: Abyss — very dark indigo water
+      topY: -(560 * DEPTH_SCALE),
+      bottomY: -(1300 * DEPTH_SCALE),
+      color: '#0c0a1d', // near-black violet
+      opacity: 0.25,
+    },
+  ], []);
+
+  return (
+    <group position={[0, 0, 0]}>
+      {bands.map((b, i) => {
+        // Pad the top and bottom drastically so the camera's upward tilt never looks "out" of the cylinder
+        const renderTopY = b.topY + 500;
+        const renderBottomY = b.bottomY - 500;
+        const height = Math.abs(renderTopY - renderBottomY);
+        const centerY = (renderTopY + renderBottomY) / 2;
+
+        return (
+          <mesh key={i} position={[0, centerY, 0]} renderOrder={-8}>
+            <cylinderGeometry args={[200, 200, height, 32, 1, true]} />
+            <meshBasicMaterial
+              color={b.color}
+              opacity={b.opacity}
+              transparent
+              side={THREE.DoubleSide}
+              depthWrite={false}
+            />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
 // ── ROV Tether (Depth Reference) ─────────────────────────────────────────────
+// Text color is ALWAYS the same white (#FFFFFF) at every depth.
+// Only the small LED dot color changes to subtly hint at the zone.
 function ROVTether() {
   const markerCount = 20; // 0m to 1000m, every 50m
   const markerSpacing = 50 * DEPTH_SCALE; // 5 units
 
+  // LED dot color by zone — text stays white regardless
+  const getLedColor = (depthM: number) => {
+    if (depthM <= 50) return '#22d3ee';       // teal for sunlit
+    if (depthM <= 200) return '#f59e0b';      // amber for thermocline
+    if (depthM <= 600) return '#6366f1';      // indigo for twilight
+    return '#a78bfa';                          // violet for abyss
+  };
+
+  // Region tag only on key boundaries
+  const getTag = (depthM: number) => {
+    if (depthM === 0) return 'SURFACE';
+    if (depthM === 50) return 'THERMOCLINE TOP';
+    if (depthM === 100) return 'THERMOCLINE CORE';
+    if (depthM === 200) return 'THERMOCLINE BASE';
+    if (depthM === 500) return 'TWILIGHT ZONE';
+    if (depthM === 1000) return 'MIDNIGHT ZONE';
+    return '';
+  };
+
   return (
-    <group position={[2, 0, -5]}> {/* Position it slightly in front and to the right of the camera */}
+    <group position={[2, 0, -5]}>
       {/* The Main Cable */}
       <mesh position={[0, -50, 0]}>
-        <cylinderGeometry args={[0.08, 0.08, 120, 8]} />
-        <meshStandardMaterial color="#1a202c" roughness={0.8} metalness={0.2} />
+        <cylinderGeometry args={[0.06, 0.06, 120, 8]} />
+        <meshStandardMaterial color="#334155" roughness={0.7} metalness={0.3} />
       </mesh>
-      
+
       {/* LED Depth Markers and Labels (Every 50m) */}
-      {Array.from({ length: markerCount + 1 }).map((_, i) => (
-        <group key={i} position={[0, -(i * markerSpacing), 0]}>
-          <mesh>
-            <cylinderGeometry args={[0.12, 0.12, 0.4, 16]} />
-            <meshBasicMaterial toneMapped={false} color={[0, 4, 4]} />
-          </mesh>
-          <Billboard position={[1.5, 0, 0]}>
-            <Text
-              color={[0, 3, 3]} // High intensity RGB to force intense bloom
-              fontSize={1.2}
-              anchorX="center"
-              anchorY="middle"
-              font="https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfMZhrib2Bg-4.ttf"
-              outlineWidth={0.08}
-              outlineColor="#000000"
-              material-depthTest={false}
-              renderOrder={999}
-            >
-              {`${i * 50}m`}
-            </Text>
-          </Billboard>
-        </group>
-      ))}
+      {Array.from({ length: markerCount + 1 }).map((_, i) => {
+        const depthM = i * 50;
+        const ledColor = getLedColor(depthM);
+        const tag = getTag(depthM);
+        const isThermocline = depthM >= 50 && depthM <= 200;
+        const yPos = -(i * markerSpacing);
+
+        return (
+          <group key={i} position={[0, yPos, 0]}>
+            {/* Small LED dot — zone-colored */}
+            <mesh>
+              <cylinderGeometry args={[isThermocline ? 0.18 : 0.12, isThermocline ? 0.18 : 0.12, 0.35, 16]} />
+              <meshBasicMaterial toneMapped={false} color={ledColor} />
+            </mesh>
+
+            {/* Text — ALWAYS white, same size, same brightness */}
+            <Billboard position={[1.5, 0, 0]}>
+              <Text
+                color="#FFFFFF"
+                fontSize={1.35}
+                anchorX="left"
+                anchorY="middle"
+                font="https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfMZhrib2Bg-4.ttf"
+                outlineWidth={0.14}
+                outlineColor="#020617"
+                material-depthTest={false}
+                material-toneMapped={false}
+                material-fog={false}
+                renderOrder={9999}
+              >
+                {`${depthM}m${tag ? `  •  ${tag}` : ''}`}
+              </Text>
+            </Billboard>
+          </group>
+        );
+      })}
     </group>
   );
 }
@@ -616,21 +713,21 @@ export default function SplitOceanViz({ onExit }: { onExit?: () => void }) {
   const handleWheel = (e: React.WheelEvent) => {
     // e.deltaY > 0 means scrolling down (going deeper)
     const direction = e.deltaY > 0 ? 1 : -1;
-    
+
     // Find our current depth index and step to the next valid DepthLevel
     const currentIndex = DEPTH_LEVELS.indexOf(selectedDepth as any);
     if (currentIndex === -1) return;
-    
+
     const newIndex = Math.max(0, Math.min(DEPTH_LEVELS.length - 1, currentIndex + direction));
     const newDepth = DEPTH_LEVELS[newIndex];
-    
+
     if (newDepth !== selectedDepth) {
       setDepth(newDepth);
     }
   };
 
   return (
-    <div 
+    <div
       className="absolute inset-0 w-full h-full pointer-events-auto bg-[#010408]"
       onWheel={handleWheel}
     >
@@ -640,19 +737,20 @@ export default function SplitOceanViz({ onExit }: { onExit?: () => void }) {
         gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
       >
         <color attach="background" args={['#020b18']} />
-        
+
         <EnvironmentRig depth={selectedDepth} currentTemp={currentTemp} />
         {selectedDepth < 1.0 && (
-          <Sky 
-            distance={450000} 
-            sunPosition={[0, 50, -1000]} 
-            inclination={0} 
-            azimuth={0.25} 
+          <Sky
+            distance={450000}
+            sunPosition={[0, 50, -1000]}
+            inclination={0}
+            azimuth={0.25}
             turbidity={0.6}
             rayleigh={1.2}
           />
         )}
         <OceanSurfaceMesh />
+        <VolumetricWaterBands />
         <ROVTether />
         <GodRays depth={selectedDepth} currentTemp={currentTemp} />
         <MarineSnowSystem depth={selectedDepth} currentTemp={currentTemp} />
