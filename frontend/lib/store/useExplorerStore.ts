@@ -135,7 +135,7 @@ export const useExplorerStore = create<ExplorerState>()((set) => ({
     ];
     if (heatmapLayers.includes(layer as string) && isTurningOn) {
       heatmapLayers.forEach(l => {
-        if (l !== layer) newState[l as keyof ExplorerState] = false;
+        if (l !== layer) (newState as Record<string, boolean>)[l] = false;
       });
     }
     

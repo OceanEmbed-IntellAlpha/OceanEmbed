@@ -158,39 +158,48 @@ export function ExplorerShell() {
         <ExplorerTopBar onSearchLocation={handleSearchLocation} onReset={handleReset} />
       </div>
 
-      {/* Main UI Layer (pointer-events-none to let clicks pass through to 3D scene / map, except on panels) */}
-      <div className="relative z-10 flex-grow flex pointer-events-none p-4 pt-16 pb-20 gap-4 min-h-0">
+      {/* Main UI Layer — Clean flexbox layout with draggable left and right columns */}
+      <div className="relative z-10 flex-grow flex pointer-events-none p-4 pt-16 pb-20 gap-4 min-h-0 w-full max-w-full overflow-hidden">
         
-        {/* Left Panel - Layers */}
-        <aside className="w-64 flex-shrink-0 pointer-events-auto flex flex-col min-h-0">
+        {/* Left Panel - Data Layers (Draggable across viewport) */}
+        <motion.aside 
+          drag
+          dragMomentum={false}
+          dragConstraints={{ left: -10, right: 800, top: -40, bottom: 200 }}
+          className="w-64 md:w-72 shrink-0 pointer-events-auto flex flex-col min-h-0 h-full max-h-full cursor-move"
+        >
           <LayerPanel />
-        </aside>
+        </motion.aside>
 
         {/* Center - Unobstructed view of the 3D ocean background */}
-        <div className="flex-grow flex flex-col pointer-events-none justify-center items-center relative min-h-0 h-full">
+        <div className="flex-1 flex flex-col pointer-events-none justify-center items-center relative min-h-0 h-full">
           {!columnVizOpen && !!viewer && (
             <ColumnDataHUD viewer={viewer} />
           )}
+          <ColormapLegend />
         </div>
 
-        {/* Right Panel - Profile/Validation OR DepthSidebar when point selected */}
-        <aside className="w-80 flex-shrink-0 pointer-events-auto flex flex-col min-h-0">
+        {/* Right Panel - Profile/Validation OR DepthSidebar (Draggable across viewport) */}
+        <motion.aside 
+          drag
+          dragMomentum={false}
+          dragConstraints={{ left: -800, right: 10, top: -40, bottom: 200 }}
+          className="w-80 md:w-96 shrink-0 pointer-events-auto flex flex-col min-h-0 h-full max-h-full cursor-move"
+        >
           <AnimatePresence mode="wait">
             {columnVizOpen && selectedLat !== null && selectedLon !== null ? (
-              <div key="depth-sidebar" className="h-full">
+              <div key="depth-sidebar" className="h-full w-full">
                 <DepthSidebar />
               </div>
             ) : (
-              <div key="profile-panel" className="h-full">
+              <div key="profile-panel" className="h-full w-full">
                 <ProfilePanel />
               </div>
             )}
           </AnimatePresence>
-        </aside>
+        </motion.aside>
 
       </div>
-
-      <ColormapLegend />
 
       {/* Bottom Bar - Date & Depth Scrubber */}
       <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-auto">

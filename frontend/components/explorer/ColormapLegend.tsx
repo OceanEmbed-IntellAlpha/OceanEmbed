@@ -50,7 +50,7 @@ export function ColormapLegend() {
   };
 
   return (
-    <div className="pointer-events-auto absolute bottom-28 right-4 glass-panel p-3 rounded-xl border border-white/10 shadow-lg min-w-[200px] bg-black/60 backdrop-blur-md z-50">
+    <div className="pointer-events-auto absolute bottom-4 left-4 glass-panel p-3 rounded-xl border border-white/10 shadow-lg min-w-[200px] bg-black/60 backdrop-blur-md z-30">
       <div className="text-[10px] font-mono uppercase text-foam mb-2 opacity-80">{labels[activeVariable as keyof typeof labels] || activeVariable} ({unit})</div>
       <div className="h-2 w-full rounded-full" style={{ background: gradient }} />
       <div className="flex justify-between mt-1 text-[10px] font-mono text-white/60">
