@@ -205,6 +205,8 @@ export function DateDepthBar() {
             const isActive = d === selectedDepth;
             const tempD = interpolate(depths, temperatures, d);
             const col = tempToColor(tempD);
+            const isThermocline = d >= 50 && d <= 200;
+
             return (
               <div
                 key={d}
@@ -214,11 +216,11 @@ export function DateDepthBar() {
                 <div
                   className="transition-all duration-150"
                   style={{
-                    width: isActive ? '4px' : '2px',
-                    height: isActive ? '10px' : '6px',
+                    width: isActive ? '4px' : isThermocline ? '3px' : '2px',
+                    height: isActive ? '10px' : isThermocline ? '8px' : '6px',
                     borderRadius: '2px',
-                    background: isActive ? col : 'rgba(255,255,255,0.35)',
-                    boxShadow: isActive ? `0 0 8px ${col}` : 'none',
+                    background: isActive ? col : isThermocline ? '#f97316' : 'rgba(255,255,255,0.35)',
+                    boxShadow: isActive ? `0 0 8px ${col}` : isThermocline ? '0 0 6px #f97316' : 'none',
                   }}
                 />
               </div>
@@ -236,19 +238,27 @@ export function DateDepthBar() {
           />
         </Slider.Root>
 
-        {/* Axis labels */}
+        {/* Axis labels with Thermocline Highlight */}
         <div className="relative h-3 pointer-events-none">
-          {[0, 200, 500, 700, 1000].map((d) => {
+          {[
+            { d: 0, label: '0m' },
+            { d: 50, label: '50m (Mix)' },
+            { d: 100, label: '100m (Thermocline)', isHot: true },
+            { d: 200, label: '200m' },
+            { d: 500, label: '500m' },
+            { d: 700, label: '700m' },
+            { d: 1000, label: '1000m' },
+          ].map(({ d, label, isHot }) => {
             const levelIdx = DEPTH_LEVELS.indexOf(d as DepthLevel);
             if (levelIdx === -1) return null;
             const pos = (levelIdx / (DEPTH_LEVELS.length - 1)) * 100;
             return (
               <span
                 key={d}
-                className="absolute text-[8px] font-mono text-white/25 -translate-x-1/2"
+                className={`absolute text-[8px] font-mono -translate-x-1/2 ${isHot ? 'text-amber-400 font-bold drop-shadow-[0_0_4px_rgba(249,115,22,0.8)]' : 'text-white/30'}`}
                 style={{ left: `${pos}%` }}
               >
-                {d}m
+                {label}
               </span>
             );
           })}
