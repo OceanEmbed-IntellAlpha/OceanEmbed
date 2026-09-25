@@ -15,7 +15,7 @@ export const ZONES = [
     name: 'Mesopelagic',
     alias: 'Twilight Zone',
     minDepth: 200,
-    maxDepth: 1000,
+    maxDepth: 650,
     accentHex: '#3A9BD4',
     glowRgb: '58, 155, 212',
     desc: 'Dimly lit thermocline region with active diel vertical migration.',
@@ -24,7 +24,7 @@ export const ZONES = [
   {
     name: 'Bathypelagic',
     alias: 'Midnight Zone',
-    minDepth: 1000,
+    minDepth: 650,
     maxDepth: 2000,
     accentHex: '#2254A0',
     glowRgb: '34, 84, 160',

@@ -10,7 +10,13 @@ import { useSubsurfaceProfile } from '@/lib/api/queries';
 import { getZone, interpolate, valueToHsl } from '@/components/cutaway/utils';
 import { DEPTH_LEVELS } from '@/lib/api/types';
 import { motion } from 'framer-motion';
-import { ArrowLeft, MapPin } from 'lucide-react';
+import { ArrowLeft, MapPin, Sparkles, Fish } from 'lucide-react';
+import { SurfaceFishShoal } from './organisms/SurfaceFishShoal';
+import { PulsingJellyfish } from './organisms/PulsingJellyfish';
+import { LanternfishShoal } from './organisms/LanternfishShoal';
+import { AbyssalAnglerfish } from './organisms/AbyssalAnglerfish';
+import { SubmersibleSpotlight } from './organisms/SubmersibleSpotlight';
+import { ThermoclineSheet } from './organisms/ThermoclineSheet';
 
 const DEPTH_SCALE = 0.1;
 
@@ -687,19 +693,17 @@ function OceanRoof() {
 }
 
 // ── Main Component ───────────────────────────────────────────────────────────
-export default function SplitOceanViz({ onExit }: { onExit?: () => void }) {
-  const selectedLat = useExplorerStore((s) => s.selectedLat);
-  const selectedLon = useExplorerStore((s) => s.selectedLon);
+export default function SplitOceanViz({ onExit, standalone }: { onExit?: () => void; standalone?: boolean }) {
+  const storeLat = useExplorerStore((s) => s.selectedLat);
+  const storeLon = useExplorerStore((s) => s.selectedLon);
+  const selectedLat = storeLat !== null ? storeLat : 12.5;
+  const selectedLon = storeLon !== null ? storeLon : 82.5;
   const selectedDate = useExplorerStore((s) => s.selectedDate);
   const selectedDepth = useExplorerStore((s) => s.selectedDepth);
   const setDepth = useExplorerStore((s) => s.setDepth);
   const clearSelectedPoint = useExplorerStore((s) => s.clearSelectedPoint);
 
-  const { data: profile } = useSubsurfaceProfile(
-    selectedLat !== null && selectedLon !== null
-      ? { lat: selectedLat, lon: selectedLon, date: selectedDate }
-      : null
-  );
+  const { data: profile } = useSubsurfaceProfile({ lat: selectedLat, lon: selectedLon, date: selectedDate });
 
   const depths = useMemo(() => profile?.depths ?? DEPTH_LEVELS, [profile]);
   const temperatures = useMemo(
@@ -707,8 +711,6 @@ export default function SplitOceanViz({ onExit }: { onExit?: () => void }) {
     [profile]
   );
   const currentTemp = useMemo(() => interpolate(depths, temperatures, selectedDepth), [depths, temperatures, selectedDepth]);
-
-  if (selectedLat === null || selectedLon === null) return null;
 
   const handleWheel = (e: React.WheelEvent) => {
     // e.deltaY > 0 means scrolling down (going deeper)
@@ -752,11 +754,20 @@ export default function SplitOceanViz({ onExit }: { onExit?: () => void }) {
         <OceanSurfaceMesh />
         <VolumetricWaterBands />
         <ROVTether />
+        <ThermoclineSheet depths={depths} temperatures={temperatures} />
         <GodRays depth={selectedDepth} currentTemp={currentTemp} />
         <MarineSnowSystem depth={selectedDepth} currentTemp={currentTemp} />
+        <SubmersibleSpotlight currentDepth={selectedDepth} />
+
+        {/* ── Depth-Stratified Marine Fauna ── */}
+        <SurfaceFishShoal currentDepth={selectedDepth} />
+        <PulsingJellyfish currentDepth={selectedDepth} />
+        <LanternfishShoal currentDepth={selectedDepth} />
+        <AbyssalAnglerfish currentDepth={selectedDepth} />
 
         <EffectComposer multisampling={0}>
-          <DepthOfField target={[0, 0, 0]} focalLength={0.02} bokehScale={selectedDepth < 1.0 ? 0 : 4} height={480} />
+          {/* Subtle bokeh scale so fish and organisms remain crisp and sharp without blurry smudging */}
+          <DepthOfField target={[0, 0, 0]} focalLength={0.015} bokehScale={selectedDepth < 1.0 ? 0 : 0.8} height={480} />
           {/* High luminanceThreshold ensures only very bright objects (like LED text or direct sun) bloom, preventing the sky/water from blowing out */}
           <Bloom intensity={1.5} luminanceThreshold={0.9} luminanceSmoothing={0.9} />
           <Vignette eskil={false} offset={0.5} darkness={0.8} />
@@ -797,6 +808,34 @@ export default function SplitOceanViz({ onExit }: { onExit?: () => void }) {
         <MapPin size={12} className="text-white/50" />
         {selectedLat.toFixed(3)}°{selectedLat >= 0 ? 'N' : 'S'} &nbsp;
         {selectedLon.toFixed(3)}°{selectedLon >= 0 ? 'E' : 'W'}
+      </motion.div>
+
+      {/* ── Active Stratum Fauna Status Badge ── */}
+      <motion.div
+        key={selectedDepth <= 100 ? 'epi' : selectedDepth <= 300 ? 'therm' : selectedDepth <= 750 ? 'meso' : 'bathy'}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25 }}
+        className="absolute bottom-24 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2.5 px-4 py-2 rounded-full text-xs font-mono select-none pointer-events-none"
+        style={{
+          background: 'rgba(2, 12, 24, 0.8)',
+          backdropFilter: 'blur(16px)',
+          border: '1px solid rgba(56, 189, 248, 0.25)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.65)',
+          color: '#e0f2fe',
+        }}
+      >
+        <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+        <span className="text-cyan-400 font-bold uppercase tracking-wider text-[10px]">Active Fauna:</span>
+        <span className="text-white/90">
+          {selectedDepth < 50
+            ? 'Surface Shoals • Skipjack Tuna & Indian Mackerel'
+            : selectedDepth <= 300
+            ? 'Thermocline Transition • Moon Jellies (Aurelia aurita)'
+            : selectedDepth <= 600
+            ? 'Mesopelagic Scattering • Photophore Lanternfish (Myctophidae)'
+            : 'Abyssal Midnight • Black Seadevil Anglerfish (Melanocetus)'}
+        </span>
       </motion.div>
     </div>
   );

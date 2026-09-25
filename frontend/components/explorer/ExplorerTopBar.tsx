@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 
-import { Search, RefreshCw, Waves, MapPin, ArrowLeft } from 'lucide-react';
+import { Search, RefreshCw, Waves, MapPin, ArrowLeft, Sparkles } from 'lucide-react';
 import { useExplorerStore } from '@/lib/store/useExplorerStore';
 import { LiveReadout } from './LiveReadout';
 
@@ -187,6 +187,21 @@ export function ExplorerTopBar({ onSearchLocation, onReset }: ExplorerTopBarProp
         )}
       </div>
 
+
+      {/* Direct Link to Standalone 3D Cutaway Observatory */}
+      <Link
+        href="/cutaway"
+        className="
+          shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded text-2xs font-mono
+          bg-cyan-500/15 border border-cyan-400/30 text-cyan-300
+          hover:bg-cyan-500/25 hover:border-cyan-400/60 hover:text-white
+          transition-all duration-200 shadow-sm
+        "
+        title="Open Standalone 3D Ocean Cutaway Observatory"
+      >
+        <Sparkles size={11} className="text-cyan-400" />
+        <span className="hidden sm:inline">3D Cutaway</span>
+      </Link>
 
       {/* Reset view */}
       <button
