@@ -98,13 +98,14 @@ const EcosystemShader = {
   `
 };
 
-// Ocean surface with Gerstner Waves & Snell's Window
+// Realistic Multi-Layer Gerstner Wave Ocean Surface Shader
 const OceanSurfaceShader = {
   vertexShader: `
     uniform float uTime;
     varying vec2 vUv;
     varying vec3 vWorldPosition;
     varying vec3 vNormal;
+    varying float vWaveHeight;
 
     vec3 gerstnerWave(vec4 wave, vec3 p, inout vec3 tangent, inout vec3 binormal) {
       float steepness = wave.z;
@@ -112,7 +113,7 @@ const OceanSurfaceShader = {
       float k = 2.0 * 3.14159265 / wavelength;
       float c = sqrt(9.8 / k);
       vec2 d = normalize(wave.xy);
-      float f = k * (dot(d, p.xz) - c * uTime * 0.7);
+      float f = k * (dot(d, p.xz) - c * uTime * 0.85);
       float a = steepness / k;
 
       tangent += vec3(
@@ -142,12 +143,17 @@ const OceanSurfaceShader = {
       vec3 binormal = vec3(0.0, 0.0, 1.0);
       vec3 p = gridPoint;
 
-      p += gerstnerWave(vec4(1.0, 0.2, 0.18, 28.0), gridPoint, tangent, binormal);
-      p += gerstnerWave(vec4(0.4, 0.9, 0.12, 16.0), gridPoint, tangent, binormal);
-      p += gerstnerWave(vec4(-0.7, 0.7, 0.08, 9.0), gridPoint, tangent, binormal);
+      // 6 Layered Ocean Waves with varying wavelengths, frequencies and angles for natural organic turbulence
+      p += gerstnerWave(vec4(1.0, 0.25, 0.22, 45.0), gridPoint, tangent, binormal);
+      p += gerstnerWave(vec4(0.5, 0.85, 0.16, 28.0), gridPoint, tangent, binormal);
+      p += gerstnerWave(vec4(-0.6, 0.75, 0.12, 16.0), gridPoint, tangent, binormal);
+      p += gerstnerWave(vec4(-0.3, -0.9, 0.08, 9.0), gridPoint, tangent, binormal);
+      p += gerstnerWave(vec4(0.8, -0.4, 0.05, 5.0), gridPoint, tangent, binormal);
+      p += gerstnerWave(vec4(0.2, 0.95, 0.03, 2.5), gridPoint, tangent, binormal);
 
       vec3 normal = normalize(cross(binormal, tangent));
       vNormal = normalMatrix * normal;
+      vWaveHeight = p.y;
 
       vec4 worldPos = modelMatrix * vec4(p, 1.0);
       vWorldPosition = worldPos.xyz;
@@ -167,6 +173,7 @@ const OceanSurfaceShader = {
     varying vec2 vUv;
     varying vec3 vWorldPosition;
     varying vec3 vNormal;
+    varying float vWaveHeight;
 
     #include <fog_pars_fragment>
 
@@ -177,45 +184,44 @@ const OceanSurfaceShader = {
       bool isUnderwater = cameraPosition.y < vWorldPosition.y;
       if (isUnderwater) norm = -norm;
 
+      // Fresnel reflection equation for liquid surface optics
       float fresnel = clamp(1.0 - dot(viewDir, norm), 0.0, 1.0);
-      float fresnelFactor = pow(fresnel, isUnderwater ? 2.5 : 4.0);
+      float fresnelFactor = pow(fresnel, isUnderwater ? 3.0 : 4.5);
 
+      // Blinn-Phong Specular Highlights for realistic sun shimmer
       vec3 halfVector = normalize(uSunDirection + viewDir);
       float spec = max(dot(norm, halfVector), 0.0);
-      float specular = pow(spec, 250.0) * 1.5; // Tighter, less blown out highlight
+      float specularSharp = pow(spec, 400.0) * 3.5; // Micro-shimmer core
+      float specularBroad = pow(spec, 45.0) * 0.6;  // Soft surface sheen
 
-      float waveHeight = vWorldPosition.y;
-      vec3 baseWater = mix(uDeepColor, uShallowColor, smoothstep(-2.0, 2.0, waveHeight));
+      // Water depth color interpolation (Deep oceanic indigo to shallow vibrant cyan)
+      vec3 baseWater = mix(uDeepColor, uShallowColor, smoothstep(-1.8, 2.2, vWaveHeight));
+
+      // Organic wave crest foam simulation
+      float crestFoam = smoothstep(1.2, 2.4, vWaveHeight) * 0.35;
+      vec3 foamColor = vec3(0.92, 0.97, 1.0);
 
       vec3 color = baseWater;
       if (isUnderwater) {
-        float snellMask = smoothstep(0.4, 0.6, fresnel);
+        float snellMask = smoothstep(0.35, 0.65, fresnel);
         float sunDot = max(dot(viewDir, uSunDirection), 0.0);
-        vec3 skylight = mix(uShallowColor, uSunColor, pow(sunDot, 8.0)); // Softer skylight
-        vec3 underwaterAmbient = mix(uDeepColor, uShallowColor * 0.5, 0.5);
+        vec3 skylight = mix(uShallowColor, uSunColor, pow(sunDot, 6.0));
+        vec3 underwaterAmbient = mix(uDeepColor, uShallowColor * 0.4, 0.4);
         color = mix(underwaterAmbient, skylight, snellMask);
-        color += uSunColor * specular * snellMask * 0.5; // Reduce pink/blowout artifacts
+        color += uSunColor * (specularSharp + specularBroad) * snellMask * 0.3;
       } else {
-        // Looking down at the ocean surface from above
-        // Sky reflection
-        vec3 skyReflection = mix(vec3(0.05, 0.15, 0.3), vec3(0.4, 0.6, 0.7), fresnelFactor);
-        color = mix(uDeepColor * 0.8, skyReflection, 0.6);
-        
-        // Intense, sharp sun glint (specular path)
-        float sunDot = max(dot(viewDir, uSunDirection), 0.0);
-        float sunGlint = pow(sunDot, 128.0) * 2.0; // Sharp core
-        float sunSpread = pow(sunDot, 32.0) * 0.5; // Wider glow
-        color += uSunColor * (sunGlint + sunSpread) * fresnelFactor; // Only reflect strongly at glancing angles
+        // Natural atmosphere sky reflection on water surface
+        vec3 skyReflection = mix(vec3(0.04, 0.16, 0.32), vec3(0.38, 0.62, 0.78), fresnelFactor);
+        color = mix(color, skyReflection, 0.65);
+        color = mix(color, foamColor, crestFoam);
+
+        // Vibrant real-time sun shimmer reflection
+        color += uSunColor * (specularSharp + specularBroad) * (0.2 + 0.8 * fresnelFactor);
       }
 
-      // Smooth radial fade-out only when underwater so you don't see the edges
-      float distFromCenter = length(vWorldPosition.xz) / 1000.0;
-      float alpha = 1.0;
-      if (isUnderwater) {
-        alpha = smoothstep(1.0, 0.4, distFromCenter) * 0.6;
-      } else {
-        alpha = 0.98; // Solid ocean surface from above
-      }
+      // Radial camera distance fade to ensure seamless background integration
+      float distFromCenter = length(vWorldPosition.xz) / 1200.0;
+      float alpha = isUnderwater ? smoothstep(1.0, 0.3, distFromCenter) * 0.65 : 0.98;
 
       gl_FragColor = vec4(color, alpha);
       
@@ -666,13 +672,13 @@ export default function SplitOceanViz({ onExit }: { onExit?: () => void }) {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           onClick={onExit}
-          className="absolute top-20 left-72 z-50 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
+          className="absolute top-16 left-4 z-50 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium hover:bg-white/10 transition-colors"
           style={{
-            background: 'rgba(2, 15, 25, 0.6)',
+            background: 'rgba(2, 15, 25, 0.75)',
             backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
             color: '#e2e8f0',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
           }}
         >
           <ArrowLeft size={16} /> Back to Globe

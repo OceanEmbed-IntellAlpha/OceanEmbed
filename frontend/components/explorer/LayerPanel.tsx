@@ -3,6 +3,7 @@
 import React from 'react';
 import { useExplorerStore } from '@/lib/store/useExplorerStore';
 import { Layers, Activity, Droplet, Wind, Eye, Network } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export function LayerPanel() {
   const {
@@ -13,16 +14,16 @@ export function LayerPanel() {
 
   const LayerToggle = ({ label, active, field, icon }: { label: string, active: boolean, field: any, icon?: React.ReactNode }) => (
     <div 
-      className={`group flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all duration-300 ${
+      className={`group flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all duration-300 active:scale-[0.98] ${
         active 
-          ? 'bg-biolume/10 border-biolume/40 text-white shadow-[inset_0_0_20px_rgba(0,210,255,0.05)]' 
+          ? 'bg-biolume/10 border-biolume/40 text-white shadow-[inset_0_0_20px_rgba(0,210,255,0.08)]' 
           : 'bg-white/[0.02] border-white/5 text-foam-dim hover:bg-white/[0.05] hover:border-white/10'
       }`}
       onClick={() => toggleLayer(field)}
     >
       <div className="flex items-center gap-3">
         {icon && (
-          <span className={`transition-colors duration-300 ${active ? 'text-biolume drop-shadow-[0_0_8px_rgba(0,210,255,0.5)]' : 'text-foam-dim group-hover:text-foam'}`}>
+          <span className={`transition-colors duration-300 ${active ? 'text-biolume drop-shadow-[0_0_8px_rgba(0,210,255,0.6)]' : 'text-foam-dim group-hover:text-foam'}`}>
             {icon}
           </span>
         )}
@@ -41,11 +42,17 @@ export function LayerPanel() {
   );
 
   return (
-    <div className="w-full flex-grow min-h-0 flex flex-col overflow-hidden glass-panel">
-      <div className="p-5 border-b border-white/5 bg-black/20">
+    <motion.div 
+      initial={{ opacity: 0, x: -24, scale: 0.98 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      className="w-full flex-grow min-h-0 flex flex-col overflow-hidden glass-panel"
+    >
+      <div className="p-4 border-b border-white/5 bg-black/20 flex-shrink-0 flex items-center justify-between cursor-grab active:cursor-grabbing select-none">
         <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-biolume font-bold flex items-center gap-2 drop-shadow-[0_0_8px_rgba(0,210,255,0.4)]">
           <Layers size={14} /> Data Layers
         </h2>
+        <span className="text-[9px] font-mono text-white/30 tracking-widest uppercase bg-white/5 px-2 py-0.5 rounded">⋮⋮ Drag</span>
       </div>
       
       <div className="p-5 flex-grow overflow-y-auto space-y-8 console-scroll min-h-0" data-lenis-prevent="true">
@@ -53,7 +60,7 @@ export function LayerPanel() {
         {/* Surface Satellite Inputs */}
         <div className="space-y-3 relative">
           <div className="absolute -left-3 top-0 bottom-0 w-[2px] bg-gradient-to-b from-white/20 to-transparent rounded-full"></div>
-          <h3 className="text-[10px] font-mono text-foam-dim/80 uppercase tracking-[0.15em] pl-1">Surface Boundary Inputs</h3>
+          <h3 className="text-[10px] font-mono text-foam-dim/80 uppercase tracking-[0.15em] pl-1 font-semibold">Surface Boundary Inputs</h3>
           <div className="space-y-2">
             <LayerToggle label="Sea Surface Temp (SST)" active={showSST} field="showSST" icon={<Activity size={16}/>} />
             <LayerToggle label="Sea Surface Salinity" active={showSSS} field="showSSS" icon={<Droplet size={16}/>} />
@@ -66,7 +73,7 @@ export function LayerPanel() {
         {/* Deep Embedding Output */}
         <div className="space-y-3 relative">
           <div className="absolute -left-3 top-0 bottom-0 w-[2px] bg-gradient-to-b from-biolume/50 to-transparent drop-shadow-[0_0_5px_rgba(0,210,255,0.5)] rounded-full"></div>
-          <h3 className="text-[10px] font-mono text-biolume/80 uppercase tracking-[0.15em] pl-1">OceanEmbed Output</h3>
+          <h3 className="text-[10px] font-mono text-biolume/80 uppercase tracking-[0.15em] pl-1 font-semibold">OceanEmbed Output</h3>
           <div className="space-y-2">
             <LayerToggle label="Subsurface Temperature" active={showSubsurfaceTemp} field="showSubsurfaceTemp" icon={<Eye size={16}/>} />
             <LayerToggle label="Deep Embedding Space" active={showEmbedding} field="showEmbedding" icon={<Layers size={16}/>} />
@@ -77,14 +84,14 @@ export function LayerPanel() {
         {/* Validation */}
         <div className="space-y-3 relative">
           <div className="absolute -left-3 top-0 bottom-0 w-[2px] bg-gradient-to-b from-[#10B981]/50 to-transparent rounded-full"></div>
-          <h3 className="text-[10px] font-mono text-[#10B981]/80 uppercase tracking-[0.15em] pl-1">Ground Truth</h3>
+          <h3 className="text-[10px] font-mono text-[#10B981]/80 uppercase tracking-[0.15em] pl-1 font-semibold">Ground Truth</h3>
           <div className="space-y-2">
             <LayerToggle label="ARGO Float Network" active={showArgoPoints} field="showArgoPoints" icon={<Target size={16}/>} />
           </div>
         </div>
 
       </div>
-    </div>
+    </motion.div>
   );
 }
 
