@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 
-import { Search, RefreshCw, Waves, MapPin, ArrowLeft, Sparkles } from 'lucide-react';
+import { Search, RefreshCw, Waves, MapPin, ArrowLeft, Lightbulb } from 'lucide-react';
 import { useExplorerStore } from '@/lib/store/useExplorerStore';
 import { LiveReadout } from './LiveReadout';
 
@@ -199,7 +199,7 @@ export function ExplorerTopBar({ onSearchLocation, onReset }: ExplorerTopBarProp
         "
         title="Open Standalone 3D Ocean Cutaway Observatory"
       >
-        <Sparkles size={11} className="text-cyan-400" />
+        <Lightbulb size={11} className="text-cyan-400" />
         <span className="hidden sm:inline">3D Cutaway</span>
       </Link>
 
