@@ -19,7 +19,7 @@ function createRealisticFishGeometry(): THREE.BufferGeometry {
   const pos = bodyGeo.attributes.position;
   
   for (let i = 0; i < pos.count; i++) {
-    let x = pos.getX(i);
+    const x = pos.getX(i);
     let y = pos.getY(i);
     let z = pos.getZ(i);
 
