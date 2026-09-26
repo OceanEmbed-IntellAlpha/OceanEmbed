@@ -157,7 +157,7 @@ export function SurfaceFishShoal({ currentDepth }: { currentDepth: number }) {
       orbitRadius: 4.5 + Math.random() * 3.5, // Keep tight inside camera view
       angle: (i / FISH_COUNT) * Math.PI * 2 + (Math.random() * 0.4 - 0.2),
       speed: 0.5 + Math.random() * 0.35,
-      y: -(Math.random() * 4.5 * DEPTH_SCALE * 10), // 0m to 45m depth
+      y: -2.5 - (Math.random() * 4.0), // -25m to -65m depth (below waves)
       bobFreq: 1.2 + Math.random() * 1.4,
       bobAmp: 0.15 + Math.random() * 0.2,
       scale: 0.38 + Math.random() * 0.12, // Realistic nimble surface fish size

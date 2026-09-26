@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useExplorerStore } from '@/lib/store/useExplorerStore';
 import { useSubsurfaceProfile } from '@/lib/api/queries';
 import { DEPTH_LEVELS, type DepthLevel } from '@/lib/api/types';
-import { getZone, interpolate } from '@/components/cutaway/utils';
+import { getZone, interpolate, ZONES, OCEAN_ORGANISM_CATALOG, type OrganismInfo } from '@/components/cutaway/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -26,6 +26,10 @@ import {
   Info,
   ChevronRight,
   Fish,
+  BookOpen,
+  X,
+  Layers,
+  CheckCircle2,
 } from 'lucide-react';
 
 // Dynamic import of 3D Cutaway with SSR disabled
@@ -56,15 +60,6 @@ const BASIN_PRESETS = [
   { name: 'South Indian Basin', lat: -15.0, lon: 85.0, desc: 'Subtropical gyre with deep photic penetration & colder depths' },
 ];
 
-// Key Organism Navigation Targets
-const FAUNA_TARGETS: { name: string; depth: DepthLevel; icon: string; zone: string; desc: string }[] = [
-  { name: 'Skipjack & Mackerel Shoal', depth: 20, icon: '🐟', zone: 'Epipelagic (0–100m)', desc: 'Surface schooling fish reflecting sunlight glints' },
-  { name: 'Moon Jellyfish Swarm', depth: 75, icon: '🪼', zone: 'Upper Thermocline', desc: 'Aurelia aurita with translucent bells & pulsing tentacles' },
-  { name: 'Z20 Thermocline Boundary', depth: 100, icon: '🌊', zone: 'Thermocline Core', desc: '20°C isotherm internal density wave & pycnocline layer' },
-  { name: 'Photophore Lanternfish', depth: 500, icon: '✨', zone: 'Mesopelagic Twilight', desc: 'Myctophidae emitting ventral counter-illumination' },
-  { name: 'Black Seadevil Anglerfish', depth: 700, icon: '🎣', zone: 'Bathypelagic Abyss', desc: 'Melanocetus lurking with real dynamic point-light lure' },
-];
-
 export default function CutawayStandalonePage() {
   const selectedLat = useExplorerStore((s) => s.selectedLat) ?? 12.5;
   const selectedLon = useExplorerStore((s) => s.selectedLon) ?? 82.5;
@@ -74,7 +69,9 @@ export default function CutawayStandalonePage() {
   const setDepth = useExplorerStore((s) => s.setDepth);
 
   const [isAutoDiving, setIsAutoDiving] = useState(false);
-  const [showFaunaMenu, setShowFaunaMenu] = useState(true);
+  const [selectedOrganism, setSelectedOrganism] = useState<OrganismInfo | null>(null);
+  const [activeZoneFilter, setActiveZoneFilter] = useState<string>('all');
+  const [showZoneMatrixModal, setShowZoneMatrixModal] = useState(false);
 
   // Fetch model predicted profile
   const { data: profile } = useSubsurfaceProfile({
@@ -112,6 +109,12 @@ export default function CutawayStandalonePage() {
     return Math.round(v);
   }, [currentTemp, dynamicSalinity, selectedDepth]);
 
+  // Filtered organisms list
+  const filteredOrganisms = useMemo(() => {
+    if (activeZoneFilter === 'all') return OCEAN_ORGANISM_CATALOG;
+    return OCEAN_ORGANISM_CATALOG.filter((o) => o.zoneId === activeZoneFilter);
+  }, [activeZoneFilter]);
+
   // Auto dive loop
   React.useEffect(() => {
     if (!isAutoDiving) return;
@@ -148,13 +151,21 @@ export default function CutawayStandalonePage() {
               3D Ocean Cutaway Observatory
             </h1>
             <span className="text-[10px] font-mono text-cyan-400/80 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
-              Stratified Ecosystem
+              5 Oceanic Strata
             </span>
           </div>
         </div>
 
-        {/* Center/Right: Basin Preset Switcher */}
+        {/* Center/Right: Zone Matrix Button & Basin Preset Switcher */}
         <div className="flex items-center gap-2 pointer-events-auto">
+          <button
+            onClick={() => setShowZoneMatrixModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/30 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)] transition-all active:scale-95"
+          >
+            <BookOpen size={13} />
+            <span>Zone Matrix Guide</span>
+          </button>
+
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-black/50 border border-white/10 backdrop-blur-xl">
             {BASIN_PRESETS.map((p) => {
               const isSelected = Math.abs(selectedLat - p.lat) < 1 && Math.abs(selectedLon - p.lon) < 1;
@@ -177,55 +188,116 @@ export default function CutawayStandalonePage() {
         </div>
       </header>
 
-      {/* ── LEFT PANEL: ORGANISM & DEPTH TARGET SELECTOR ──────────────── */}
+      {/* ── LEFT PANEL: ORGANISM & STRATA BROWSER ──────────────────────── */}
       <motion.aside
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
-        className="absolute top-20 left-4 z-40 w-72 pointer-events-auto flex flex-col gap-3"
+        className="absolute top-20 left-4 z-40 w-80 max-h-[calc(100vh-130px)] pointer-events-auto flex flex-col gap-2.5"
       >
-        {/* Toggleable Fauna Quick Jump Card */}
-        <div className="rounded-2xl bg-black/60 border border-white/10 backdrop-blur-2xl p-4 shadow-2xl">
-          <div className="flex items-center justify-between mb-3 border-b border-white/10 pb-2">
+        {/* Organisms & Zones Card */}
+        <div className="rounded-2xl bg-black/75 border border-white/12 backdrop-blur-2xl p-3.5 shadow-2xl flex flex-col min-h-0">
+          <div className="flex items-center justify-between mb-2.5 border-b border-white/10 pb-2">
             <div className="flex items-center gap-2 text-xs font-mono font-bold text-white uppercase tracking-wider">
-              <Fish size={14} className="text-cyan-400" />
-              <span>Marine Fauna Jump</span>
+              <Fish size={15} className="text-cyan-400" />
+              <span>Marine Fauna Catalog</span>
             </div>
-            <span className="text-[10px] font-mono text-cyan-400/70">5 Strata</span>
+            <span className="text-[10px] font-mono text-cyan-400/80 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-400/20">
+              {filteredOrganisms.length} Species
+            </span>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            {FAUNA_TARGETS.map((target) => {
-              const isActive = selectedDepth === target.depth;
+          {/* Zone Filter Tabs */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 mb-2 scrollbar-none">
+            {[
+              { id: 'all', label: 'All' },
+              { id: 'epipelagic', label: 'Sunlight' },
+              { id: 'mesopelagic', label: 'Twilight' },
+              { id: 'bathypelagic', label: 'Midnight' },
+              { id: 'abyssopelagic', label: 'Abyssal' },
+              { id: 'hadopelagic', label: 'Hadal' },
+            ].map((tab) => {
+              const active = activeZoneFilter === tab.id;
               return (
                 <button
-                  key={target.name}
-                  onClick={() => setDepth(target.depth)}
-                  className={`flex items-center justify-between p-2.5 rounded-xl text-left transition-all ${
-                    isActive
-                      ? 'bg-cyan-500/20 border border-cyan-400/50 text-white shadow-[0_0_16px_rgba(6,182,212,0.25)]'
-                      : 'bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 text-slate-300 hover:text-white'
+                  key={tab.id}
+                  onClick={() => setActiveZoneFilter(tab.id)}
+                  className={`px-2 py-1 rounded-md text-[9px] font-mono whitespace-nowrap transition-all ${
+                    active
+                      ? 'bg-cyan-400 text-black font-bold shadow-[0_0_10px_rgba(6,182,212,0.4)]'
+                      : 'text-slate-400 hover:text-white bg-white/5 hover:bg-white/10'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-base">{target.icon}</span>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[11px] font-medium truncate">{target.name}</span>
-                      <span className="text-[9px] font-mono text-slate-400 truncate">{target.zone}</span>
-                    </div>
-                  </div>
-                  <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${isActive ? 'bg-cyan-400 text-black' : 'text-slate-400 bg-white/5'}`}>
-                    {target.depth}m
-                  </span>
+                  {tab.label}
                 </button>
+              );
+            })}
+          </div>
+
+          {/* Scrollable Organisms List */}
+          <div className="flex flex-col gap-1.5 overflow-y-auto max-h-[380px] pr-1 scrollbar-thin scrollbar-thumb-white/20">
+            {filteredOrganisms.map((org) => {
+              const isTargetActive = Math.abs(selectedDepth - org.targetDepth) < 30;
+              return (
+                <div
+                  key={org.id}
+                  className={`flex items-center justify-between p-2 rounded-xl transition-all border ${
+                    isTargetActive
+                      ? 'bg-cyan-500/20 border-cyan-400/50 text-white shadow-[0_0_14px_rgba(6,182,212,0.25)]'
+                      : 'bg-white/[0.03] hover:bg-white/[0.08] border-white/5 text-slate-300 hover:text-white'
+                  }`}
+                >
+                  {/* Click row to dive to organism habitat */}
+                  <button
+                    onClick={() => {
+                      setIsAutoDiving(false);
+                      setDepth(org.targetDepth as DepthLevel);
+                    }}
+                    className="flex items-center gap-2.5 min-w-0 flex-1 text-left"
+                    title={`Dive to ${org.name} habitat (${org.targetDepth}m)`}
+                  >
+                    <span className="text-xl shrink-0">{org.icon}</span>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[11px] font-semibold truncate leading-tight">{org.name}</span>
+                      <span className="text-[9px] font-mono text-cyan-400/80 italic truncate">{org.scientificName}</span>
+                      <span className="text-[8px] font-mono text-slate-400 truncate">{org.depthRange}</span>
+                    </div>
+                  </button>
+
+                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    <span
+                      onClick={() => {
+                        setIsAutoDiving(false);
+                        setDepth(org.targetDepth as DepthLevel);
+                      }}
+                      className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded cursor-pointer ${
+                        isTargetActive ? 'bg-cyan-400 text-black' : 'text-slate-400 bg-white/5 hover:text-cyan-300'
+                      }`}
+                    >
+                      {org.targetDepth}m
+                    </span>
+
+                    {/* Info button to open dossier modal */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedOrganism(org);
+                      }}
+                      className="w-6 h-6 rounded-lg bg-white/5 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-300 flex items-center justify-center transition-colors"
+                      title="Inspect Organism Adaptations & Ecology"
+                    >
+                      <Info size={12} />
+                    </button>
+                  </div>
+                </div>
               );
             })}
           </div>
         </div>
 
         {/* Quick Interaction Tip */}
-        <div className="p-3 rounded-xl bg-black/40 border border-white/5 backdrop-blur-xl text-[10px] font-mono text-slate-400 flex items-center gap-2">
+        <div className="p-2.5 rounded-xl bg-black/50 border border-white/10 backdrop-blur-xl text-[10px] font-mono text-slate-400 flex items-center gap-2">
           <Compass size={13} className="text-cyan-400 shrink-0" />
-          <span>Use mouse scroll wheel to dive / ascend through depths smoothly.</span>
+          <span>Scroll mouse wheel to dive smoothly through all 5 oceanic layers.</span>
         </div>
       </motion.aside>
 
@@ -377,6 +449,215 @@ export default function CutawayStandalonePage() {
           </div>
         </div>
       </footer>
+
+      {/* ── ORGANISM DETAIL DOSSIER MODAL ────────────────────────────── */}
+      <AnimatePresence>
+        {selectedOrganism && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-lg rounded-2xl bg-[#030914] border border-cyan-500/30 p-6 shadow-[0_0_50px_rgba(6,182,212,0.25)] flex flex-col gap-4 text-slate-100"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setSelectedOrganism(null)}
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+              >
+                <X size={16} />
+              </button>
+
+              {/* Title & Scientific Identity */}
+              <div className="flex items-start gap-4 pr-8">
+                <span className="text-4xl p-2.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 shrink-0">
+                  {selectedOrganism.icon}
+                </span>
+                <div>
+                  <h3 className="text-lg font-bold text-white tracking-wide">{selectedOrganism.name}</h3>
+                  <p className="text-xs font-mono text-cyan-300 italic">{selectedOrganism.scientificName}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">
+                      {selectedOrganism.zoneName}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      Depth: {selectedOrganism.depthRange}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Key Environmental Factor Banner */}
+              <div className="p-3 rounded-xl bg-gradient-to-r from-cyan-950/60 to-indigo-950/60 border border-cyan-500/30 flex items-center justify-between">
+                <div>
+                  <span className="text-[9px] font-mono uppercase tracking-wider text-cyan-400 font-bold block">
+                    Key Environmental Factor
+                  </span>
+                  <span className="text-xs font-semibold text-white mt-0.5 block">
+                    {selectedOrganism.factor}
+                  </span>
+                </div>
+                <Sparkles size={18} className="text-cyan-400 shrink-0" />
+              </div>
+
+              {/* Description */}
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {selectedOrganism.desc}
+              </p>
+
+              {/* Adaptations */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+                  Evolutionary Adaptations
+                </span>
+                <div className="flex flex-col gap-1.5">
+                  {selectedOrganism.adaptations.map((a, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs text-slate-200">
+                      <CheckCircle2 size={13} className="text-cyan-400 shrink-0" />
+                      <span>{a}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Diet */}
+              <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between text-xs">
+                <span className="font-mono text-[10px] text-slate-400 uppercase">Typical Diet</span>
+                <span className="text-slate-200 font-medium">{selectedOrganism.diet}</span>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 pt-2 border-t border-white/10 mt-1">
+                <button
+                  onClick={() => setSelectedOrganism(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-mono text-slate-400 hover:text-white transition-colors"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    setIsAutoDiving(false);
+                    setDepth(selectedOrganism.targetDepth as DepthLevel);
+                    setSelectedOrganism(null);
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-mono font-bold bg-cyan-400 hover:bg-cyan-300 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all flex items-center gap-2"
+                >
+                  <span>Dive to Habitat ({selectedOrganism.targetDepth}m)</span>
+                  <ChevronRight size={13} />
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── ZONE REFERENCE MATRIX MODAL ───────────────────────────────── */}
+      <AnimatePresence>
+        {showZoneMatrixModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-[#020712] border border-cyan-500/30 p-6 shadow-2xl flex flex-col text-slate-100"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                <div className="flex items-center gap-2.5">
+                  <Layers size={18} className="text-cyan-400" />
+                  <div>
+                    <h2 className="text-base font-bold text-white tracking-wide">
+                      Oceanic Depth Stratification Matrix
+                    </h2>
+                    <p className="text-xs font-mono text-slate-400">
+                      5 Primary Pelagic Strata, Key Environmental Factors & Representative Organisms
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowZoneMatrixModal(false)}
+                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Table */}
+              <div className="overflow-x-auto my-4 scrollbar-thin scrollbar-thumb-white/20">
+                <table className="w-full text-left border-collapse font-sans text-xs">
+                  <thead>
+                    <tr className="border-b border-white/10 text-[10px] font-mono text-cyan-400 uppercase tracking-wider bg-white/[0.02]">
+                      <th className="py-3 px-3">Zone</th>
+                      <th className="py-3 px-3">Depth Range</th>
+                      <th className="py-3 px-3">Key Environmental Factor</th>
+                      <th className="py-3 px-3">Representative Organisms</th>
+                      <th className="py-3 px-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {ZONES.map((z) => (
+                      <tr key={z.id} className="hover:bg-cyan-500/5 transition-colors">
+                        <td className="py-3 px-3 font-semibold text-white">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: z.accentHex }}
+                            />
+                            <span>{z.name} ({z.alias})</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 font-mono text-cyan-300 font-medium">
+                          {z.depthRange}
+                        </td>
+                        <td className="py-3 px-3 text-slate-200">
+                          {z.factor}
+                        </td>
+                        <td className="py-3 px-3 text-slate-300">
+                          <div className="flex flex-wrap gap-1">
+                            {z.representativeOrganisms.map((org, i) => (
+                              <span
+                                key={i}
+                                className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-white/5 border border-white/10 text-slate-200"
+                              >
+                                {org}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <button
+                            onClick={() => {
+                              setActiveZoneFilter(z.id);
+                              setShowZoneMatrixModal(false);
+                              if (z.id === 'epipelagic') setDepth(20);
+                              else if (z.id === 'mesopelagic') setDepth(500);
+                              else if (z.id === 'bathypelagic') setDepth(700);
+                              else if (z.id === 'abyssopelagic') setDepth(1000);
+                              else if (z.id === 'hadopelagic') setDepth(1000);
+                            }}
+                            className="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/30 transition-colors"
+                          >
+                            Explore
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[11px] font-mono text-slate-400">
+                <span>Total Oceanic Depth: 0m to 11,000m (Mariana Trench Challenger Deep)</span>
+                <button
+                  onClick={() => setShowZoneMatrixModal(false)}
+                  className="px-4 py-1.5 rounded-xl bg-cyan-400 text-black font-bold text-xs hover:bg-cyan-300 transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

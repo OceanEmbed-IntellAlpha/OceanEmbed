@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Cpu, Layers, ShieldCheck, Sparkles } from 'lucide-react';
+import { X, Cpu, Layers, ShieldCheck } from 'lucide-react';
 
 export interface ArchitectureBlock {
   id: string;

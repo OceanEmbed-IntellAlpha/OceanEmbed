@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Beaker, Database, Cpu, Compass, ShieldCheck, Sparkles, CheckCircle2, ChevronRight } from 'lucide-react';
+import { X, Beaker, Database, Cpu, Compass, ShieldCheck, Activity, CheckCircle2, ChevronRight } from 'lucide-react';
 
 export interface StatItem {
   id: string;
@@ -36,7 +36,7 @@ export function StatModal({ stat, onClose }: StatModalProps) {
       case 'compass':
         return <Compass className="text-purple-400" size={24} />;
       default:
-        return <Sparkles className="text-biolume" size={24} />;
+        return <Activity className="text-biolume" size={24} />;
     }
   };
 

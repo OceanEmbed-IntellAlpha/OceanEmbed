@@ -9,22 +9,22 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // OceanRoot design tokens
-        abyss: '#050B14',
-        'deep-panel': '#0B1D2E',
-        thermocline: '#1C5C6B',
-        biolume: '#00D2FF',
-        'instrument-amber': '#E8A33D',
-        'coral-delta': '#FF6B5B',
-        foam: '#E9F1F3',
-        'foam-dim': '#8FA5AC',
-        reconstruction: '#F59E0B',
-        argoObs: '#34D399',
-        surfaceSignal: '#38BDF8',
-        embeddingPurple: '#00D2FF',
-        validationGood: '#10B981',
-        validationWarn: '#F59E0B',
-        validationBad: '#EF4444',
+        // OceanRoot design tokens (mapped to clean dashboard aesthetic)
+        abyss: '#09090b', // zinc-950
+        'deep-panel': '#18181b', // zinc-900
+        thermocline: '#10b981', // emerald-500
+        biolume: '#818cf8', // indigo-400
+        'instrument-amber': '#f59e0b', // amber-500
+        'coral-delta': '#f43f5e', // rose-500
+        foam: '#f4f4f5', // zinc-100
+        'foam-dim': '#a1a1aa', // zinc-400
+        reconstruction: '#f59e0b',
+        argoObs: '#10b981',
+        surfaceSignal: '#6366f1',
+        embeddingPurple: '#818cf8',
+        validationGood: '#10b981',
+        validationWarn: '#f59e0b',
+        validationBad: '#ef4444',
       },
       fontFamily: {
         display: ['Outfit', 'Space Grotesk', 'sans-serif'],

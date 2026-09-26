@@ -107,90 +107,91 @@ export function ResearchChartsSuite() {
   const [selectedChartPoint, setSelectedChartPoint] = useState<any | null>(null);
 
   return (
-    <div className="p-1 rounded-[1.5rem] bg-white/[0.03] border border-white/[0.08] shadow-2xl">
-      <div className="rounded-[calc(1.5rem-0.25rem)] bg-[#030914] p-5 sm:p-7 flex flex-col gap-6">
+    <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/30 overflow-hidden shadow-sm">
+      <div className="p-6 sm:p-8 flex flex-col gap-6">
         
         {/* Header & Controls */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/[0.07] pb-5">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-biolume/10 border border-biolume/25 text-biolume text-[10px] font-mono tracking-widest uppercase mb-2">
-              <Zap size={11} className="animate-pulse text-biolume" />
-              Empirical Test Results & Benchmarks
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-zinc-800 pb-6 relative">
+          <div className="absolute top-0 right-0 w-64 h-32 bg-indigo-500/10 blur-[80px] pointer-events-none" />
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-mono tracking-widest uppercase mb-3">
+              <Activity size={12} className="text-indigo-400" />
+              Test Results & Benchmarks
             </div>
-            <h3 className="font-display text-xl sm:text-3xl font-bold text-white tracking-tight">
-              Quantitative Research Analytics Suite
+            <h3 className="text-2xl font-bold text-white tracking-tight">
+              Performance Analytics
             </h3>
-            <p className="text-xs sm:text-sm text-foam-dim mt-1 max-w-3xl font-light">
-              Interactive test results for depth error profiles (0.49 m to 902 m), benchmark comparisons, variable ablation ladders, MSE loss convergence, and regional Argo validations.
+            <p className="text-sm text-zinc-400 mt-2 max-w-xl leading-relaxed">
+              Interactive test results for depth error profiles (0.49 m to 902 m), benchmark comparisons, and variable ablation ladders.
             </p>
           </div>
 
           {/* Navigation Tabs (6 Visual Modes) */}
-          <div className="flex flex-wrap items-center gap-1.5 bg-[#02060D] p-1.5 rounded-xl border border-white/[0.08] shrink-0">
+          <div className="flex flex-wrap items-center gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800/80 shrink-0">
             <button
               onClick={() => setActiveTab('depth')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-all ${
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 activeTab === 'depth'
-                  ? 'bg-biolume/20 text-biolume border border-biolume/40 font-bold shadow-[0_0_12px_rgba(76,224,210,0.15)]'
-                  : 'text-white/60 hover:text-white hover:bg-white/[0.05]'
+                  ? 'bg-zinc-800 text-white shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
               }`}
             >
-              <TrendingUp size={13} />
+              <TrendingUp size={14} />
               Depth Profile
             </button>
             <button
               onClick={() => setActiveTab('benchmark')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-all ${
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 activeTab === 'benchmark'
-                  ? 'bg-biolume/20 text-biolume border border-biolume/40 font-bold shadow-[0_0_12px_rgba(76,224,210,0.15)]'
-                  : 'text-white/60 hover:text-white hover:bg-white/[0.05]'
+                  ? 'bg-zinc-800 text-white shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
               }`}
             >
-              <Award size={13} />
+              <Award size={14} />
               Model Benchmark
             </button>
             <button
               onClick={() => setActiveTab('ablation')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-all ${
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 activeTab === 'ablation'
-                  ? 'bg-biolume/20 text-biolume border border-biolume/40 font-bold shadow-[0_0_12px_rgba(76,224,210,0.15)]'
-                  : 'text-white/60 hover:text-white hover:bg-white/[0.05]'
+                  ? 'bg-zinc-800 text-white shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
               }`}
             >
-              <Layers size={13} />
+              <Layers size={14} />
               Ablation Ladder
             </button>
             <button
               onClick={() => setActiveTab('loss')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-all ${
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 activeTab === 'loss'
-                  ? 'bg-biolume/20 text-biolume border border-biolume/40 font-bold shadow-[0_0_12px_rgba(76,224,210,0.15)]'
-                  : 'text-white/60 hover:text-white hover:bg-white/[0.05]'
+                  ? 'bg-zinc-800 text-white shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
               }`}
             >
-              <Activity size={13} />
+              <Activity size={14} />
               MSE Convergence
             </button>
             <button
               onClick={() => setActiveTab('argo')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-all ${
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 activeTab === 'argo'
-                  ? 'bg-biolume/20 text-biolume border border-biolume/40 font-bold shadow-[0_0_12px_rgba(76,224,210,0.15)]'
-                  : 'text-white/60 hover:text-white hover:bg-white/[0.05]'
+                  ? 'bg-zinc-800 text-white shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
               }`}
             >
-              <BarChart3 size={13} />
+              <BarChart3 size={14} />
               Argo Validation
             </button>
             <button
               onClick={() => setActiveTab('spatial')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs transition-all ${
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 activeTab === 'spatial'
-                  ? 'bg-biolume/20 text-biolume border border-biolume/40 font-bold shadow-[0_0_12px_rgba(76,224,210,0.15)]'
-                  : 'text-white/60 hover:text-white hover:bg-white/[0.05]'
+                  ? 'bg-zinc-800 text-white shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
               }`}
             >
-              <Globe size={13} />
+              <Globe size={14} />
               Spatial Heatmap
             </button>
           </div>
@@ -207,23 +208,23 @@ export function ResearchChartsSuite() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.2 }}
                 className="w-full flex flex-col gap-4"
               >
-                <div className="flex items-center justify-between text-xs font-mono text-foam-dim">
-                  <span className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-biolume" /> OceanEmbed v2 (Peak 1.026°C @ 92.3m)
-                    <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" /> Ridge Regression
-                    <span className="w-2.5 h-2.5 rounded-full bg-slate-500" /> Climatology
+                <div className="flex items-center justify-between text-xs font-medium text-zinc-500">
+                  <span className="flex items-center gap-3">
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-indigo-500" /> OceanEmbed v2 (1.026°C Peak)</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Ridge Regression</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-zinc-500" /> Climatology</span>
                   </span>
-                  <span className="text-white/40">Y-Axis: Test RMSE (°C) vs Depth (0.49 m – 902.34 m)</span>
+                  <span>Test RMSE (°C) vs Depth (m)</span>
                 </div>
 
                 <div className="h-[340px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       data={DEPTH_PERFORMANCE_DATA}
-                      margin={{ top: 10, right: 30, left: 0, bottom: 20 }}
+                      margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
                       onClick={(state: any) => {
                         if (state && state.activePayload && state.activePayload.length) {
                           setSelectedChartPoint({
@@ -233,20 +234,21 @@ export function ResearchChartsSuite() {
                         }
                       }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                      <XAxis dataKey="depthLabel" stroke="rgba(255,255,255,0.4)" tick={{ fontSize: 10 }} />
-                      <YAxis stroke="rgba(255,255,255,0.4)" tick={{ fontSize: 11 }} unit="°C" domain={[0, 1.4]} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                      <XAxis dataKey="depthLabel" stroke="#71717a" tick={{ fontSize: 11 }} tickMargin={10} axisLine={false} tickLine={false} />
+                      <YAxis stroke="#71717a" tick={{ fontSize: 11 }} unit="°" domain={[0, 1.4]} tickMargin={10} axisLine={false} tickLine={false} />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: '#020914',
-                          borderColor: 'rgba(76, 224, 210, 0.4)',
-                          borderRadius: '12px',
+                          backgroundColor: '#18181b',
+                          borderColor: '#27272a',
+                          borderRadius: '8px',
                           color: '#fff',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                         }}
                       />
-                      <Line type="monotone" dataKey="oceanEmbed" name="OceanEmbed v2" stroke="#4CE0D2" strokeWidth={3} dot={{ r: 4, fill: '#4CE0D2' }} />
-                      <Line type="monotone" dataKey="ridge" name="Ridge Regression" stroke="#38BDF8" strokeWidth={2} strokeDasharray="4 4" dot={{ r: 3, fill: '#38BDF8' }} />
-                      <Line type="monotone" dataKey="climatology" name="Climatology" stroke="#64748B" strokeWidth={2} strokeDasharray="2 2" dot={{ r: 3, fill: '#64748B' }} />
+                      <Line type="monotone" dataKey="oceanEmbed" name="OceanEmbed v2" stroke="#6366f1" strokeWidth={2} dot={{ r: 4, fill: '#6366f1', strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                      <Line type="monotone" dataKey="ridge" name="Ridge Regression" stroke="#10b981" strokeWidth={2} strokeDasharray="4 4" dot={{ r: 3, fill: '#10b981', strokeWidth: 0 }} />
+                      <Line type="monotone" dataKey="climatology" name="Climatology" stroke="#71717a" strokeWidth={2} strokeDasharray="2 2" dot={{ r: 3, fill: '#71717a', strokeWidth: 0 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -260,35 +262,36 @@ export function ResearchChartsSuite() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.2 }}
                 className="w-full flex flex-col gap-4"
               >
-                <div className="flex items-center justify-between text-xs font-mono text-foam-dim">
+                <div className="flex items-center justify-between text-xs font-medium text-zinc-500">
                   <span>Model Architecture Test Benchmark (2022 GLORYS Test Set)</span>
-                  <span className="text-biolume">Lower RMSE is better</span>
+                  <span className="text-zinc-400">Lower RMSE is better</span>
                 </div>
 
                 <div className="h-[340px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={MODEL_BENCHMARK_DATA}
-                      margin={{ top: 15, right: 30, left: 10, bottom: 25 }}
+                      margin={{ top: 15, right: 10, left: -20, bottom: 25 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                      <XAxis dataKey="name" stroke="rgba(255,255,255,0.6)" tick={{ fontSize: 11 }} />
-                      <YAxis stroke="rgba(255,255,255,0.4)" tick={{ fontSize: 11 }} unit="°C" domain={[0, 0.7]} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                      <XAxis dataKey="name" stroke="#71717a" tick={{ fontSize: 11 }} tickMargin={10} axisLine={false} tickLine={false} />
+                      <YAxis stroke="#71717a" tick={{ fontSize: 11 }} unit="°" domain={[0, 0.7]} tickMargin={10} axisLine={false} tickLine={false} />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: '#020914',
-                          borderColor: 'rgba(76, 224, 210, 0.4)',
-                          borderRadius: '12px',
+                          backgroundColor: '#18181b',
+                          borderColor: '#27272a',
+                          borderRadius: '8px',
                           color: '#fff',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                         }}
-                        formatter={(value: any, name: any) => [`${value}°C`, 'Test RMSE']}
+                        formatter={(value: any) => [`${value}°C`, 'Test RMSE']}
                       />
-                      <Bar dataKey="rmse" radius={[8, 8, 0, 0]}>
+                      <Bar dataKey="rmse" radius={[4, 4, 0, 0]}>
                         {MODEL_BENCHMARK_DATA.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
+                          <Cell key={`cell-${index}`} fill={entry.isFinal ? '#6366f1' : '#3f3f46'} />
                         ))}
                       </Bar>
                     </BarChart>
@@ -304,39 +307,40 @@ export function ResearchChartsSuite() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.2 }}
                 className="w-full flex flex-col gap-4"
               >
                 {/* Key Finding Highlight Banner */}
-                <div className="p-3.5 rounded-xl bg-biolume/10 border border-biolume/30 flex items-center justify-between text-xs font-mono">
-                  <span className="text-white font-medium flex items-center gap-2">
-                    <ShieldCheck size={16} className="text-biolume" />
-                    <strong className="text-biolume">Key Finding:</strong> SLA accounts for 87.5% of the total improvement gained by adding all 6 other variables to SST.
+                <div className="p-3.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-between text-xs">
+                  <span className="text-indigo-200 font-medium flex items-center gap-2">
+                    <ShieldCheck size={16} className="text-indigo-400" />
+                    <strong className="text-indigo-300">Key Finding:</strong> SLA accounts for 87.5% of the total improvement gained by adding all 6 other variables to SST.
                   </span>
-                  <span className="text-biolume font-bold">15.0% Total Gain</span>
+                  <span className="text-indigo-400 font-bold bg-indigo-500/20 px-2 py-1 rounded-md">15.0% Total Gain</span>
                 </div>
 
                 <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={ABLATION_BAR_DATA}
-                      margin={{ top: 15, right: 30, left: 10, bottom: 25 }}
+                      margin={{ top: 15, right: 10, left: -20, bottom: 25 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                      <XAxis dataKey="name" stroke="rgba(255,255,255,0.6)" tick={{ fontSize: 11 }} />
-                      <YAxis stroke="rgba(255,255,255,0.4)" tick={{ fontSize: 11 }} unit="°C" domain={[0, 0.7]} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                      <XAxis dataKey="name" stroke="#71717a" tick={{ fontSize: 11 }} tickMargin={10} axisLine={false} tickLine={false} />
+                      <YAxis stroke="#71717a" tick={{ fontSize: 11 }} unit="°" domain={[0, 0.7]} tickMargin={10} axisLine={false} tickLine={false} />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: '#020914',
-                          borderColor: 'rgba(76, 224, 210, 0.4)',
-                          borderRadius: '12px',
+                          backgroundColor: '#18181b',
+                          borderColor: '#27272a',
+                          borderRadius: '8px',
                           color: '#fff',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                         }}
                         formatter={(value: any) => [`${value}°C`, 'Test RMSE']}
                       />
-                      <Bar dataKey="rmse" radius={[8, 8, 0, 0]}>
+                      <Bar dataKey="rmse" radius={[4, 4, 0, 0]}>
                         {ABLATION_BAR_DATA.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
+                          <Cell key={`cell-${index}`} fill={index === ABLATION_BAR_DATA.length - 1 ? '#6366f1' : '#3f3f46'} />
                         ))}
                       </Bar>
                     </BarChart>
@@ -352,26 +356,34 @@ export function ResearchChartsSuite() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.2 }}
                 className="w-full flex flex-col gap-4"
               >
-                <div className="flex items-center justify-between text-xs font-mono text-foam-dim">
+                <div className="flex items-center justify-between text-xs font-medium text-zinc-500">
                   <span>Training Loss & Validation Loss (MSE Objective Only)</span>
-                  <span className="text-biolume">AdamW (lr=3e-4, Cosine Schedule)</span>
+                  <span className="text-zinc-400">AdamW (lr=3e-4, Cosine Schedule)</span>
                 </div>
 
                 <div className="h-[340px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart
                       data={CONVERGENCE_DATA}
-                      margin={{ top: 10, right: 30, left: 0, bottom: 20 }}
+                      margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                      <XAxis dataKey="epoch" stroke="rgba(255,255,255,0.4)" tick={{ fontSize: 11 }} />
-                      <YAxis stroke="rgba(255,255,255,0.4)" tick={{ fontSize: 11 }} />
-                      <Tooltip contentStyle={{ backgroundColor: '#020914', borderColor: 'rgba(76, 224, 210, 0.4)', borderRadius: '12px', color: '#fff' }} />
-                      <Area type="monotone" dataKey="trainLoss" name="Train Loss (MSE)" stroke="#4CE0D2" fill="rgba(76,224,210,0.2)" />
-                      <Area type="monotone" dataKey="valLoss" name="Val Loss (MSE)" stroke="#F59E0B" fill="rgba(245,158,11,0.15)" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                      <XAxis dataKey="epoch" stroke="#71717a" tick={{ fontSize: 11 }} tickMargin={10} axisLine={false} tickLine={false} />
+                      <YAxis stroke="#71717a" tick={{ fontSize: 11 }} tickMargin={10} axisLine={false} tickLine={false} />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: '#18181b', 
+                          borderColor: '#27272a', 
+                          borderRadius: '8px', 
+                          color: '#fff',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                        }} 
+                      />
+                      <Area type="monotone" dataKey="trainLoss" name="Train Loss (MSE)" stroke="#6366f1" fill="rgba(99,102,241,0.15)" strokeWidth={2} />
+                      <Area type="monotone" dataKey="valLoss" name="Val Loss (MSE)" stroke="#3f3f46" fill="rgba(63,63,70,0.15)" strokeWidth={2} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -385,36 +397,45 @@ export function ResearchChartsSuite() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.2 }}
                 className="w-full flex flex-col gap-4"
               >
                 {/* Stat cards for real Argo validation metrics */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {REGIONAL_VALIDATION_STATS.map((stat, i) => (
-                    <div key={i} className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.08] flex flex-col">
-                      <span className="font-mono text-[10px] text-white/40 uppercase">{stat.name}</span>
-                      <div className="flex items-baseline justify-between mt-1">
-                        <span className={`font-mono text-xl font-bold ${stat.color}`}>{stat.rmse.toFixed(3)}°C</span>
-                        <span className="font-mono text-[10px] text-white/50">{stat.profiles}</span>
+                    <div key={i} className="p-4 rounded-lg bg-zinc-900 border border-zinc-800 flex flex-col">
+                      <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">{stat.name}</span>
+                      <div className="flex items-baseline justify-between mt-2">
+                        <span className={`text-xl font-bold ${stat.color.replace('text-biolume', 'text-indigo-400')}`}>{stat.rmse.toFixed(3)}°C</span>
+                        <span className="text-[10px] text-zinc-500 font-medium">{stat.profiles}</span>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="flex items-center justify-between text-xs font-mono text-foam-dim">
+                <div className="flex items-center justify-between text-xs font-medium text-zinc-500 mt-2">
                   <span>In-situ Argo Float Temperature Matchup (Observed vs Predicted °C)</span>
-                  <span className="text-biolume font-bold">Improvement vs Climatology: 18.4%</span>
+                  <span className="text-indigo-400 font-medium bg-indigo-500/10 px-2 py-1 rounded-md">Improvement vs Climatology: 18.4%</span>
                 </div>
 
                 <div className="h-[270px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <ScatterChart margin={{ top: 10, right: 30, left: 10, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                      <XAxis type="number" dataKey="obs" name="Observed Temp" unit="°C" stroke="rgba(255,255,255,0.4)" domain={[10, 30]} />
-                      <YAxis type="number" dataKey="pred" name="Predicted Temp" unit="°C" stroke="rgba(255,255,255,0.4)" domain={[10, 30]} />
+                    <ScatterChart margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                      <XAxis type="number" dataKey="obs" name="Observed Temp" unit="°C" stroke="#71717a" domain={[10, 30]} tickMargin={10} axisLine={false} tickLine={false} />
+                      <YAxis type="number" dataKey="pred" name="Predicted Temp" unit="°C" stroke="#71717a" domain={[10, 30]} tickMargin={10} axisLine={false} tickLine={false} />
                       <ZAxis type="number" dataKey="depth" range={[40, 200]} name="Depth" unit="m" />
-                      <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: '#020914', borderColor: 'rgba(76, 224, 210, 0.4)', borderRadius: '12px', color: '#fff' }} />
-                      <Scatter name="Argo Floats" data={ARGO_SCATTER_DATA} fill="#4CE0D2" />
+                      <Tooltip 
+                        cursor={{ strokeDasharray: '3 3' }} 
+                        contentStyle={{ 
+                          backgroundColor: '#18181b', 
+                          borderColor: '#27272a', 
+                          borderRadius: '8px', 
+                          color: '#fff',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                        }} 
+                      />
+                      <Scatter name="Argo Floats" data={ARGO_SCATTER_DATA} fill="#6366f1" />
                     </ScatterChart>
                   </ResponsiveContainer>
                 </div>
@@ -428,25 +449,24 @@ export function ResearchChartsSuite() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.2 }}
                 className="w-full flex flex-col gap-4"
               >
-                <div className="flex items-center justify-between text-xs font-mono text-foam-dim">
+                <div className="flex items-center justify-between text-xs font-medium text-zinc-500">
                   <span>Spatial 2D Test RMSE Heatmap Matrix across North Indian Ocean Domain (5°N–30°N, 45°E–105°E)</span>
-                  <span className="text-biolume">Click cell to inspect coordinate error</span>
+                  <span className="text-indigo-400">Click cell to inspect coordinate error</span>
                 </div>
 
-                <div className="p-4 rounded-xl bg-[#02060D] border border-white/10 flex flex-col gap-2">
-                  <div className="grid grid-cols-9 gap-1 text-center font-mono text-[10px] text-white/50 pb-1 border-b border-white/10">
+                <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 flex flex-col gap-2">
+                  <div className="grid grid-cols-9 gap-1 text-center font-mono text-[10px] text-zinc-500 pb-2 border-b border-zinc-800/80">
                     <div>Lat / Lon</div>
                     {LON_LABELS.map(lon => <div key={lon}>{lon}</div>)}
                   </div>
 
                   {SPATIAL_HEATMAP_GRID.map((row, rIdx) => (
-                    <div key={rIdx} className="grid grid-cols-9 gap-1 items-center font-mono text-xs">
-                      <div className="text-[11px] text-white/70 font-bold">{row.lat}</div>
+                    <div key={rIdx} className="grid grid-cols-9 gap-1.5 items-center text-xs">
+                      <div className="text-[10px] text-zinc-400 font-semibold">{row.lat}</div>
                       {row.lonVals.map((val, cIdx) => {
-                        const bgIntensity = Math.min(1, val * 1.3);
                         return (
                           <div
                             key={cIdx}
@@ -454,11 +474,11 @@ export function ResearchChartsSuite() {
                               type: 'spatial',
                               data: { lat: row.lat, lon: LON_LABELS[cIdx], rmse: val, region: row.name }
                             })}
-                            className="h-10 rounded-lg border border-white/10 flex items-center justify-center font-mono text-[11px] font-bold cursor-pointer transition-transform hover:scale-110"
+                            className="h-10 rounded-md flex items-center justify-center font-mono text-[11px] cursor-pointer transition-transform hover:scale-110"
                             style={{
-                              backgroundColor: `rgba(76, 224, 210, ${0.1 + bgIntensity * 0.4})`,
-                              color: val < 0.4 ? '#4CE0D2' : val < 0.6 ? '#F59E0B' : '#EF4444',
-                              borderColor: `rgba(76, 224, 210, ${bgIntensity * 0.6})`
+                              backgroundColor: val < 0.4 ? 'rgba(99, 102, 241, 0.2)' : val < 0.6 ? 'rgba(99, 102, 241, 0.1)' : 'rgba(39, 39, 42, 0.5)',
+                              color: val < 0.4 ? '#818cf8' : val < 0.6 ? '#6366f1' : '#a1a1aa',
+                              border: val < 0.4 ? '1px solid rgba(99, 102, 241, 0.4)' : val < 0.6 ? '1px solid rgba(99, 102, 241, 0.2)' : '1px solid rgba(63, 63, 70, 0.5)'
                             }}
                           >
                             {val}°
@@ -474,12 +494,12 @@ export function ResearchChartsSuite() {
         </div>
 
         {/* Footer Note */}
-        <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs text-white/50">
-          <span className="flex items-center gap-1.5 font-mono">
-            <Info size={13} className="text-biolume" />
+        <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs text-zinc-500">
+          <span className="flex items-center gap-1.5 font-medium">
+            <Info size={14} className="text-zinc-400" />
             Click on any chart node, bar, or cell to inspect physical telemetry.
           </span>
-          <span className="hidden sm:inline font-mono text-[10px] text-white/30">
+          <span className="hidden sm:inline font-mono text-[10px]">
             Evaluation: INCOIS / GLORYS Test Set (2010–2023)
           </span>
         </div>
@@ -492,66 +512,67 @@ export function ResearchChartsSuite() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
             onClick={() => setSelectedChartPoint(null)}
           >
             <motion.div
-              initial={{ scale: 0.9, y: 20 }}
+              initial={{ scale: 0.95, y: 10 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
+              exit={{ scale: 0.95, y: 10 }}
+              transition={{ type: "spring", duration: 0.4, bounce: 0.1 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative max-w-lg w-full rounded-2xl bg-[#030B18] border border-biolume/40 p-6 shadow-[0_0_50px_rgba(76,224,210,0.15)] flex flex-col gap-4"
+              className="relative max-w-sm w-full rounded-xl bg-zinc-950 border border-zinc-800 p-6 shadow-xl flex flex-col gap-4"
             >
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
                 <div className="flex items-center gap-2">
-                  <Target className="text-biolume animate-spin" size={18} />
-                  <h4 className="font-display text-lg font-bold text-white">
-                    Data Node Telemetry Inspection
+                  <Target className="text-indigo-400" size={16} />
+                  <h4 className="text-sm font-semibold text-white">
+                    Data Node Telemetry
                   </h4>
                 </div>
                 <button
                   onClick={() => setSelectedChartPoint(null)}
-                  className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white"
+                  className="p-1 rounded-md bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
                 >
-                  <X size={16} />
+                  <X size={14} />
                 </button>
               </div>
 
               {selectedChartPoint.type === 'spatial' && (
-                <div className="flex flex-col gap-3 font-mono text-sm text-foam-dim">
-                  <div className="flex justify-between py-1 border-b border-white/5">
-                    <span className="text-white/60">Latitude / Longitude:</span>
-                    <span className="text-white font-bold">{selectedChartPoint.data.lat}, {selectedChartPoint.data.lon}</span>
+                <div className="flex flex-col gap-3 text-sm text-zinc-400">
+                  <div className="flex justify-between py-1 border-b border-zinc-900">
+                    <span>Latitude / Longitude:</span>
+                    <span className="text-white font-mono">{selectedChartPoint.data.lat}, {selectedChartPoint.data.lon}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-white/5">
-                    <span className="text-white/60">Region Domain:</span>
-                    <span className="text-biolume font-bold">{selectedChartPoint.data.region}</span>
+                  <div className="flex justify-between py-1 border-b border-zinc-900">
+                    <span>Region Domain:</span>
+                    <span className="text-indigo-300 font-medium">{selectedChartPoint.data.region}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-white/5">
-                    <span className="text-white/60">Local Test RMSE:</span>
-                    <span className="text-amber-400 font-bold">{selectedChartPoint.data.rmse}°C</span>
+                  <div className="flex justify-between py-1 border-b border-zinc-900">
+                    <span>Local Test RMSE:</span>
+                    <span className="text-emerald-400 font-bold font-mono">{selectedChartPoint.data.rmse}°C</span>
                   </div>
                 </div>
               )}
 
               {selectedChartPoint.type === 'depth' && (
-                <div className="flex flex-col gap-3 font-mono text-sm text-foam-dim">
-                  <div className="flex justify-between py-1 border-b border-white/5">
-                    <span className="text-white/60">Depth Layer:</span>
-                    <span className="text-white font-bold">{selectedChartPoint.data.depthLabel}</span>
+                <div className="flex flex-col gap-3 text-sm text-zinc-400">
+                  <div className="flex justify-between py-1 border-b border-zinc-900">
+                    <span>Depth Layer:</span>
+                    <span className="text-white font-mono">{selectedChartPoint.data.depthLabel}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-white/5">
-                    <span className="text-white/60">OceanEmbed v2 RMSE:</span>
-                    <span className="text-biolume font-bold">{selectedChartPoint.data.oceanEmbed}°C</span>
+                  <div className="flex justify-between py-1 border-b border-zinc-900">
+                    <span>OceanEmbed v2 RMSE:</span>
+                    <span className="text-indigo-400 font-bold font-mono">{selectedChartPoint.data.oceanEmbed}°C</span>
                   </div>
                 </div>
               )}
 
               <button
                 onClick={() => setSelectedChartPoint(null)}
-                className="mt-2 w-full py-2.5 rounded-xl bg-biolume/20 hover:bg-biolume/30 border border-biolume/40 text-biolume font-mono text-xs font-bold transition-all"
+                className="mt-3 w-full py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-white text-sm font-medium transition-all"
               >
-                Close Data Breakdown
+                Close breakdown
               </button>
             </motion.div>
           </motion.div>

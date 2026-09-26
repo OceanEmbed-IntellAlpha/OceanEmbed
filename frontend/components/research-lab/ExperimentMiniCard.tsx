@@ -7,15 +7,15 @@ import { Experiment } from '@/lib/api/research-types';
 import { DecisionBadge } from './DecisionBadge';
 
 const CATEGORY_DOT: Record<string, string> = {
-  'Data & Inputs':            'bg-biolume text-biolume shadow-[0_0_8px_rgba(0,210,255,0.6)]',
-  'Spatial Representation':   'bg-thermocline text-thermocline shadow-[0_0_8px_rgba(28,92,107,0.6)]',
-  'Ocean Embedding':          'bg-biolume text-biolume shadow-[0_0_8px_rgba(0,210,255,0.6)]',
-  'Depth Reconstruction':     'bg-instrument-amber text-instrument-amber shadow-[0_0_8px_rgba(232,163,61,0.6)]',
-  'Temporal Dynamics':        'bg-thermocline text-thermocline shadow-[0_0_8px_rgba(28,92,107,0.6)]',
-  'Physical Constraints':     'bg-instrument-amber text-instrument-amber shadow-[0_0_8px_rgba(232,163,61,0.6)]',
-  'Robustness & Uncertainty': 'bg-white/50 text-white/50 shadow-[0_0_8px_rgba(255,255,255,0.3)]',
-  'Ocean Regimes':            'bg-thermocline text-thermocline shadow-[0_0_8px_rgba(28,92,107,0.6)]',
-  'Validation':               'bg-biolume text-biolume shadow-[0_0_8px_rgba(0,210,255,0.6)]',
+  'Data & Inputs':            'bg-indigo-400 text-indigo-400',
+  'Spatial Representation':   'bg-emerald-400 text-emerald-400',
+  'Ocean Embedding':          'bg-indigo-400 text-indigo-400',
+  'Depth Reconstruction':     'bg-amber-400 text-amber-400',
+  'Temporal Dynamics':        'bg-emerald-400 text-emerald-400',
+  'Physical Constraints':     'bg-amber-400 text-amber-400',
+  'Robustness & Uncertainty': 'bg-zinc-400 text-zinc-400',
+  'Ocean Regimes':            'bg-emerald-400 text-emerald-400',
+  'Validation':               'bg-indigo-400 text-indigo-400',
 };
 
 // Mini SVG Sparkline with smooth area gradient
@@ -41,14 +41,14 @@ function MiniSparkline({ values }: { values: number[] }) {
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="overflow-visible">
         <defs>
           <linearGradient id={`grad-${pts[0]}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#00D2FF" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#00D2FF" stopOpacity="0" />
+            <stop offset="0%" stopColor="#6366f1" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path d={areaD} fill={`url(#grad-${pts[0]})`} />
-        <path d={lineD} fill="none" stroke="#00D2FF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={lineD} fill="none" stroke="#6366f1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      <span className="font-mono text-[7px] text-biolume/70 tracking-wider">
+      <span className="font-mono text-[9px] text-zinc-500 font-medium">
         {min.toFixed(2)}°C RMSE
       </span>
     </div>
@@ -66,85 +66,84 @@ export function ExperimentMiniCard({
   isSelected: boolean;
   onClick: () => void;
 }) {
-  const dotStyle = CATEGORY_DOT[experiment.category] ?? 'bg-white/40 text-white/40 shadow-none';
+  const dotStyle = CATEGORY_DOT[experiment.category] ?? 'bg-zinc-500 text-zinc-500 shadow-none';
 
   return (
     <motion.button
       type="button"
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -4, scale: 1.015 }}
+      whileHover={{ y: -2, scale: 1.01 }}
       whileTap={{ scale: 0.985 }}
-      transition={{ duration: 0.35, delay: index * 0.03, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.2, delay: index * 0.03 }}
       onClick={onClick}
       className={`
-        relative w-[285px] shrink-0 h-[210px] rounded-[1.75rem] text-left cursor-pointer
-        transition-all duration-300 group p-1
+        relative w-full h-[200px] rounded-2xl text-left cursor-pointer
+        transition-all duration-300 group overflow-hidden flex flex-col
         ${isSelected
-          ? 'bg-gradient-to-b from-biolume/40 via-biolume/10 to-transparent shadow-[0_0_35px_rgba(0,210,255,0.18)]'
-          : 'bg-white/[0.04] hover:bg-white/[0.08] hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)]'
+          ? 'bg-zinc-900/60 border-indigo-500/40 shadow-[0_0_20px_rgba(99,102,241,0.15)]'
+          : 'bg-zinc-900/30 border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-900/50'
         }
+        border
       `}
     >
-      {/* Inner Double-Bezel Container */}
-      <div className={`
-        relative w-full h-full rounded-[calc(1.75rem-0.25rem)] p-5 flex flex-col justify-between
-        border transition-all duration-300
-        ${isSelected
-          ? 'bg-[#040E1B] border-biolume/40'
-          : 'bg-[#030812]/90 border-white/[0.06] group-hover:border-white/15'
-        }
-      `}>
-        {/* Subtle Top Glow Highlight */}
-        <div className="absolute top-0 inset-x-8 h-px bg-gradient-to-r from-transparent via-white/20 group-hover:via-biolume/40 to-transparent transition-opacity duration-300 pointer-events-none" />
+      {/* Selection Glow Indicator */}
+      {isSelected && (
+        <div className="absolute top-0 left-0 right-0 h-32 bg-indigo-500/10 blur-[40px] pointer-events-none" />
+      )}
+      {isSelected && (
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-px bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
+      )}
 
+      <div className="relative z-10 w-full h-full p-5 flex flex-col justify-between">
+        
         {/* Card Header: ID, Category Dot, and Decision Badge */}
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
-            <span className={`w-1.5 h-1.5 rounded-full ${dotStyle}`} />
-            <span className="font-mono text-[9px] text-white/40 group-hover:text-white/70 tracking-[0.2em] uppercase transition-colors">
+            <span className={`w-1.5 h-1.5 rounded-full ${dotStyle} ${isSelected ? 'animate-pulse' : ''}`} />
+            <span className={`font-mono text-[10px] font-bold uppercase transition-colors tracking-wider ${isSelected ? 'text-indigo-400' : 'text-zinc-500 group-hover:text-zinc-400'}`}>
               {experiment.id}
             </span>
           </div>
 
-          <div className="scale-90 origin-right">
-            <DecisionBadge status={experiment.decision} />
-          </div>
+          <DecisionBadge status={experiment.decision} />
         </div>
 
         {/* Card Body: Title */}
-        <div className="my-auto py-1">
+        <div className="my-auto py-2">
           <h3 className={`
-            font-display text-[14px] font-semibold leading-snug line-clamp-2
-            ${isSelected ? 'text-white' : 'text-white/80 group-hover:text-white'}
+            text-sm font-semibold leading-snug line-clamp-2
+            ${isSelected ? 'text-white' : 'text-zinc-200 group-hover:text-white'}
             transition-colors duration-200
           `}>
             {experiment.title}
           </h3>
-          <p className="text-white/35 text-[11px] font-light line-clamp-1 mt-1 font-sans">
+          <p className="text-zinc-500 text-xs line-clamp-2 mt-1.5 leading-relaxed">
             {experiment.question}
           </p>
         </div>
 
         {/* Card Footer: Category Label, Sparkline, and Button-in-Button Hover Icon */}
-        <div className="flex items-end justify-between gap-2 pt-2 border-t border-white/[0.04]">
-          <div className="flex flex-col gap-0.5">
-            <span className="font-mono text-[7.5px] text-white/30 tracking-[0.18em] uppercase max-w-[130px] truncate">
+        <div className="flex items-end justify-between gap-2 pt-3 border-t border-zinc-800/60 mt-2">
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-[9px] text-zinc-500 uppercase max-w-[130px] truncate font-semibold tracking-wider">
               {experiment.category}
             </span>
-            <span className="font-mono text-[8px] text-biolume/60 group-hover:text-biolume transition-colors flex items-center gap-1">
-              Click to view
+            <span className={`text-[10px] font-medium transition-opacity duration-300 ${isSelected ? 'text-indigo-400 opacity-100' : 'text-zinc-600 opacity-0 group-hover:opacity-100'}`}>
+              {isSelected ? 'Currently Viewing' : 'Click to inspect'}
             </span>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
             {experiment.metrics?.rmse ? (
-              <MiniSparkline values={experiment.metrics.rmse} />
+              <div className="opacity-80 group-hover:opacity-100 transition-opacity">
+                <MiniSparkline values={experiment.metrics.rmse} />
+              </div>
             ) : null}
 
             {/* Trailing Icon Affordance */}
-            <div className="w-6 h-6 rounded-full bg-white/5 border border-white/10 group-hover:border-biolume/40 group-hover:bg-biolume/10 flex items-center justify-center transition-all duration-300 shrink-0">
-              <ArrowUpRight size={11} className="text-white/30 group-hover:text-biolume group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300" />
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all shrink-0 ${isSelected ? 'bg-indigo-500/20 border border-indigo-500/30 text-indigo-400' : 'bg-zinc-900 border border-zinc-800 text-zinc-500 group-hover:bg-zinc-800 group-hover:text-zinc-300 group-hover:border-zinc-700'}`}>
+              <ArrowUpRight size={14} className={isSelected ? 'animate-pulse' : ''} />
             </div>
           </div>
         </div>
