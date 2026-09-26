@@ -12,9 +12,16 @@ import { DEPTH_LEVELS } from '@/lib/api/types';
 import { motion } from 'framer-motion';
 import { ArrowLeft, MapPin, Sparkles, Fish } from 'lucide-react';
 import { SurfaceFishShoal } from './organisms/SurfaceFishShoal';
+import { PelagicShark } from './organisms/PelagicShark';
+import { SeaTurtle } from './organisms/SeaTurtle';
 import { PulsingJellyfish } from './organisms/PulsingJellyfish';
 import { LanternfishShoal } from './organisms/LanternfishShoal';
+import { BioluminescentSquid } from './organisms/BioluminescentSquid';
+import { DeepHatchetfish } from './organisms/DeepHatchetfish';
 import { AbyssalAnglerfish } from './organisms/AbyssalAnglerfish';
+import { GulperEel } from './organisms/GulperEel';
+import { TripodFish } from './organisms/TripodFish';
+import { HadalSnailfish } from './organisms/HadalSnailfish';
 import { SubmersibleSpotlight } from './organisms/SubmersibleSpotlight';
 import { ThermoclineSheet } from './organisms/ThermoclineSheet';
 
@@ -51,7 +58,7 @@ const EcosystemShader = {
         pos.x += sin(uTime * aSpeed * 2.0 + aPhase) * 15.0;
         pos.z += cos(uTime * aSpeed * 1.5 + aPhase) * 15.0;
         // Keep them constrained to 0 to 250m depth (Y = 0 to -25)
-        pos.y = -mod(abs(pos.y + uTime * aSpeed * 0.2), 25.0);
+        pos.y = -2.5 - mod(abs(pos.y + uTime * aSpeed * 0.2), 25.0);
         
         // Fade out as camera goes deep
         vAlpha = smoothstep(30.0, 10.0, uCamDepth);
@@ -759,11 +766,25 @@ export default function SplitOceanViz({ onExit, standalone }: { onExit?: () => v
         <MarineSnowSystem depth={selectedDepth} currentTemp={currentTemp} />
         <SubmersibleSpotlight currentDepth={selectedDepth} />
 
-        {/* ── Depth-Stratified Marine Fauna ── */}
+        {/* ── Depth-Stratified Marine Fauna (5 Oceanic Zones) ── */}
+        {/* Sunlight (Epipelagic: 0–200m) */}
         <SurfaceFishShoal currentDepth={selectedDepth} />
+        <PelagicShark currentDepth={selectedDepth} />
+        <SeaTurtle currentDepth={selectedDepth} />
         <PulsingJellyfish currentDepth={selectedDepth} />
+
+        {/* Twilight (Mesopelagic: 200–1,000m) */}
+        <BioluminescentSquid currentDepth={selectedDepth} />
+        <DeepHatchetfish currentDepth={selectedDepth} />
         <LanternfishShoal currentDepth={selectedDepth} />
+
+        {/* Midnight (Bathypelagic: 1,000–4,000m) */}
         <AbyssalAnglerfish currentDepth={selectedDepth} />
+        <GulperEel currentDepth={selectedDepth} />
+
+        {/* Abyssal (4,000–6,000m) & Hadal (6,000–11,000m) */}
+        <TripodFish currentDepth={selectedDepth} />
+        <HadalSnailfish currentDepth={selectedDepth} />
 
         <EffectComposer multisampling={0}>
           {/* Subtle bokeh scale so fish and organisms remain crisp and sharp without blurry smudging */}

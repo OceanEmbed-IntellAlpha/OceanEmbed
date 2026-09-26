@@ -92,97 +92,98 @@ export function ArchitectureBand({ onSelectBlock }: ArchitectureBandProps) {
   return (
     <section className="py-6 flex flex-col gap-6">
       {/* Section Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-3 border-b border-white/[0.08]">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-biolume/10 border border-biolume/25 text-biolume text-[10px] font-mono tracking-[0.2em] uppercase mb-2">
-            <Cpu size={12} className="text-biolume animate-pulse" />
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-3 border-b border-zinc-800 relative">
+        <div className="absolute top-0 right-1/4 w-64 h-32 bg-indigo-500/10 blur-[80px] pointer-events-none" />
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-mono tracking-widest uppercase mb-3">
+            <Cpu size={12} className="text-indigo-400" />
             Neural Architecture Inspector (~7.85M Parameters)
           </div>
-          <h2 className="font-display text-2xl sm:text-3xl font-bold text-white tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight">
             OceanEmbed v2 U-Net Architecture
           </h2>
-          <p className="text-foam-dim text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed font-light">
+          <p className="text-zinc-400 text-sm mt-2 max-w-2xl leading-relaxed">
             End-to-end U-Net encoder-decoder architecture with skip connections. Maps 7 surface channels + 7 validity masks [14 × 101 × 241] to a 15-depth anomaly prediction output head [15 × 101 × 241].
           </p>
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex flex-wrap items-center gap-1.5 bg-[#02060D] p-1.5 rounded-xl border border-white/[0.08] shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5 bg-zinc-900/50 p-1 rounded-lg border border-zinc-800 shrink-0">
           <button
             onClick={() => setActiveCategory('all')}
-            className={`px-3 py-1.5 rounded-lg font-mono text-xs transition-all ${
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
               activeCategory === 'all'
-                ? 'bg-biolume/20 text-biolume border border-biolume/40 font-bold'
-                : 'text-white/60 hover:text-white hover:bg-white/[0.05]'
+                ? 'bg-zinc-800 text-white shadow-sm'
+                : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
             }`}
           >
             All Stages (6)
           </button>
           <button
             onClick={() => setActiveCategory('encoder')}
-            className={`px-3 py-1.5 rounded-lg font-mono text-xs transition-all ${
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
               activeCategory === 'encoder'
-                ? 'bg-biolume/20 text-biolume border border-biolume/40 font-bold'
-                : 'text-white/60 hover:text-white hover:bg-white/[0.05]'
+                ? 'bg-zinc-800 text-white shadow-sm'
+                : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
             }`}
           >
             Inputs & Encoder
           </button>
           <button
             onClick={() => setActiveCategory('decoder')}
-            className={`px-3 py-1.5 rounded-lg font-mono text-xs transition-all ${
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
               activeCategory === 'decoder'
-                ? 'bg-biolume/20 text-biolume border border-biolume/40 font-bold'
-                : 'text-white/60 hover:text-white hover:bg-white/[0.05]'
+                ? 'bg-zinc-800 text-white shadow-sm'
+                : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
             }`}
           >
             Decoder & Skips
           </button>
           <button
             onClick={() => setActiveCategory('output')}
-            className={`px-3 py-1.5 rounded-lg font-mono text-xs transition-all ${
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
               activeCategory === 'output'
-                ? 'bg-biolume/20 text-biolume border border-biolume/40 font-bold'
-                : 'text-white/60 hover:text-white hover:bg-white/[0.05]'
+                ? 'bg-zinc-800 text-white shadow-sm'
+                : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
             }`}
           >
-            Output Head & Post-Proc
+            Output Head
           </button>
         </div>
       </div>
 
       {/* Architecture Data Pipeline Flow Diagram Banner */}
-      <div className="p-1 rounded-[1.25rem] bg-white/[0.03] border border-white/[0.08]">
-        <div className="rounded-[calc(1.25rem-0.25rem)] bg-[#030914] p-4 sm:p-5 flex flex-col gap-3">
+      <div className="p-1 rounded-xl bg-zinc-900 border border-zinc-800/80">
+        <div className="rounded-lg bg-zinc-950 p-4 sm:p-5 flex flex-col gap-4">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-xs text-biolume font-semibold flex items-center gap-2">
+            <span className="text-xs text-indigo-400 font-semibold flex items-center gap-2">
               <Workflow size={14} /> End-to-End OceanEmbed v2 U-Net Pipeline
             </span>
-            <span className="font-mono text-[10px] text-white/40 uppercase">
+            <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider font-medium">
               MSE Objective Loss Only
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-center text-xs font-mono">
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/10 flex flex-col items-center justify-center gap-0.5">
-              <span className="text-[10px] text-white/40 uppercase">1. Input Tensor</span>
-              <span className="text-white font-bold text-xs">[14 × 101 × 241]</span>
-              <span className="text-[9px] text-biolume font-mono">7 Surface Vars + 7 Masks</span>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-center text-xs">
+            <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800 flex flex-col items-center justify-center gap-1">
+              <span className="text-[10px] text-zinc-500 uppercase font-medium tracking-wider">1. Input Tensor</span>
+              <span className="text-white font-mono font-bold text-xs">[14 × 101 × 241]</span>
+              <span className="text-[10px] text-zinc-400">7 Surface Vars + 7 Masks</span>
             </div>
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/10 flex flex-col items-center justify-center gap-0.5">
-              <span className="text-[10px] text-white/40 uppercase">2. 4-Stage Encoder</span>
-              <span className="text-cyan-400 font-bold text-xs">Conv2d + BN + ReLU</span>
-              <span className="text-[9px] text-white/50 font-mono">Max-Pooling Between Stages</span>
+            <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800 flex flex-col items-center justify-center gap-1">
+              <span className="text-[10px] text-zinc-500 uppercase font-medium tracking-wider">2. 4-Stage Encoder</span>
+              <span className="text-emerald-400 font-mono font-bold text-xs">Conv2d + BN + ReLU</span>
+              <span className="text-[10px] text-zinc-400">Max-Pooling Between Stages</span>
             </div>
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/10 flex flex-col items-center justify-center gap-0.5">
-              <span className="text-[10px] text-white/40 uppercase">3. Decoder & Skips</span>
-              <span className="text-purple-400 font-bold text-xs">Bilinear Upsample</span>
-              <span className="text-[9px] text-purple-300 font-mono">Skip Connections to Encoder</span>
+            <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800 flex flex-col items-center justify-center gap-1">
+              <span className="text-[10px] text-zinc-500 uppercase font-medium tracking-wider">3. Decoder & Skips</span>
+              <span className="text-purple-400 font-mono font-bold text-xs">Bilinear Upsample</span>
+              <span className="text-[10px] text-zinc-400">Skip Connections to Encoder</span>
             </div>
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/10 flex flex-col items-center justify-center gap-0.5">
-              <span className="text-[10px] text-white/40 uppercase">4. 15-Depth Output</span>
-              <span className="text-amber-400 font-bold text-xs">[15 × 101 × 241]</span>
-              <span className="text-[9px] text-amber-300 font-mono">0.49 m to 902.34 m Depths</span>
+            <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800 flex flex-col items-center justify-center gap-1">
+              <span className="text-[10px] text-zinc-500 uppercase font-medium tracking-wider">4. 15-Depth Output</span>
+              <span className="text-amber-400 font-mono font-bold text-xs">[15 × 101 × 241]</span>
+              <span className="text-[10px] text-zinc-400">0.49 m to 902.34 m Depths</span>
             </div>
           </div>
         </div>
@@ -197,40 +198,40 @@ export function ArchitectureBand({ onSelectBlock }: ArchitectureBandProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.05 }}
             onClick={() => onSelectBlock?.(block)}
-            className="group relative p-5 rounded-xl bg-[#030914] border border-white/[0.07] hover:border-biolume/50 transition-all cursor-pointer flex flex-col justify-between gap-3 hover:shadow-[0_0_20px_rgba(76,224,210,0.12)] overflow-hidden"
+            className="group relative p-5 rounded-xl bg-zinc-900/50 border border-zinc-800 hover:bg-zinc-900 hover:border-zinc-700 transition-all cursor-pointer flex flex-col justify-between gap-3 overflow-hidden"
           >
             <div>
               {/* Header Badges */}
-              <div className="flex items-center justify-between mb-2">
-                <span className="px-2 py-0.5 rounded bg-biolume/15 border border-biolume/30 font-mono text-[9px] text-biolume font-semibold uppercase tracking-wider truncate max-w-[140px]">
+              <div className="flex items-center justify-between mb-3">
+                <span className="px-2 py-0.5 rounded-md bg-zinc-800 border border-zinc-700 text-[9px] text-zinc-300 font-medium uppercase tracking-wider truncate max-w-[140px]">
                   {block.tag}
                 </span>
-                <div className="w-6 h-6 rounded-md bg-white/5 border border-white/10 flex items-center justify-center text-white/40 group-hover:text-biolume group-hover:bg-biolume/10 group-hover:border-biolume/30 transition-all shrink-0">
-                  <Eye size={13} />
+                <div className="w-6 h-6 rounded-md bg-zinc-800/50 flex items-center justify-center text-zinc-500 group-hover:text-zinc-300 group-hover:bg-zinc-700 transition-colors shrink-0">
+                  <Eye size={14} />
                 </div>
               </div>
 
               {/* Title & Subtitle */}
-              <h4 className="font-display text-base font-bold text-white group-hover:text-biolume transition-colors leading-snug break-words">
+              <h4 className="text-sm font-semibold text-white group-hover:text-indigo-300 transition-colors leading-snug break-words">
                 {block.title}
               </h4>
-              <p className="text-[11px] text-foam-dim font-mono mt-0.5 leading-tight break-words">
+              <p className="text-xs text-zinc-500 font-medium mt-1 leading-tight break-words">
                 {block.subtitle}
               </p>
 
               {/* Description */}
-              <p className="text-xs text-white/60 font-light mt-2.5 leading-relaxed line-clamp-3 break-words">
+              <p className="text-xs text-zinc-400 mt-3 leading-relaxed line-clamp-3 break-words">
                 {block.description}
               </p>
             </div>
 
             {/* Bottom Meta */}
-            <div className="pt-2.5 border-t border-white/[0.06] flex flex-col gap-1.5">
+            <div className="pt-3 border-t border-zinc-800 flex flex-col gap-2 mt-2">
               <div className="flex items-center justify-between text-[10px] font-mono overflow-hidden">
-                <span className="text-white/40">Tensor:</span>
-                <span className="text-biolume font-semibold truncate max-w-[160px]">{block.tensorShape}</span>
+                <span className="text-zinc-500">Tensor:</span>
+                <span className="text-zinc-300 font-medium truncate max-w-[160px]">{block.tensorShape}</span>
               </div>
-              <div className="flex items-center justify-between text-xs text-biolume font-mono font-bold group-hover:translate-x-0.5 transition-transform">
+              <div className="flex items-center justify-between text-xs text-indigo-400 font-medium group-hover:translate-x-0.5 transition-transform">
                 <span>Inspect Details</span>
                 <ArrowRight size={12} />
               </div>

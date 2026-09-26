@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Sparkles, Filter, Search, X } from 'lucide-react';
+import { Search, X, Layers } from 'lucide-react';
 import { Experiment, ExperimentCategory } from '@/lib/api/research-types';
 import { ExperimentMiniCard } from './ExperimentMiniCard';
 
@@ -62,139 +62,70 @@ export function ResearchBand({
   return (
     <section className="py-6 flex flex-col gap-6">
       {/* Section Header & Subtitle */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-2 border-b border-white/[0.06]">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-biolume/10 border border-biolume/25 text-biolume text-[10px] font-mono tracking-[0.2em] uppercase mb-2.5">
-            <Sparkles size={11} className="text-biolume animate-pulse" />
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-2 border-b border-zinc-800 relative">
+        <div className="absolute top-0 right-1/4 w-64 h-32 bg-indigo-500/10 blur-[80px] pointer-events-none" />
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-mono tracking-widest uppercase mb-3">
+            <Layers size={12} className="text-indigo-400" />
             Systematic Empirical Runs ({experiments.length} Studies)
           </div>
-          <h2 className="font-display text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            Scientific Decision <span className="text-biolume">Explorer</span>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight">
+            Scientific Decision Explorer
           </h2>
-          <p className="text-foam-dim text-xs sm:text-sm mt-1 max-w-xl leading-relaxed font-light">
+          <p className="text-zinc-400 text-sm mt-2 max-w-xl leading-relaxed">
             Every input variable, depth loss, and temporal window was individually isolated. Click any card to inspect the full hypothesis, findings, and RMSE depth profiles.
           </p>
         </div>
 
-        {/* Search Bar & Scroll Nav Buttons */}
+        {/* Search Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           {/* Instant Search Bar */}
           <div className="relative flex items-center">
-            <Search size={14} className="absolute left-3 text-white/40 pointer-events-none" />
+            <Search size={14} className="absolute left-3 text-zinc-500 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search experiments, variables, RMSE..."
-              className="pl-9 pr-8 py-1.5 rounded-xl bg-[#030914] border border-white/10 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-biolume/50 transition-all w-full sm:w-64 font-mono"
+              className="pl-9 pr-8 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all w-full sm:w-64"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 text-white/40 hover:text-white"
+                className="absolute right-2.5 text-zinc-500 hover:text-white"
               >
-                <X size={12} />
+                <X size={14} />
               </button>
             )}
           </div>
+        </div>
+      </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleScroll('left')}
-              className="w-8 h-8 rounded-full bg-white/[0.03] hover:bg-white/10 border border-white/10 hover:border-biolume/40 flex items-center justify-center text-white/60 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
-              aria-label="Scroll left"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleScroll('right')}
-              className="w-8 h-8 rounded-full bg-white/[0.03] hover:bg-white/10 border border-white/10 hover:border-biolume/40 flex items-center justify-center text-white/60 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
-              aria-label="Scroll right"
-            >
-              <ChevronRight size={16} />
-            </button>
+      {/* Grid of Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pt-2 pb-5">
+        {filtered.length > 0 ? (
+          filtered.map((exp, i) => (
+            <ExperimentMiniCard
+              key={exp.id}
+              experiment={exp}
+              index={i}
+              isSelected={selectedId === exp.id}
+              onClick={() => onSelect(exp.id)}
+            />
+          ))
+        ) : (
+          <div className="col-span-full flex items-center justify-center w-full py-16">
+            <p className="font-mono text-xs text-white/30 uppercase tracking-[0.2em]">
+              No matching experiments found
+            </p>
           </div>
-        </div>
-      </div>
-
-      {/* Category Filter Pills */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-        <div className="flex items-center gap-1.5 pl-1 pr-3 border-r border-white/10 shrink-0 text-white/30">
-          <Filter size={12} />
-          <span className="font-mono text-[9px] uppercase tracking-widest">Filter:</span>
-        </div>
-
-        <div className="flex gap-2 shrink-0">
-          {CATEGORIES.map(cat => {
-            const count = getCategoryCount(cat);
-            const isActive = activeCategory === cat;
-
-            return (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => onCategoryChange(cat)}
-                className={`
-                  flex-shrink-0 px-3.5 py-1.5 rounded-full font-mono text-[9px] tracking-[0.15em] uppercase
-                  flex items-center gap-2 transition-all duration-200 cursor-pointer
-                  ${isActive
-                    ? 'bg-white text-black font-semibold shadow-[0_0_20px_rgba(255,255,255,0.25)]'
-                    : 'bg-white/[0.03] border border-white/[0.08] text-white/50 hover:text-white hover:bg-white/[0.07] hover:border-white/20'
-                  }
-                `}
-              >
-                <span>{cat}</span>
-                <span className={`
-                  px-1.5 py-0.2 rounded-full text-[8px] font-mono
-                  ${isActive ? 'bg-black/15 text-black' : 'bg-white/10 text-white/40'}
-                `}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Horizontal Cards Scroller */}
-      <div className="relative group/scroller">
-        <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-[#02060A] via-[#02060A]/80 to-transparent z-10 pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-[#02060A] via-[#02060A]/80 to-transparent z-10 pointer-events-none" />
-
-        <div
-          ref={scrollRef}
-          className="flex gap-4 overflow-x-auto pt-2 pb-5 px-2 scroll-smooth"
-          style={{ scrollbarWidth: 'none' }}
-        >
-          {filtered.length > 0 ? (
-            filtered.map((exp, i) => (
-              <ExperimentMiniCard
-                key={exp.id}
-                experiment={exp}
-                index={i}
-                isSelected={selectedId === exp.id}
-                onClick={() => onSelect(exp.id)}
-              />
-            ))
-          ) : (
-            <div className="flex items-center justify-center w-full py-16">
-              <p className="font-mono text-xs text-white/30 uppercase tracking-[0.2em]">
-                No matching experiments found
-              </p>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Footer Meta Row */}
       <div className="flex items-center justify-between px-1 text-white/30 font-mono text-[9px] uppercase tracking-[0.2em]">
         <span>
           Showing {filtered.length} of {experiments.length} ablation records
-        </span>
-        <span className="hidden sm:inline">
-          Use mouse wheel or drag to pan horizontally →
         </span>
       </div>
     </section>

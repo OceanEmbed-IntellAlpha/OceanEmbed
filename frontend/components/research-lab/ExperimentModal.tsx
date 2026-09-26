@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLenis } from 'lenis/react';
 import Link from 'next/link';
-import { X, ArrowRight, Activity, Beaker, CheckCircle2, ChevronRight, Layers, Sparkles } from 'lucide-react';
+import { X, ArrowRight, Activity, Beaker, CheckCircle2, ChevronRight, Layers, Lightbulb } from 'lucide-react';
 import { Experiment } from '@/lib/api/research-types';
 import { DecisionBadge } from './DecisionBadge';
 
@@ -393,7 +393,7 @@ export function ExperimentModal({ experiment, onClose }: ExperimentModalProps) {
                     {experiment.finding && (
                       <div className="p-4 rounded-2xl bg-biolume/[0.02] border border-biolume/20">
                         <p className="font-mono text-[9px] text-biolume tracking-[0.2em] uppercase mb-1.5 flex items-center gap-1.5">
-                          <Sparkles size={11} className="text-biolume" />
+                          <Lightbulb size={11} className="text-biolume" />
                           Empirical Finding & Conclusion
                         </p>
                         <p className="text-white/85 text-xs sm:text-sm leading-relaxed font-light">

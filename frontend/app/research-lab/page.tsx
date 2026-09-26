@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { GlobalNav } from '@/components/shared/GlobalNav';
 import { ResearchBand } from '@/components/research-lab/ResearchBand';
 import { LiveBenchmarksBand } from '@/components/research-lab/LiveBenchmarksBand';
@@ -13,7 +13,7 @@ import { BenchmarkModal, BenchmarkDetail } from '@/components/research-lab/Bench
 import { ArchitectureModal, ArchitectureBlock } from '@/components/research-lab/ArchitectureModal';
 import { Experiment, ExperimentCategory } from '@/lib/api/research-types';
 import experimentsData from '@/lib/fixtures/experiments.json';
-import { Beaker, Database, Cpu, Compass, Zap } from 'lucide-react';
+import { Beaker, Database, Cpu, Compass, Activity, LayoutDashboard, Layers, Network, ChevronRight, Lightbulb } from 'lucide-react';
 
 const ALL_EXPERIMENTS = experimentsData as Experiment[];
 
@@ -23,7 +23,7 @@ const HERO_STATS: StatItem[] = [
     title: '8 Systemic Ablation Studies',
     subtitle: 'Systematic Ablation Suite',
     iconName: 'beaker',
-    color: 'text-biolume',
+    color: 'text-indigo-400',
     details: {
       description: 'Eight isolated ablation experiments testing data formulations, loss objectives, model architectures, and input variable selection across the North Indian Ocean basin.',
       highlights: [
@@ -44,7 +44,7 @@ const HERO_STATS: StatItem[] = [
     title: '8 Oceanographic Regimes',
     subtitle: 'Physical Diversity',
     iconName: 'database',
-    color: 'text-cyan-400',
+    color: 'text-emerald-400',
     details: {
       description: 'Evaluation spans diverse hydrodynamic regimes including monsoonal upwelling zones, high-salinity Arabian Sea waters, and stratified Bay of Bengal dynamics.',
       highlights: [
@@ -86,7 +86,7 @@ const HERO_STATS: StatItem[] = [
     title: '15-Depth Output Head',
     subtitle: '0.49 m to 902 m',
     iconName: 'compass',
-    color: 'text-purple-400',
+    color: 'text-rose-400',
     details: {
       description: '15-depth output head (0.49 m to 902 m) predicting subsurface ocean temperature anomaly profiles across standard GLORYS depth levels.',
       highlights: [
@@ -104,7 +104,18 @@ const HERO_STATS: StatItem[] = [
   }
 ];
 
+type TabId = 'overview' | 'analytics' | 'experiments' | 'telemetry' | 'architecture';
+
+const TABS: { id: TabId; label: string; icon: any }[] = [
+  { id: 'overview', label: 'Lab Overview', icon: LayoutDashboard },
+  { id: 'analytics', label: 'Quantitative Analytics', icon: Activity },
+  { id: 'experiments', label: 'Ablation Studies', icon: Layers },
+  { id: 'telemetry', label: 'Live Telemetry', icon: Database },
+  { id: 'architecture', label: 'Model Architecture', icon: Network },
+];
+
 export default function ResearchLabPage() {
+  const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [selectedExperimentId, setSelectedExperimentId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<'All' | ExperimentCategory>('All');
 
@@ -119,122 +130,242 @@ export default function ResearchLabPage() {
   }, [selectedExperimentId]);
 
   return (
-    <main className="min-h-screen bg-[#02060A] text-foam flex flex-col relative selection:bg-biolume/30 selection:text-white overflow-x-hidden">
+    <main className="min-h-screen bg-[#09090b] text-zinc-300 flex flex-col selection:bg-indigo-500/30 selection:text-white">
       <GlobalNav />
 
-      {/* Atmospheric Deep Sea Lighting & Radial Beacon */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[80vw] h-[60vh] bg-gradient-to-b from-biolume/[0.04] via-thermocline/[0.02] to-transparent rounded-full blur-[140px]" />
-        <div className="absolute top-1/3 -right-32 w-[45vw] h-[50vh] bg-biolume/[0.02] rounded-full blur-[160px]" />
-        <div className="absolute bottom-1/4 -left-32 w-[40vw] h-[50vh] bg-thermocline/[0.03] rounded-full blur-[160px]" />
-        <div
-          className="absolute inset-0 opacity-[0.03] pointer-events-none"
-          style={{
-            backgroundImage: `radial-gradient(rgba(255, 255, 255, 0.4) 1px, transparent 1px)`,
-            backgroundSize: '36px 36px',
-          }}
-        />
-      </div>
+      <div className="flex-1 flex overflow-hidden pt-[72px]">
+        {/* Sidebar Navigation */}
+        <aside className="w-[280px] border-r border-zinc-800/50 bg-[#09090b]/80 backdrop-blur-xl flex flex-col hidden md:flex shrink-0">
+          <div className="p-6">
+            <h2 className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-6 px-3">
+              Deep Learning Lab
+            </h2>
+            <nav className="flex flex-col gap-1">
+              {TABS.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`relative flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-300 w-full text-left overflow-hidden group ${
+                      isActive 
+                        ? 'text-white shadow-sm' 
+                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/20'
+                    }`}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeTabGlow"
+                        className="absolute inset-0 bg-indigo-500/10 border border-indigo-500/20 rounded-xl"
+                        initial={false}
+                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      />
+                    )}
+                    
+                    {isActive && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-indigo-500 rounded-r-full shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
+                    )}
 
-      {/* Main Container */}
-      <div className="relative z-10 max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-32 flex flex-col gap-12 sm:gap-16">
-        
-        {/* Hero Banner Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="flex flex-col items-center text-center max-w-4xl mx-auto pt-2"
-        >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-biolume/10 border border-biolume/30 text-biolume text-xs font-mono tracking-widest uppercase mb-4 shadow-[0_0_15px_rgba(76,224,210,0.15)]">
-            <Zap size={13} className="animate-pulse" />
-            INCOIS SIH26066 Deep Learning Lab
+                    <div className={`relative z-10 p-1.5 rounded-lg transition-colors ${isActive ? 'bg-indigo-500/20 text-indigo-400' : 'bg-transparent text-zinc-500 group-hover:text-zinc-400 group-hover:bg-zinc-800/50'}`}>
+                      <Icon size={16} />
+                    </div>
+
+                    <span className="relative z-10 flex-1">{tab.label}</span>
+                    
+                    {isActive && (
+                      <ChevronRight size={14} className="relative z-10 text-indigo-400/70" />
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
           </div>
+        </aside>
 
-          <h1 className="font-display text-4xl sm:text-6xl font-bold text-white tracking-tight mb-4">
-            Research Lab<span className="text-biolume">.</span>
-          </h1>
-
-          <p className="text-foam-dim text-sm sm:text-base max-w-2xl font-light leading-relaxed">
-            Empirical neural architecture isolation, variable ablation ladders, and U-Net encoder-decoder skip connections for subsurface temperature reconstruction in the North Indian Ocean.
-          </p>
-
-          {/* Key Hero Metric Badges - CLICKABLE for detailed Modal Insights! */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-8 w-full">
-            {HERO_STATS.map((stat) => (
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-y-auto bg-[#09090b]">
+          <div className="max-w-6xl mx-auto p-6 md:p-10 pb-32">
+            <AnimatePresence mode="wait">
               <motion.div
-                key={stat.id}
-                whileHover={{ scale: 1.03, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setActiveStat(stat)}
-                className="p-1 rounded-[1.5rem] bg-white/[0.03] border border-white/[0.08] hover:border-biolume/50 transition-all cursor-pointer shadow-lg hover:shadow-[0_0_20px_rgba(76,224,210,0.15)]"
+                key={activeTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-col gap-10"
               >
-                <div className="rounded-[calc(1.5rem-0.25rem)] bg-[#030914] p-4 flex items-center gap-3.5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
-                  <div className="w-10 h-10 rounded-xl bg-biolume/10 border border-biolume/20 flex items-center justify-center text-biolume shrink-0">
-                    {stat.iconName === 'beaker' && <Beaker size={18} />}
-                    {stat.iconName === 'database' && <Database size={18} className="text-cyan-400" />}
-                    {stat.iconName === 'cpu' && <Cpu size={18} className="text-amber-400" />}
-                    {stat.iconName === 'compass' && <Compass size={18} className="text-purple-400" />}
-                  </div>
-                  <div className="text-left">
-                    <div className="font-display text-base sm:text-lg font-bold text-white leading-tight">
-                      {stat.title.split(' ')[0]} {stat.title.split(' ')[1]}
+                {/* OVERVIEW TAB */}
+                {activeTab === 'overview' && (
+                  <div className="flex flex-col gap-10">
+                    <header className="relative">
+                      <div className="absolute -inset-x-6 -top-10 h-40 bg-indigo-500/5 blur-[100px] pointer-events-none" />
+                      <motion.h1 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-3xl md:text-4xl font-semibold text-white tracking-tight mb-4"
+                      >
+                        Research Overview
+                      </motion.h1>
+                      <motion.p 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="text-zinc-400 max-w-3xl leading-relaxed text-sm md:text-base"
+                      >
+                        Empirical neural architecture isolation, variable ablation ladders, and U-Net encoder-decoder skip connections for subsurface temperature reconstruction in the North Indian Ocean. Explore our systemic studies and model performance benchmarks.
+                      </motion.p>
+                    </header>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                      {HERO_STATS.map((stat, idx) => (
+                        <motion.div
+                          key={stat.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.15 + (idx * 0.05) }}
+                          onClick={() => setActiveStat(stat)}
+                          className="relative group bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 hover:border-zinc-700/80 hover:bg-zinc-800/40 transition-all cursor-pointer overflow-hidden flex flex-col justify-between"
+                        >
+                          {/* Hover Glow Effect */}
+                          <div className={`absolute top-0 right-0 w-32 h-32 blur-[50px] opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none
+                            ${stat.iconName === 'beaker' ? 'bg-indigo-500' : ''}
+                            ${stat.iconName === 'database' ? 'bg-emerald-500' : ''}
+                            ${stat.iconName === 'cpu' ? 'bg-amber-500' : ''}
+                            ${stat.iconName === 'compass' ? 'bg-rose-500' : ''}
+                          `} />
+
+                          <div>
+                            <div className="flex items-start justify-between mb-5">
+                              <div className="w-10 h-10 rounded-xl bg-zinc-900 shadow-inner border border-zinc-800 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
+                                {stat.iconName === 'beaker' && <Beaker size={18} className="text-indigo-400 drop-shadow-[0_0_8px_rgba(129,140,248,0.5)]" />}
+                                {stat.iconName === 'database' && <Database size={18} className="text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" />}
+                                {stat.iconName === 'cpu' && <Cpu size={18} className="text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" />}
+                                {stat.iconName === 'compass' && <Compass size={18} className="text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.5)]" />}
+                              </div>
+                              <div className="px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-[9px] uppercase tracking-widest font-semibold text-zinc-500">
+                                {stat.subtitle}
+                              </div>
+                            </div>
+                            
+                            <div className="text-lg font-semibold text-white leading-tight mb-2 group-hover:text-indigo-50 transition-colors">
+                              {stat.title}
+                            </div>
+                            <p className="text-xs text-zinc-500 line-clamp-2 leading-relaxed">
+                              {stat.details.description}
+                            </p>
+                          </div>
+
+                          <div className="mt-6 flex items-center gap-1.5 text-[11px] font-medium text-indigo-400/80 group-hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
+                            <span>Inspect Detail</span>
+                            <ChevronRight size={12} />
+                          </div>
+                        </motion.div>
+                      ))}
                     </div>
-                    <div className="font-mono text-[9px] text-white/40 uppercase tracking-wider mt-0.5">
-                      {stat.subtitle}
-                    </div>
+
+                    <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.35 }}
+                      className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6"
+                    >
+                      <div className="col-span-1 md:col-span-1 flex flex-col justify-center">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-mono tracking-widest uppercase mb-4 w-fit">
+                          <Lightbulb size={12} className="text-indigo-400" />
+                          Major Insights
+                        </div>
+                        <h2 className="text-2xl font-semibold text-white leading-tight">
+                          Key Discoveries from our Deep Learning Runs
+                        </h2>
+                      </div>
+                      
+                      <div className="col-span-1 md:col-span-2">
+                        <div className="bg-zinc-900/30 backdrop-blur-sm border border-zinc-800/80 rounded-2xl p-6 sm:p-8 relative overflow-hidden">
+                          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[80px] pointer-events-none" />
+                          <div className="relative z-10 prose prose-invert max-w-none text-sm text-zinc-400 leading-relaxed space-y-4">
+                            <p className="text-zinc-300 text-base font-medium">Through our comprehensive ablation studies across the North Indian Ocean basin, we have established a definitive correlation between Sea Level Anomaly (SLA) and subsurface thermocline structure.</p>
+                            
+                            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 list-none p-0">
+                              <li className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50 m-0 relative overflow-hidden">
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500" />
+                                <strong className="block text-white mb-1">Data Fusion</strong>
+                                SLA accounts for the vast majority (87.5%) of the performance gain when reconstructing deeper layers (below 50m).
+                              </li>
+                              <li className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50 m-0 relative overflow-hidden">
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500" />
+                                <strong className="block text-white mb-1">Model Architecture</strong>
+                                Full 2D spatial context resolves mesoscale eddy structures that single-column point models completely miss.
+                              </li>
+                              <li className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50 m-0 relative overflow-hidden sm:col-span-2">
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" />
+                                <strong className="block text-white mb-1">Inference Efficiency</strong>
+                                The 7.85M parameter model achieves sub-500ms inference times across an entire ocean basin grid (101x241), making real-time telemetry viable.
+                              </li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
                   </div>
-                </div>
+                )}
+
+                {/* ANALYTICS TAB */}
+                {activeTab === 'analytics' && (
+                  <div className="flex flex-col gap-6 pt-4">
+                    <ResearchChartsSuite />
+                  </div>
+                )}
+
+                {/* EXPERIMENTS TAB */}
+                {activeTab === 'experiments' && (
+                  <div className="flex flex-col gap-6 pt-4">
+                    <ResearchBand
+                      experiments={ALL_EXPERIMENTS}
+                      selectedId={selectedExperimentId}
+                      onSelect={id => setSelectedExperimentId(id)}
+                      activeCategory={activeCategory}
+                      onCategoryChange={cat => setActiveCategory(cat)}
+                    />
+                  </div>
+                )}
+
+                {/* TELEMETRY TAB */}
+                {activeTab === 'telemetry' && (
+                  <div className="flex flex-col gap-6 pt-4">
+                    <LiveBenchmarksBand
+                      onSelectBenchmark={(bm) => setActiveBenchmark(bm)}
+                    />
+                  </div>
+                )}
+
+                {/* ARCHITECTURE TAB */}
+                {activeTab === 'architecture' && (
+                  <div className="flex flex-col gap-6 pt-4">
+                    <ArchitectureBand
+                      onSelectBlock={(block) => setActiveArchitectureBlock(block)}
+                    />
+                  </div>
+                )}
               </motion.div>
-            ))}
+            </AnimatePresence>
           </div>
-        </motion.div>
-
-        {/* SECTION 1: Interactive Quantitative Data & Performance Analytics Suite */}
-        <ResearchChartsSuite />
-
-        {/* SECTION 2: Horizontal Systematic Research Explorer */}
-        <ResearchBand
-          experiments={ALL_EXPERIMENTS}
-          selectedId={selectedExperimentId}
-          onSelect={id => setSelectedExperimentId(id)}
-          activeCategory={activeCategory}
-          onCategoryChange={cat => setActiveCategory(cat)}
-        />
-
-        {/* SECTION 3: Live Model Telemetry & Variable Ablation Ladder */}
-        <LiveBenchmarksBand
-          onSelectBenchmark={(bm) => setActiveBenchmark(bm)}
-        />
-
-        {/* SECTION 4: Architecture Deep Dive */}
-        <ArchitectureBand
-          onSelectBlock={(block) => setActiveArchitectureBlock(block)}
-        />
-
+        </div>
       </div>
 
       {/* POPUP MODALS */}
-
-      {/* 1. Experiment Detail Modal */}
       <ExperimentModal
         experiment={selectedExperiment}
         onClose={() => setSelectedExperimentId(null)}
       />
-
-      {/* 2. Stat Badge Detail Modal */}
       <StatModal
         stat={activeStat}
         onClose={() => setActiveStat(null)}
       />
-
-      {/* 3. Benchmark Telemetry Modal */}
       <BenchmarkModal
         benchmark={activeBenchmark}
         onClose={() => setActiveBenchmark(null)}
       />
-
-      {/* 4. Architecture Block Detail Modal */}
       <ArchitectureModal
         block={activeArchitectureBlock}
         onClose={() => setActiveArchitectureBlock(null)}

@@ -92,17 +92,17 @@ export function AbyssalAnglerfish({ currentDepth }: { currentDepth: number }) {
   return (
     <>
       {/* ── 1. Primary Anglerfish (Directly in view at 700m - Refined Delicate Size) ── */}
-      <group ref={angler1Ref} scale={[0.28, 0.28, 0.28]}>
+      <group ref={angler1Ref} scale={[0.55, 0.55, 0.55]}>
         {/* Main Body */}
         <mesh position={[0, 0, 0]}>
-          <sphereGeometry args={[0.9, 20, 16]} />
-          <meshStandardMaterial color="#020617" roughness={0.9} metalness={0.15} />
+          <sphereGeometry args={[0.9, 32, 24]} />
+          <meshStandardMaterial color="#0f172a" roughness={0.4} metalness={0.5} />
         </mesh>
 
         {/* Lower Jaw */}
         <mesh position={[0.45, -0.28, 0]} rotation={[0, 0, -0.22]}>
-          <coneGeometry args={[0.72, 0.95, 16]} />
-          <meshStandardMaterial color="#050b14" roughness={0.85} metalness={0.2} />
+          <coneGeometry args={[0.72, 0.95, 32]} />
+          <meshStandardMaterial color="#0f172a" roughness={0.45} metalness={0.5} />
         </mesh>
 
         {/* Needle Teeth */}
@@ -129,7 +129,7 @@ export function AbyssalAnglerfish({ currentDepth }: { currentDepth: number }) {
             <sphereGeometry args={[0.28, 16, 16]} />
             <meshBasicMaterial color="#22d3ee" transparent opacity={0.4} depthWrite={false} />
           </mesh>
-          <pointLight ref={light1Ref} color="#00ffff" intensity={2.8} distance={14.0} decay={1.8} />
+          <pointLight ref={light1Ref} color="#00ffff" intensity={6.0} distance={25.0} decay={1.5} />
         </group>
 
         {/* Caudal Fin */}
@@ -140,14 +140,14 @@ export function AbyssalAnglerfish({ currentDepth }: { currentDepth: number }) {
       </group>
 
       {/* ── 2. Secondary Scattered Anglerfish (~675m, Left Midground) ── */}
-      <group ref={angler2Ref} scale={[0.22, 0.22, 0.22]}>
+      <group ref={angler2Ref} scale={[0.45, 0.45, 0.45]}>
         <mesh position={[0, 0, 0]}>
-          <sphereGeometry args={[0.9, 16, 12]} />
-          <meshStandardMaterial color="#020617" roughness={0.9} />
+          <sphereGeometry args={[0.9, 24, 16]} />
+          <meshStandardMaterial color="#0f172a" roughness={0.4} metalness={0.5} />
         </mesh>
         <mesh position={[0.45, -0.28, 0]} rotation={[0, 0, -0.22]}>
-          <coneGeometry args={[0.7, 0.9, 12]} />
-          <meshStandardMaterial color="#050b14" />
+          <coneGeometry args={[0.7, 0.9, 16]} />
+          <meshStandardMaterial color="#0f172a" roughness={0.45} metalness={0.5} />
         </mesh>
         <mesh position={[0.48, 0.92, 0]} rotation={[0, 0, -0.42]}>
           <cylinderGeometry args={[0.025, 0.025, 1.1, 6]} />
@@ -158,7 +158,7 @@ export function AbyssalAnglerfish({ currentDepth }: { currentDepth: number }) {
             <sphereGeometry args={[0.13, 12, 12]} />
             <meshBasicMaterial color="#00f2fe" />
           </mesh>
-          <pointLight ref={light2Ref} color="#00f2fe" intensity={2.2} distance={12.0} decay={1.9} />
+          <pointLight ref={light2Ref} color="#00f2fe" intensity={4.5} distance={20.0} decay={1.6} />
         </group>
         <mesh position={[-0.95, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
           <coneGeometry args={[0.38, 0.6, 4]} />
@@ -167,14 +167,14 @@ export function AbyssalAnglerfish({ currentDepth }: { currentDepth: number }) {
       </group>
 
       {/* ── 3. Third Scattered Anglerfish (~735m, Deep Void Lurker) ── */}
-      <group ref={angler3Ref} scale={[0.24, 0.24, 0.24]}>
+      <group ref={angler3Ref} scale={[0.48, 0.48, 0.48]}>
         <mesh position={[0, 0, 0]}>
-          <sphereGeometry args={[0.9, 16, 12]} />
-          <meshStandardMaterial color="#020617" roughness={0.9} />
+          <sphereGeometry args={[0.9, 24, 16]} />
+          <meshStandardMaterial color="#0f172a" roughness={0.4} metalness={0.5} />
         </mesh>
         <mesh position={[0.45, -0.28, 0]} rotation={[0, 0, -0.22]}>
-          <coneGeometry args={[0.7, 0.9, 12]} />
-          <meshStandardMaterial color="#050b14" />
+          <coneGeometry args={[0.7, 0.9, 16]} />
+          <meshStandardMaterial color="#0f172a" roughness={0.45} metalness={0.5} />
         </mesh>
         <mesh position={[0.48, 0.92, 0]} rotation={[0, 0, -0.42]}>
           <cylinderGeometry args={[0.025, 0.025, 1.1, 6]} />
@@ -185,7 +185,7 @@ export function AbyssalAnglerfish({ currentDepth }: { currentDepth: number }) {
             <sphereGeometry args={[0.12, 12, 12]} />
             <meshBasicMaterial color="#38bdf8" />
           </mesh>
-          <pointLight ref={light3Ref} color="#38bdf8" intensity={2.0} distance={12.0} decay={2.0} />
+          <pointLight ref={light3Ref} color="#38bdf8" intensity={4.0} distance={20.0} decay={1.6} />
         </group>
         <mesh position={[-0.95, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
           <coneGeometry args={[0.38, 0.6, 4]} />
@@ -194,14 +194,14 @@ export function AbyssalAnglerfish({ currentDepth }: { currentDepth: number }) {
       </group>
 
       {/* ── 4. Fourth Scattered Anglerfish (~765m, Distant Background Prowler) ── */}
-      <group ref={angler4Ref} scale={[0.18, 0.18, 0.18]}>
+      <group ref={angler4Ref} scale={[0.35, 0.35, 0.35]}>
         <mesh position={[0, 0, 0]}>
-          <sphereGeometry args={[0.9, 14, 10]} />
-          <meshStandardMaterial color="#020617" roughness={0.95} />
+          <sphereGeometry args={[0.9, 24, 16]} />
+          <meshStandardMaterial color="#0f172a" roughness={0.4} metalness={0.5} />
         </mesh>
         <mesh position={[0.45, -0.28, 0]} rotation={[0, 0, -0.22]}>
-          <coneGeometry args={[0.68, 0.85, 10]} />
-          <meshStandardMaterial color="#050b14" />
+          <coneGeometry args={[0.68, 0.85, 16]} />
+          <meshStandardMaterial color="#0f172a" roughness={0.45} metalness={0.5} />
         </mesh>
         <mesh position={[0.48, 0.92, 0]} rotation={[0, 0, -0.42]}>
           <cylinderGeometry args={[0.025, 0.025, 1.0, 6]} />
@@ -212,7 +212,7 @@ export function AbyssalAnglerfish({ currentDepth }: { currentDepth: number }) {
             <sphereGeometry args={[0.12, 10, 10]} />
             <meshBasicMaterial color="#00ffff" />
           </mesh>
-          <pointLight ref={light4Ref} color="#00ffff" intensity={1.8} distance={10.0} decay={2.0} />
+          <pointLight ref={light4Ref} color="#00ffff" intensity={3.5} distance={18.0} decay={1.6} />
         </group>
       </group>
     </>

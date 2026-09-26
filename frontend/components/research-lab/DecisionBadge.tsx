@@ -3,59 +3,59 @@ import { ExperimentStatus } from '@/lib/api/research-types';
 
 const STATUS_CONFIG: Record<ExperimentStatus, { bg: string, text: string, ring: string, dot: string, label: string }> = {
   BASELINE: {
-    bg: 'bg-white/5',
-    text: 'text-white/80',
-    ring: 'ring-white/10',
-    dot: 'bg-white/50',
+    bg: 'bg-zinc-800/50',
+    text: 'text-zinc-400',
+    ring: 'ring-zinc-700',
+    dot: 'bg-zinc-500',
     label: 'Baseline Model'
   },
   PENDING: {
-    bg: 'bg-foam-dim/5',
-    text: 'text-foam-dim',
-    ring: 'ring-foam-dim/20',
-    dot: 'bg-foam-dim/50',
+    bg: 'bg-zinc-800/50',
+    text: 'text-zinc-400',
+    ring: 'ring-zinc-700',
+    dot: 'bg-zinc-500',
     label: 'In Progress'
   },
   TESTING: {
-    bg: 'bg-foam-dim/5',
-    text: 'text-foam-dim',
-    ring: 'ring-foam-dim/20',
-    dot: 'bg-foam-dim animate-pulse',
+    bg: 'bg-zinc-800/50',
+    text: 'text-zinc-300',
+    ring: 'ring-zinc-600',
+    dot: 'bg-zinc-400 animate-pulse',
     label: 'Testing'
   },
   COMPLETED: {
-    bg: 'bg-biolume/5',
-    text: 'text-biolume',
-    ring: 'ring-biolume/20',
-    dot: 'bg-biolume',
+    bg: 'bg-indigo-500/10',
+    text: 'text-indigo-400',
+    ring: 'ring-indigo-500/20',
+    dot: 'bg-indigo-400',
     label: 'Completed'
   },
   KEEP: {
-    bg: 'bg-biolume/5',
-    text: 'text-biolume',
-    ring: 'ring-biolume/20',
-    dot: 'bg-biolume animate-pulse shadow-[0_0_8px_#4CE0D2]',
+    bg: 'bg-indigo-500/10',
+    text: 'text-indigo-400',
+    ring: 'ring-indigo-500/20',
+    dot: 'bg-indigo-400',
     label: 'Adopted'
   },
   REJECTED: {
-    bg: 'bg-validation-error/5',
-    text: 'text-validation-error',
-    ring: 'ring-validation-error/20',
-    dot: 'bg-validation-error',
+    bg: 'bg-rose-500/10',
+    text: 'text-rose-400',
+    ring: 'ring-rose-500/20',
+    dot: 'bg-rose-400',
     label: 'Rejected'
   },
   INCONCLUSIVE: {
-    bg: 'bg-instrument-amber/5',
-    text: 'text-instrument-amber',
-    ring: 'ring-instrument-amber/20',
-    dot: 'bg-instrument-amber',
+    bg: 'bg-amber-500/10',
+    text: 'text-amber-400',
+    ring: 'ring-amber-500/20',
+    dot: 'bg-amber-400',
     label: 'Inconclusive'
   },
   VALIDATION: {
-    bg: 'bg-validation-warn/5',
-    text: 'text-validation-warn',
-    ring: 'ring-validation-warn/20',
-    dot: 'bg-validation-warn',
+    bg: 'bg-orange-500/10',
+    text: 'text-orange-400',
+    ring: 'ring-orange-500/20',
+    dot: 'bg-orange-400',
     label: 'Validation'
   }
 };
@@ -64,9 +64,9 @@ export function DecisionBadge({ status }: { status: ExperimentStatus }) {
   const config = STATUS_CONFIG[status];
   
   return (
-    <div className={`inline-flex items-center gap-3 px-4 py-2 rounded-full ${config.bg} ring-1 ${config.ring} backdrop-blur-md`}>
+    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md ${config.bg} border border-${config.ring.replace('ring-', '')} backdrop-blur-md`}>
       <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
-      <span className={`font-mono text-[10px] font-medium tracking-[0.2em] uppercase ${config.text}`}>
+      <span className={`font-mono text-[9px] font-bold tracking-widest uppercase ${config.text}`}>
         {config.label}
       </span>
     </div>
