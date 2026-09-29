@@ -2,10 +2,11 @@
 
 import React from 'react';
 import { useExplorerStore } from '@/lib/store/useExplorerStore';
-import { useSurfaceField } from '@/lib/api/queries';
+import { useSurfaceField, useBackendHealth } from '@/lib/api/queries';
 import { AlertCircle } from 'lucide-react';
 
 export function DataStatusOverlay() {
+  const { data: health, isError: isHealthError } = useBackendHealth();
   const selectedDate = useExplorerStore((s) => s.selectedDate);
   const showSubsurfaceTemp = useExplorerStore((s) => s.showSubsurfaceTemp);
   const showSST = useExplorerStore((s) => s.showSST);
@@ -18,6 +19,11 @@ export function DataStatusOverlay() {
   const queryParams = activeVariable ? { variable: activeVariable, date: selectedDate } : null;
   
   const { isError, isLoading, data } = useSurfaceField(queryParams);
+
+  // If backend is sleeping/offline, BackendWakingUpOverlay handles it cleanly
+  if (isHealthError || !health || health.status !== 'healthy') {
+    return null;
+  }
 
   if (isLoading || (!isError && data)) {
     return null;

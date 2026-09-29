@@ -18,6 +18,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
+from backend.api.schemas.common import HealthResponse
 from backend.api.schemas.profile import FrontendSubsurfaceProfile
 from backend.api.schemas.map import FrontendSurfaceField
 from backend.api.schemas.datasets import DatasetCard
@@ -36,6 +37,16 @@ def get_model_service(request: Request) -> ModelService:
 
 def get_argo_service() -> ArgoService:
     return ArgoService.get_instance()
+
+
+@router.get("/health", response_model=HealthResponse, summary="Frontend alias: API Health Check")
+async def api_health_check(request: Request) -> HealthResponse:
+    model_ok = hasattr(request.app.state, "model_service") and request.app.state.model_service is not None
+    return HealthResponse(
+        status="healthy",
+        model_loaded=model_ok,
+        version="v2",
+    )
 
 @router.get("/is-sea")
 async def check_is_sea(

@@ -27,6 +27,7 @@ const DepthSidebar = dynamic(() => import('./DepthSidebar').then(m => ({ default
 const DateDepthBar = dynamic(() => import('./DateDepthBar').then(m => ({ default: m.DateDepthBar })), { ssr: false });
 const SplitOceanViz = dynamic(() => import('@/components/globe/SplitOceanViz'), { ssr: false });
 import { DataStatusOverlay } from './DataStatusOverlay';
+import { BackendWakingUpOverlay } from './BackendWakingUpOverlay';
 import { SurfaceFieldLoadingHUD } from './SurfaceFieldLoadingHUD';
 import { ColormapLegend } from './ColormapLegend';
 
@@ -154,6 +155,7 @@ export function ExplorerShell() {
       </div>
 
       <UnderwaterDiveOverlay />
+      <BackendWakingUpOverlay />
       <DataStatusOverlay />
       <SurfaceFieldLoadingHUD />
 

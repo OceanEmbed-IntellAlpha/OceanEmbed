@@ -155,3 +155,32 @@ export function useExperiments() {
   });
 }
 
+// ─── Backend Health / Liveness Probe ──────────────────────────────────────────────
+export interface BackendHealth {
+  status: string;
+  model_loaded: boolean;
+  version: string;
+}
+
+export function useBackendHealth() {
+  return useQuery<BackendHealth, Error>({
+    queryKey: ['backend_health'],
+    queryFn: async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      try {
+        const res = await fetch(`${BASE_URL}/api/health`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        throw err;
+      }
+    },
+    refetchInterval: (query) => (query.state.status === 'error' ? 3000 : 30000),
+    retry: true,
+    retryDelay: 2500,
+    staleTime: 1000 * 10,
+  });
+}

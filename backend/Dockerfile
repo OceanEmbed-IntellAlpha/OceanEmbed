@@ -1,4 +1,4 @@
-# OceanEmbed Production Backend Dockerfile
+# OceanEmbed Production Backend Dockerfile (Context: backend/)
 FROM python:3.11-slim
 
 # Prevent Python from writing .pyc files and buffer stdout/stderr
@@ -15,17 +15,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependency definition
-COPY backend/requirements.txt /app/backend/requirements.txt
+COPY requirements.txt /app/backend/requirements.txt
 
 # Install PyTorch CPU first (saves ~3GB vs full CUDA package for inference)
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir torch>=2.2.0 --extra-index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir -r /app/backend/requirements.txt
 
-# Copy application source code
-COPY backend /app/backend
-COPY data /app/data
-COPY runs /app/runs
+# Copy backend application source code
+COPY . /app/backend
+
+# Create required runtime directories for data caches and R2 model weight streaming
+RUN mkdir -p /app/data/raw /app/data/interim /app/data/processed /app/data/argo /app/runs/_final_v2 /app/backend/storage
 
 # Expose FastAPI port
 EXPOSE 8000

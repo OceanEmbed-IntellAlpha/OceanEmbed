@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 import { Search, RefreshCw, Waves, MapPin, ArrowLeft, Lightbulb } from 'lucide-react';
 import { useExplorerStore } from '@/lib/store/useExplorerStore';
+import { useBackendHealth } from '@/lib/api/queries';
 import { LiveReadout } from './LiveReadout';
 
 interface ExplorerTopBarProps {
@@ -25,6 +26,7 @@ const QUICK_PINS = [
 ];
 
 export function ExplorerTopBar({ onSearchLocation, onReset }: ExplorerTopBarProps) {
+  const { data: health } = useBackendHealth();
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
@@ -83,6 +85,28 @@ export function ExplorerTopBar({ onSearchLocation, onReset }: ExplorerTopBarProp
           <span className="hidden lg:block text-2xs text-foam-dim tracking-widest uppercase font-mono ml-1">
             INCOIS
           </span>
+
+          {/* Live Backend Connection Indicator */}
+          {health?.status === 'healthy' ? (
+            <div 
+              className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-mono text-emerald-300 ml-1"
+              title="OceanEmbed FastAPI v2 backend connected"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>API Online</span>
+            </div>
+          ) : (
+            <div 
+              className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/35 text-[9px] font-mono text-amber-300 ml-1 shadow-[0_0_8px_rgba(245,158,11,0.2)]"
+              title="OceanEmbed backend is spinning up or offline"
+            >
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500" />
+              </span>
+              <span>Waking Up...</span>
+            </div>
+          )}
         </div>
       </div>
 
