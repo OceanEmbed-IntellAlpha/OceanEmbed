@@ -48,3 +48,6 @@ runs/_final_v1_unet/*.pt
 !runs/_final_v2/*
 runs/_final_v2/*.pt
 
+# Exclude legacy digital twin prototype
+frontend/digital_twin/
+
