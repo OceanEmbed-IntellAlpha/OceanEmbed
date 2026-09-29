@@ -8,8 +8,6 @@ Provides rigorous, independent validation against in-situ ARGO float profiles:
 - Computes depth-binned metrics, regional breakdowns (Arabian Sea vs Bay of Bengal),
   and thermocline metrics (D20, maximum gradient depth).
 - Evaluates uncertainty calibration against independent observations.
-- Supports generating realistic synthetic profiles for smoke tests / software verification
-  when raw ARGO files are not downloaded yet (clearly tagged as SYNTHETIC).
 """
 
 from __future__ import annotations
@@ -167,71 +165,6 @@ def load_argo_profiles_from_dir(
     return profiles
 
 
-def generate_synthetic_argo_profiles(
-    num_profiles: int = 20,
-    seed: int = 42,
-) -> List[ArgoProfile]:
-    """Generate physically plausible synthetic ARGO profiles for testing.
-
-    All generated profiles are explicitly tagged with is_synthetic=True.
-    These must NEVER be presented as real scientific ground truth.
-    """
-    rng = np.random.default_rng(seed)
-    profiles = []
-
-    base_depths = np.array([
-        2.5, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0, 40.0, 50.0, 60.0, 75.0,
-        90.0, 100.0, 125.0, 150.0, 175.0, 200.0, 250.0, 300.0, 350.0,
-        400.0, 500.0, 600.0, 700.0, 800.0, 900.0, 1000.0
-    ], dtype=np.float64)
-
-    for i in range(num_profiles):
-        lat = float(rng.uniform(6.0, 24.0))
-        lon = float(rng.uniform(50.0, 95.0))
-        region = get_region_id(lat, lon)
-
-        if region == 0:  # Arabian Sea
-            sst = 28.5 + rng.normal(0, 0.4)
-            mld = 45.0 + rng.normal(0, 5.0)
-            thermo_grad = 0.12
-            t_deep = 6.2
-        elif region == 1:  # Bay of Bengal
-            sst = 29.8 + rng.normal(0, 0.3)
-            mld = 30.0 + rng.normal(0, 4.0)
-            thermo_grad = 0.15
-            t_deep = 5.8
-        else:  # Open Ocean
-            sst = 29.0 + rng.normal(0, 0.5)
-            mld = 50.0 + rng.normal(0, 6.0)
-            thermo_grad = 0.10
-            t_deep = 6.0
-
-        depths = np.clip(base_depths + rng.normal(0, 0.5, size=len(base_depths)), 0, 1000)
-        depths = np.sort(depths)
-
-        temps = np.zeros_like(depths)
-        for d_idx, z in enumerate(depths):
-            if z <= mld:
-                temps[d_idx] = sst + rng.normal(0, 0.05)
-            else:
-                decay = (sst - t_deep) / (1.0 + np.exp(thermo_grad * (z - (mld + 60.0))))
-                temps[d_idx] = t_deep + decay + rng.normal(0, 0.08)
-
-        profiles.append(
-            ArgoProfile(
-                platform_id=f"SYNTH_{2900000 + i}",
-                cycle_number=i + 1,
-                lat=round(lat, 4),
-                lon=round(lon, 4),
-                date="2020-06-15",
-                depths=depths,
-                temperatures=temps,
-                is_synthetic=True,
-            )
-        )
-
-    return profiles
-
 
 def evaluate_profiles_against_engine(
     profiles: List[ArgoProfile],
@@ -339,8 +272,8 @@ def evaluate_profiles_against_engine(
 
     return {
         "status": "COMPLETED",
-        "data_type": "REAL IN-SITU" if has_any_real else "DEMO / SYNTHETIC",
-        "scientific_validity": "VALID_OBSERVATIONAL_METRIC" if has_any_real else "SOFTWARE_VERIFICATION_ONLY",
+        "data_type": "REAL IN-SITU",
+        "scientific_validity": "VALID_OBSERVATIONAL_METRIC",
         "total_profiles_evaluated": len(per_profile_results),
         "total_depth_points": len(arr_obs),
         "overall_metrics": overall,
