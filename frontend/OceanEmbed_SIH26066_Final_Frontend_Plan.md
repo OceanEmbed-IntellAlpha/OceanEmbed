@@ -748,7 +748,7 @@ Make the control panel collapsible.
 ```text
 ☑ Subsurface Temperature
 ☐ Ocean Embedding
-☐ Prediction Confidence
+☐ Thermal Anomaly
 ```
 
 ## Observations
@@ -930,7 +930,7 @@ Interactions:
 - highlight matching point on 3D/map view
 - show depth + temperature
 - toggle model/ARGO curves
-- toggle uncertainty if model confidence becomes available
+- toggle thermal anomaly field layer
 
 The map and profile should always remain synchronized.
 

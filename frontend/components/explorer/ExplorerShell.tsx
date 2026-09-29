@@ -26,6 +26,7 @@ const DepthSidebar = dynamic(() => import('./DepthSidebar').then(m => ({ default
 const DateDepthBar = dynamic(() => import('./DateDepthBar').then(m => ({ default: m.DateDepthBar })), { ssr: false });
 const SplitOceanViz = dynamic(() => import('@/components/globe/SplitOceanViz'), { ssr: false });
 import { DataStatusOverlay } from './DataStatusOverlay';
+import { SurfaceFieldLoadingHUD } from './SurfaceFieldLoadingHUD';
 import { ColormapLegend } from './ColormapLegend';
 
 export function ExplorerShell() {
@@ -152,6 +153,7 @@ export function ExplorerShell() {
 
       <UnderwaterDiveOverlay />
       <DataStatusOverlay />
+      <SurfaceFieldLoadingHUD />
 
       {/* Top Bar */}
       <div className="relative z-20">

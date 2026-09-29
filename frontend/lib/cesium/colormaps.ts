@@ -1,7 +1,7 @@
 // Scientific perceptually-uniform colormaps (never rainbow/jet)
 // Each colormap is an array of [r, g, b] stops (0-255) for interpolation
 
-export type ColormapName = 'viridis' | 'thermal' | 'cividis' | 'deep' | 'haline';
+export type ColormapName = 'viridis' | 'thermal' | 'cividis' | 'deep' | 'haline' | 'thermal_anomaly';
 
 export interface ColormapStop {
   r: number;
@@ -10,6 +10,15 @@ export interface ColormapStop {
 }
 
 export const COLORMAPS: Record<ColormapName, ColormapStop[]> = {
+  // Thermal Anomaly: dark blue (0°C) → cyan → yellow → orange → red (~3°C)
+  thermal_anomaly: [
+    { r: 8, g: 29, b: 88 },      // dark blue (0°C)
+    { r: 29, g: 145, b: 192 },   // cyan
+    { r: 254, g: 217, b: 118 },  // yellow
+    { r: 254, g: 130, b: 38 },   // orange
+    { r: 189, g: 0, b: 38 },     // red (large anomaly)
+  ],
+
   // Viridis: dark purple → blue → green → yellow
   viridis: [
     { r: 68, g: 1, b: 84 },

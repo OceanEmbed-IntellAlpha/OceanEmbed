@@ -7,6 +7,8 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceL
 import { Play, Navigation2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+import { VerticalSounderLoader } from './VerticalSounderLoader';
+
 export function ProfilePanel() {
   const { selectedLat, selectedLon, selectedDate, selectedDepth, setMode } = useExplorerStore();
   const hasSelection = selectedLat !== null && selectedLon !== null;
@@ -77,13 +79,9 @@ export function ProfilePanel() {
 
       <div className="p-5 flex-grow flex flex-col overflow-y-auto console-scroll min-h-0 space-y-5" data-lenis-prevent="true">
         {isProfileLoading ? (
-          <div className="flex-grow flex items-center justify-center min-h-[300px]">
-            <div className="relative w-8 h-8">
-              <div className="absolute inset-0 rounded-full border-2 border-white/10" />
-              <div className="absolute inset-0 rounded-full border-2 border-biolume border-t-transparent animate-spin drop-shadow-[0_0_8px_rgba(0,210,255,0.5)]" />
-            </div>
-          </div>
+          <VerticalSounderLoader lat={selectedLat} lon={selectedLon} date={selectedDate} />
         ) : profile ? (
+
           <>
             {/* Chart Area */}
             <div className="h-72 w-full relative flex-shrink-0 bg-black/40 rounded-xl p-3 border border-white/10 shadow-inner">

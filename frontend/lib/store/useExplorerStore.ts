@@ -25,7 +25,7 @@ export interface ExplorerState {
   // Active model output layer
   showSubsurfaceTemp: boolean;
   showEmbedding: boolean;
-  showConfidence: boolean;
+  showThermalAnomaly: boolean;
 
   // Observations
   showArgoPoints: boolean;
@@ -82,7 +82,7 @@ const DEFAULT_STATE = {
   
   showSubsurfaceTemp: true,
   showEmbedding: false,
-  showConfidence: false,
+  showThermalAnomaly: false,
   
   showArgoPoints: true,
   
@@ -131,7 +131,7 @@ export const useExplorerStore = create<ExplorerState>()((set) => ({
     // Make all globe heatmap variables mutually exclusive since they share the same base renderer
     const heatmapLayers = [
       'showSST', 'showSSS', 'showSSH', 'showCurrents', 'showWinds', 
-      'showSubsurfaceTemp', 'showEmbedding', 'showConfidence'
+      'showSubsurfaceTemp', 'showEmbedding', 'showThermalAnomaly'
     ];
     if (heatmapLayers.includes(layer as string) && isTurningOn) {
       heatmapLayers.forEach(l => {

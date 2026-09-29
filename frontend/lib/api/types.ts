@@ -1,8 +1,8 @@
 // Surface input variables
-export type SurfaceVariable = 'sst' | 'sss' | 'ssh' | 'currents' | 'winds';
+export type SurfaceVariable = 'sst' | 'sss' | 'ssh' | 'currents' | 'winds' | 'thermal_anomaly' | 'subsurface_temp' | 'embedding';
 
 // Model output
-export type ModelOutput = 'subsurface_temperature' | 'ocean_embedding' | 'confidence';
+export type ModelOutput = 'subsurface_temperature' | 'ocean_embedding' | 'thermal_anomaly';
 
 // Explorer view mode
 export type ExplorerMode = 'surface' | 'profile' | 'validation' | 'dive';
@@ -13,14 +13,18 @@ export type DepthLevel = typeof DEPTH_LEVELS[number];
 
 // Surface field grid (e.g., SST heatmap over Indian Ocean)
 export interface SurfaceField {
-  variable: SurfaceVariable;
+  variable: SurfaceVariable | ModelOutput | string;
   date: string;           // ISO date
   bbox: [number,number,number,number]; // [lonMin,latMin,lonMax,latMax]
   lat: number[];
   lon: number[];
   grid: number[][];       // grid[latIdx][lonIdx]
+  values?: number[][];    // 2D anomaly values / grid
   unit: string;
   colorRange: [number, number];
+  vmin?: number;
+  vmax?: number;
+  depth_m?: number;
   u?: number[][];         // for currents/winds
   v?: number[][];
 }
@@ -32,7 +36,8 @@ export interface SubsurfaceProfile {
   date: string;
   depths: typeof DEPTH_LEVELS[number][];   // [0,5,10,...,1000]
   temperature: number[];                   // reconstructed °C at each depth
-  confidence?: number[];                   // optional uncertainty bounds
+  anomaly?: number[];
+  climatology?: number[];
   source: 'model';
 }
 

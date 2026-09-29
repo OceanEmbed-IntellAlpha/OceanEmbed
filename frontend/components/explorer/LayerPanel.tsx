@@ -8,11 +8,11 @@ import { motion } from 'framer-motion';
 export function LayerPanel() {
   const {
     showSST, showSSS, showSSH, showCurrents, showWinds,
-    showSubsurfaceTemp, showEmbedding, showConfidence, showArgoPoints,
+    showSubsurfaceTemp, showEmbedding, showThermalAnomaly, showArgoPoints,
     toggleLayer
   } = useExplorerStore();
 
-  const LayerToggle = ({ label, active, field, icon }: { label: string, active: boolean, field: any, icon?: React.ReactNode }) => (
+  const LayerToggle = ({ label, sublabel, active, field, icon }: { label: string, sublabel?: string, active: boolean, field: any, icon?: React.ReactNode }) => (
     <div 
       className={`group flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all duration-300 active:scale-[0.98] ${
         active 
@@ -27,7 +27,10 @@ export function LayerPanel() {
             {icon}
           </span>
         )}
-        <span className="text-xs font-medium tracking-wide leading-snug">{label}</span>
+        <div className="flex flex-col">
+          <span className="text-xs font-medium tracking-wide leading-snug">{label}</span>
+          {sublabel && <span className="text-[10px] text-foam-dim/60 leading-tight">{sublabel}</span>}
+        </div>
       </div>
       
       {/* Animated Toggle Switch */}
@@ -77,7 +80,7 @@ export function LayerPanel() {
           <div className="space-y-2">
             <LayerToggle label="Subsurface Temperature" active={showSubsurfaceTemp} field="showSubsurfaceTemp" icon={<Eye size={16}/>} />
             <LayerToggle label="Deep Embedding Space" active={showEmbedding} field="showEmbedding" icon={<Layers size={16}/>} />
-            <LayerToggle label="Model Confidence" active={showConfidence} field="showConfidence" icon={<Activity size={16}/>} />
+            <LayerToggle label="Thermal Anomaly" sublabel="Deviation from seasonal mean" active={showThermalAnomaly} field="showThermalAnomaly" icon={<Waves size={16}/>} />
           </div>
         </div>
 

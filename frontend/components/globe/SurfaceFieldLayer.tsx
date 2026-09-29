@@ -17,7 +17,7 @@ interface ModelFieldLayerProps {
  * Uses scientific colormaps (thermal/viridis/cividis).
  */
 export default function SurfaceFieldLayer({ viewer }: ModelFieldLayerProps) {
-  const { showSST, showSSS, showSSH, showCurrents, showWinds, showSubsurfaceTemp, showEmbedding, showConfidence, selectedDate, selectedDepth } = useExplorerStore();
+  const { showSST, showSSS, showSSH, showCurrents, showWinds, showSubsurfaceTemp, showEmbedding, showThermalAnomaly, selectedDate, selectedDepth } = useExplorerStore();
   const entityIdsRef = useRef<unknown[]>([]);
 
   // Determine active variable to fetch.
@@ -29,7 +29,7 @@ export default function SurfaceFieldLayer({ viewer }: ModelFieldLayerProps) {
   else if (showWinds) activeVariable = 'winds';
   else if (showSubsurfaceTemp) activeVariable = 'subsurface_temp';
   else if (showEmbedding) activeVariable = 'embedding';
-  else if (showConfidence) activeVariable = 'confidence';
+  else if (showThermalAnomaly) activeVariable = 'thermal_anomaly';
 
   const queryParams = activeVariable ? { variable: activeVariable as any, date: selectedDate } : null;
   const { data: field } = useSurfaceField(queryParams);
@@ -58,7 +58,7 @@ export default function SurfaceFieldLayer({ viewer }: ModelFieldLayerProps) {
     // Draw base scalar grid if visible
     if (activeVariable) {
       const { lat, lon, grid, colorRange } = field;
-      const [min, max] = colorRange;
+      const [min, max] = activeVariable === 'thermal_anomaly' ? (colorRange || [0, 3]) : colorRange;
       
       // Select colormap based on variable
       let cmName: ColormapName = 'thermal';
@@ -68,7 +68,7 @@ export default function SurfaceFieldLayer({ viewer }: ModelFieldLayerProps) {
       else if (activeVariable === 'winds') cmName = 'cividis';
       else if (activeVariable === 'subsurface_temp') cmName = 'thermal';
       else if (activeVariable === 'embedding') cmName = 'viridis';
-      else if (activeVariable === 'confidence') cmName = 'thermal'; // Or maybe an inverted one, thermal works
+      else if (activeVariable === 'thermal_anomaly') cmName = 'thermal_anomaly';
       
       const opacity = 0.6;
 
