@@ -10,8 +10,11 @@ import type {
   ExperimentsResponse
 } from './types';
 
-// Force connection to the FastAPI backend directly to bypass the Next.js dev server which lacks API routes
-export const BASE_URL = 'http://localhost:8000';
+// Connect to the FastAPI backend dynamically via environment variable or local default
+export const BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:8000';
 
 // ─── Surface Field Query ─────────────────────────────────────────────────────────────
 export function useSurfaceField(params: { variable: SurfaceVariable; date: string } | null) {
