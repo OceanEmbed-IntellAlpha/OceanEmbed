@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="wave" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#64ffda" />
+      <stop offset="50%" stop-color="#00b4d8" />
+      <stop offset="100%" stop-color="#0077b6" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Embedded Wave -->
+  <path d="M 46 160 C 90 160, 90 96, 128 96 C 166 96, 166 160, 210 160" 
+        fill="none" 
+        stroke="url(#wave)" 
+        stroke-width="20" 
+        stroke-linecap="round"
+        filter="url(#glow)"/>
+
+  <!-- Data Nodes -->
+  <circle cx="46" cy="160" r="16" fill="#64ffda" filter="url(#glow)"/>
+  <circle cx="128" cy="96" r="18" fill="#00b4d8" filter="url(#glow)"/>
+  <circle cx="210" cy="160" r="16" fill="#0077b6" filter="url(#glow)"/>
+
+</svg>

@@ -27,7 +27,8 @@ export function GlobalNav() {
         }`}
       >
         {/* Brand */}
-        <Link href="/" className="flex items-center group">
+        <Link href="/" className="flex items-center group gap-2.5">
+          <img src="/logo.svg" alt="OceanEmbed Logo" className="w-6 h-6 transition-transform group-hover:scale-110" />
           <span className="font-display font-bold tracking-widest text-white group-hover:text-biolume transition-colors leading-none text-base sm:text-lg">
             OCEANEMBED
           </span>

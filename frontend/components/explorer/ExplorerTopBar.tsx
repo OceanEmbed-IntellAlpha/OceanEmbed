@@ -78,7 +78,7 @@ export function ExplorerTopBar({ onSearchLocation, onReset }: ExplorerTopBarProp
         <div className="w-px h-5 bg-thermocline/25" />
 
         <div className="flex items-center gap-2">
-          <Waves size={18} className="text-biolume" aria-hidden="true" />
+          <img src="/logo.svg" alt="OceanEmbed Logo" className="w-5 h-5" />
           <span className="font-display font-semibold text-sm text-foam tracking-wide">
             OCEANEMBED
           </span>
