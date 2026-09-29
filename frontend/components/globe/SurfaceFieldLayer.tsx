@@ -120,57 +120,6 @@ export default function SurfaceFieldLayer({ viewer }: ModelFieldLayerProps) {
       });
     }
 
-    // Draw vector overlays (current flow arrows) if enabled
-    if (showCurrents && field.u && field.v) {
-      const { lat, lon, u, v: vVel } = field;
-      import('cesium').then((Cesium) => {
-        if (cancelled) return;
-        
-        // Use a stride to prevent overcrowding of arrows
-        const arrowStride = 2;
-
-        for (let i = 0; i < lat.length; i += arrowStride) {
-          for (let j = 0; j < lon.length; j += arrowStride) {
-            if (cancelled) break;
-            const uVal = u[i][j];
-            const vVal = vVel[i][j];
-            if (uVal === null || vVal === null || uVal === undefined || vVal === undefined) continue;
-
-            const speed = Math.sqrt(uVal * uVal + vVal * vVal);
-            if (speed < 0.05) continue; // Skip near-zero currents
-
-            // Scale factor to map m/s to degrees. 
-            // Needs to be large enough for the arrow head to render when zoomed out.
-            const scale = 0.5;
-            const endLon = lon[j] + uVal * scale;
-            const endLat = lat[i] + vVal * scale;
-
-            // Calculate height logic based on depth
-            const arrowHeight = (activeVariable === 'sst' || showSubsurfaceTemp) && selectedDepth > 0 ? -selectedDepth + 10 : 10;
-            
-            // Adjust opacity and width based on speed for better visual hierarchy
-            const normalizedSpeed = Math.min(speed / 1.5, 1.0); // Cap at 1.5 m/s for visual scaling
-            const opacity = 0.3 + (0.5 * normalizedSpeed);
-
-            const arrow = v.entities.add({
-              polyline: {
-                positions: Cesium.Cartesian3.fromDegreesArrayHeights([
-                  lon[j], lat[i], arrowHeight,
-                  endLon, endLat, arrowHeight
-                ]),
-                width: 2 + (2 * normalizedSpeed),
-                material: new Cesium.PolylineArrowMaterialProperty(
-                  new Cesium.Color(1.0, 1.0, 1.0, opacity)
-                ),
-              }
-            });
-            entityIdsRef.current.push(arrow);
-          }
-        }
-        if (!cancelled) v.scene.requestRender?.();
-      });
-    }
-
     return () => {
       // Signal async callbacks to abort
       cancelled = true;

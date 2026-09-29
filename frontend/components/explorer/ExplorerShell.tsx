@@ -14,6 +14,7 @@ const CesiumStage = dynamic(
 ) as ComponentType<{ onViewerReady?: (v: unknown) => void; onGlobeClick?: (lat: number, lon: number) => void }>;
 
 const SurfaceFieldLayer = dynamic(() => import('@/components/globe/SurfaceFieldLayer'), { ssr: false }) as ComponentType<{ viewer: unknown }>;
+const FlowAnimationLayer = dynamic(() => import('@/components/globe/FlowAnimationLayer'), { ssr: false }) as ComponentType<{ viewer: unknown }>;
 const ArgoMarkerLayer = dynamic(() => import('@/components/globe/ArgoMarkerLayer'), { ssr: false }) as ComponentType<{ viewer: unknown }>;
 const GlobeWaterColumn = dynamic(() => import('@/components/globe/GlobeWaterColumn'), { ssr: false }) as ComponentType<{ viewer: unknown }>;
 const ColumnDataHUD = dynamic(() => import('@/components/globe/ColumnDataHUD'), { ssr: false }) as ComponentType<{ viewer: unknown }>;
@@ -128,6 +129,7 @@ export function ExplorerShell() {
           {!!viewer && (
             <>
               <SurfaceFieldLayer viewer={viewer} />
+              <FlowAnimationLayer viewer={viewer} />
               <ArgoMarkerLayer viewer={viewer} />
               <GlobeWaterColumn viewer={viewer} />
             </>
