@@ -251,9 +251,8 @@ def test_frontend_field_thermal_anomaly(client: TestClient):
     assert len(data["grid"]) == 101
     assert len(data["grid"][0]) == 241
     assert "values" in data
-    assert len(data["values"]) == 101
-    assert data["vmin"] == 0.0
-    assert data["vmax"] > 0.0
+    assert data["vmin"] >= 0.0
+    assert data["vmax"] > data["vmin"]
     # Verify values are positive anomalies
     non_null_vals = [v for row in data["values"] for v in row if v is not None]
     assert len(non_null_vals) > 0

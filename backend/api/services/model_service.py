@@ -515,12 +515,17 @@ class ModelService:
         raw[~self.clim_service.ocean_mask] = np.nan
 
         valid_vals = raw[np.isfinite(raw)]
-        vmin = 0.0
         if len(valid_vals) > 0:
-            vmax = round(float(np.nanmax(valid_vals)), 2)
-            vmax = max(vmax, 0.5)
+            # Use robust 2nd to 98th percentile scaling for vibrant basin-wide contrast
+            p_min = float(np.nanpercentile(valid_vals, 2))
+            p_max = float(np.nanpercentile(valid_vals, 98))
+            vmin = round(p_min, 3)
+            vmax = round(p_max, 3)
+            if vmax <= vmin + 0.005:
+                vmax = vmin + 0.05
         else:
-            vmax = 3.0
+            vmin = 0.0
+            vmax = 1.0
 
         grid = [
             [None if np.isnan(val) else round(float(val), 3) for val in row]
@@ -604,8 +609,8 @@ class ModelService:
             v_grid = [[None if np.isnan(x) else round(float(x), 2) for x in row] for row in v_arr]
         elif var_lower in {"subsurface_temp", "subsurface"}:
             temp_3d, _, _, _ = self.predict_full_3d(date_str)
-            # Just return 100m depth slice (approx index 3 or 4) for demo if not specified
-            raw = temp_3d[4] # ~100m depth
+            d_idx = int(np.argmin(np.abs(self.depths - depth_m)))
+            raw = temp_3d[d_idx]
             unit = "°C"
             color_range = (10.0, 28.0)
             u_grid = v_grid = None

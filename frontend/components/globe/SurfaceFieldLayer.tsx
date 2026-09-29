@@ -31,7 +31,8 @@ export default function SurfaceFieldLayer({ viewer }: ModelFieldLayerProps) {
   else if (showEmbedding) activeVariable = 'embedding';
   else if (showThermalAnomaly) activeVariable = 'thermal_anomaly';
 
-  const queryParams = activeVariable ? { variable: activeVariable as any, date: selectedDate } : null;
+  const depthParam = (activeVariable === 'subsurface_temp' || activeVariable === 'thermal_anomaly') ? selectedDepth : 0;
+  const queryParams = activeVariable ? { variable: activeVariable as any, date: selectedDate, depth: depthParam } : null;
   const { data: field } = useSurfaceField(queryParams);
 
   useEffect(() => {
@@ -58,7 +59,9 @@ export default function SurfaceFieldLayer({ viewer }: ModelFieldLayerProps) {
     // Draw base scalar grid if visible
     if (activeVariable) {
       const { lat, lon, grid, colorRange } = field;
-      const [min, max] = activeVariable === 'thermal_anomaly' ? (colorRange || [0, 3]) : colorRange;
+      const [min, max] = colorRange && colorRange.length === 2 && colorRange[1] > colorRange[0]
+        ? colorRange
+        : [0.0, 1.0];
       
       // Select colormap based on variable
       let cmName: ColormapName = 'thermal';

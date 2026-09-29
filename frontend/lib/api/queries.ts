@@ -17,14 +17,17 @@ export const BASE_URL =
   'http://localhost:8000';
 
 // ─── Surface Field Query ─────────────────────────────────────────────────────────────
-export function useSurfaceField(params: { variable: SurfaceVariable; date: string } | null) {
+export function useSurfaceField(params: { variable: SurfaceVariable; date: string; depth?: number } | null) {
   return useQuery<SurfaceField, Error>({
-    queryKey: ['surface_field', params?.variable, params?.date],
+    queryKey: ['surface_field', params?.variable, params?.date, params?.depth ?? 0],
     queryFn: async () => {
       if (!params) throw new Error("No params");
       const url = new URL(`${BASE_URL}/api/field`, window.location.href);
       url.searchParams.set('variable', params.variable);
       url.searchParams.set('date', params.date);
+      if (params.depth !== undefined && params.depth !== null) {
+        url.searchParams.set('depth', params.depth.toString());
+      }
       // Hardcode bbox to Indian Ocean for performance
       url.searchParams.set('bbox', '45,-5,105,35');
 
