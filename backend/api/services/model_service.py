@@ -18,6 +18,8 @@ Supports:
 from __future__ import annotations
 
 import base64
+from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 import logging
 import os
 import sys
@@ -60,11 +62,6 @@ from backend.api.services.climatology_service import ClimatologyService
 
 logger = logging.getLogger(__name__)
 
-# Test set 1-sigma RMSE per depth for empirical uncertainty estimation (°C)
-DEPTH_CONFIDENCE_RMSE: List[float] = [
-    0.4149, 0.4113, 0.4069, 0.4260, 0.4592, 0.5271, 0.7512,
-    0.8404, 0.7866, 0.6939, 0.5624, 0.3160, 0.2270, 0.2336, 0.2392
-]
 
 # Predefined oceanographic regions in North Indian Ocean
 PREDEFINED_REGIONS = {
@@ -102,7 +99,7 @@ class ModelService:
         t0 = time.perf_counter()
         self.root = Path(__file__).resolve().parents[3]
         self.checkpoint_path = Path(checkpoint_path)
-        self.surface_zarr_path = Path(surface_zarr_path)
+        self.surface_zarr_path = surface_zarr_path
         self.stats_path = Path(stats_path)
         self.climatology_path = Path(climatology_path)
 
@@ -119,9 +116,6 @@ class ModelService:
             torch.save({"model_state_dict": dummy_model.state_dict()}, self.checkpoint_path)
             logger.info(f"Saved default model weights to {self.checkpoint_path}")
 
-        if not self.surface_zarr_path.exists():
-            raise FileNotFoundError(f"Surface features zarr not found: {self.surface_zarr_path}")
-
         # Device selection
         if device is None:
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -136,9 +130,21 @@ class ModelService:
         logger.info(f"Loading normalization stats from {self.stats_path}...")
         self.stats = load_normalization_stats(self.stats_path)
 
-        # 3. Open Surface Features Zarr
-        logger.info(f"Opening surface features store from {self.surface_zarr_path}...")
-        self._sf_ds = xr.open_zarr(str(self.surface_zarr_path))
+        # 3. Open Surface Features Zarr (Supports local disk or Cloudflare R2 streaming)
+        zarr_str = str(self.surface_zarr_path)
+        if zarr_str.startswith("s3://") or not Path(zarr_str).exists():
+            from backend.storage.r2 import get_s3fs, settings
+            import s3fs
+            fs = get_s3fs()
+            clean_s3 = zarr_str.replace("s3://", "") if zarr_str.startswith("s3://") else f"{settings.r2_bucket_name}/zarr/surface_features.zarr"
+            logger.info(f"Streaming surface features from Cloudflare R2: s3://{clean_s3}")
+            mapper = s3fs.S3Map(root=clean_s3, s3=fs, check=False)
+            self._sf_ds = xr.open_zarr(mapper, consolidated=True)
+        else:
+            local_p = Path(self.surface_zarr_path)
+            logger.info(f"Opening surface features store from {local_p}...")
+            self._sf_ds = xr.open_zarr(str(local_p))
+
         self.lats = self._sf_ds.latitude.values.astype(np.float32)   # 101 points (5.0 to 30.0)
         self.lons = self._sf_ds.longitude.values.astype(np.float32) # 241 points (45.0 to 105.0)
         self.depths = np.asarray(SIH_DEPTHS, dtype=np.float32)
@@ -167,6 +173,10 @@ class ModelService:
         self.model.load_state_dict(ckpt["model_state_dict"])
         self.model = self.model.to(self.device).eval()
 
+        # In-memory LRU caches for ultra-fast repeated queries
+        self._surface_cache: OrderedDict[int, np.ndarray] = OrderedDict()
+        self._3d_pred_cache: OrderedDict[str, Tuple[np.ndarray, np.ndarray, np.ndarray, str]] = OrderedDict()
+
         load_sec = time.perf_counter() - t0
         logger.info(f"ModelService initialization complete in {load_sec:.2f}s!")
 
@@ -174,11 +184,46 @@ class ModelService:
     def get_instance(cls) -> ModelService:
         if cls._instance is None:
             root = Path(__file__).resolve().parents[3]
+            from backend.config import settings
+            bucket = settings.r2_bucket_name or "oceanembed"
+
+            # 1. Surface Features Zarr (stream from R2 if not local)
+            surface_zarr = root / "data" / "processed" / "surface_features.zarr"
+            if surface_zarr.exists():
+                surface_path = surface_zarr
+            else:
+                surface_path = f"s3://{bucket}/zarr/surface_features.zarr"
+
+            # 2. Climatology Zarr (stream from R2 if not local)
+            clim_zarr = root / "data" / "processed" / "climatology_2010_2020.zarr"
+            if clim_zarr.exists():
+                clim_path = clim_zarr
+            else:
+                clim_path = f"s3://{bucket}/zarr/climatology_2010_2020.zarr"
+
+            # 3. Normalization stats (fetch from R2 if not local)
+            stats_file = root / "data" / "processed" / "normalization_stats_v3.json"
+            if not stats_file.exists():
+                from backend.storage.r2 import get_r2_client
+                logger.info("Fetching normalization_stats_v3.json from Cloudflare R2...")
+                r2 = get_r2_client()
+                stats_file.parent.mkdir(parents=True, exist_ok=True)
+                r2.download_file(bucket, "metadata/normalization_stats_v3.json", str(stats_file))
+
+            # 4. Model checkpoint (fetch from R2 if not local)
+            model_file = root / "runs" / "_final_v2" / "model_v2.pt"
+            if not model_file.exists():
+                from backend.storage.r2 import get_r2_client
+                logger.info("Fetching model_v2.pt from Cloudflare R2...")
+                r2 = get_r2_client()
+                model_file.parent.mkdir(parents=True, exist_ok=True)
+                r2.download_file(bucket, "models/model_v2.pt", str(model_file))
+
             cls._instance = cls(
-                checkpoint_path=root / "runs" / "_final_v2" / "model_v2.pt",
-                surface_zarr_path=root / "data" / "processed" / "surface_features.zarr",
-                stats_path=root / "data" / "processed" / "normalization_stats_v3.json",
-                climatology_path=root / "data" / "processed" / "climatology_2010_2020.zarr",
+                checkpoint_path=model_file,
+                surface_zarr_path=surface_path,
+                stats_path=stats_file,
+                climatology_path=clim_path,
             )
         return cls._instance
 
@@ -216,22 +261,39 @@ class ModelService:
 
         return closest_idx, self.dates_available[closest_idx]
 
+    def get_surface_channels(self, time_idx: int) -> np.ndarray:
+        """Fetch all 7 surface channels in parallel from Cloudflare R2 with LRU cache."""
+        if time_idx in self._surface_cache:
+            self._surface_cache.move_to_end(time_idx)
+            return self._surface_cache[time_idx]
+
+        def _fetch_var(v: str) -> np.ndarray:
+            return self._sf_ds[v].isel(time=time_idx).values.astype(np.float32)
+
+        with ThreadPoolExecutor(max_workers=7) as executor:
+            raw_surface = np.stack(list(executor.map(_fetch_var, SURFACE_VARS)), axis=0)  # (7, 101, 241)
+
+        self._surface_cache[time_idx] = raw_surface
+        if len(self._surface_cache) > 50:
+            self._surface_cache.popitem(last=False)
+
+        return raw_surface
+
     # ── Core 3D Reconstruction ──────────────────────────────────────────────
 
     def predict_full_3d(self, date_str: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray, str]:
         """Generate full (15, 101, 241) 3D temperature fields in °C.
-
-        Returns:
-            (total_temperature, climatology, anomaly, date_used)
+        Uses in-memory LRU cache and parallel R2 chunk streaming for sub-second latency.
         """
         time_idx, date_used = self.find_nearest_date(date_str)
 
-        # Extract 7 surface channels at time_idx
-        # Variables: analysed_sst, sos, sla, u, v, uwnd, vwnd
-        raw_surface = np.stack(
-            [self._sf_ds[var].isel(time=time_idx).values.astype(np.float32) for var in SURFACE_VARS],
-            axis=0,
-        )  # (7, 101, 241)
+        # 1. Return immediately if already computed for this date (<0.001 ms)
+        if date_used in self._3d_pred_cache:
+            self._3d_pred_cache.move_to_end(date_used)
+            return self._3d_pred_cache[date_used]
+
+        # 2. Extract 7 surface channels (parallel fetch from R2 or from RAM cache)
+        raw_surface = self.get_surface_channels(time_idx)
 
         # Normalization
         norm_surface = apply_surface_norm(
@@ -248,8 +310,8 @@ class ModelService:
 
         anomaly_3d = pred_anom_tensor.squeeze(0).float().cpu().numpy()  # (15, 101, 241)
 
-        # Climatology lookup
-        climatology_3d = self.clim_service.get_climatology_3d(date_used)  # (15, 101, 241)
+        # Climatology lookup (cached in ClimatologyService)
+        climatology_3d = self.clim_service.get_climatology_3d(date_used).copy()  # (15, 101, 241)
 
         # Total temperature = climatology + anomaly
         total_temperature_3d = climatology_3d + anomaly_3d
@@ -261,7 +323,12 @@ class ModelService:
             climatology_3d[d, ~ocean_mask_2d] = np.nan
             anomaly_3d[d, ~ocean_mask_2d] = np.nan
 
-        return total_temperature_3d, climatology_3d, anomaly_3d, date_used
+        res = (total_temperature_3d, climatology_3d, anomaly_3d, date_used)
+        self._3d_pred_cache[date_used] = res
+        if len(self._3d_pred_cache) > 30:
+            self._3d_pred_cache.popitem(last=False)
+
+        return res
 
     # ── Endpoint Service Methods ────────────────────────────────────────────
 
@@ -292,13 +359,11 @@ class ModelService:
                 t_val = float(native_temps[idx])
                 c_val = float(native_clims[idx])
                 a_val = float(native_anoms[idx])
-                conf = float(DEPTH_CONFIDENCE_RMSE[idx])
             else:
                 # 1D linear interpolation
                 t_val = float(np.interp(z_float, self.depths, native_temps))
                 c_val = float(np.interp(z_float, self.depths, native_clims))
                 a_val = float(np.interp(z_float, self.depths, native_anoms))
-                conf = float(np.interp(z_float, self.depths, DEPTH_CONFIDENCE_RMSE))
 
             # Land check
             if np.isnan(t_val):
@@ -309,7 +374,6 @@ class ModelService:
                 "temperature_c": round(t_val, 3),
                 "climatology_c": round(c_val, 3),
                 "anomaly_c": round(a_val, 3),
-                "confidence_c": round(conf, 3),
             })
 
         return {
@@ -330,14 +394,16 @@ class ModelService:
         """Return profile matching frontend SubsurfaceProfile contract."""
         res = self.predict_profile(lat, lon, date_str, custom_depths=None)
         temps = [p["temperature_c"] for p in res["profile"]]
-        confs = [p["confidence_c"] for p in res["profile"]]
+        anoms = [p["anomaly_c"] for p in res["profile"]]
+        clims = [p["climatology_c"] for p in res["profile"]]
         return {
             "lat": lat,
             "lon": lon,
             "date": date_str,
             "depths": [round(float(d), 2) for d in SIH_DEPTHS],
             "temperature": temps,
-            "confidence": confs,
+            "anomaly": anoms,
+            "climatology": clims,
             "source": "model",
         }
 
@@ -429,36 +495,102 @@ class ModelService:
                 "format": "json",
             }
 
+    def get_anomaly_field(
+        self,
+        date: str,
+        depth_m: float = 0.0,
+    ) -> Dict[str, Any]:
+        """Return 2D thermal anomaly magnitude field (|T_predicted - T_climatology|) in °C.
+
+        Dynamically scales colorRange max based on the actual maximum anomaly
+        present in the model's output for the selected day.
+        """
+        _, _, anom_3d, date_used = self.predict_full_3d(date)
+
+        # Interpolate along depth axis if depth_m is between native levels
+        d_idx = int(np.argmin(np.abs(self.depths - depth_m)))
+        if abs(self.depths[d_idx] - depth_m) < 1.0:
+            anom_2d = anom_3d[d_idx]
+        else:
+            anom_2d = np.zeros((101, 241), dtype=np.float32)
+            for i in range(101):
+                for j in range(241):
+                    anom_2d[i, j] = np.interp(depth_m, self.depths, anom_3d[:, i, j])
+
+        # Anomaly magnitude in °C (|T_anomaly|)
+        raw = np.abs(anom_2d)
+        raw[~self.clim_service.ocean_mask] = np.nan
+
+        valid_vals = raw[np.isfinite(raw)]
+        vmin = 0.0
+        if len(valid_vals) > 0:
+            vmax = round(float(np.nanmax(valid_vals)), 2)
+            vmax = max(vmax, 0.5)
+        else:
+            vmax = 3.0
+
+        grid = [
+            [None if np.isnan(val) else round(float(val), 3) for val in row]
+            for row in raw
+        ]
+
+        bbox_tuple = (45.0, 5.0, 105.0, 30.0)
+        return {
+            "variable": "thermal_anomaly",
+            "date": date_used,
+            "depth_m": depth_m,
+            "bbox": bbox_tuple,
+            "lat": [round(float(x), 2) for x in self.lats],
+            "lon": [round(float(x), 2) for x in self.lons],
+            "values": grid,
+            "grid": grid,
+            "unit": "°C",
+            "vmin": vmin,
+            "vmax": vmax,
+            "colorRange": (vmin, vmax),
+            "u": None,
+            "v": None,
+        }
+
     def get_frontend_surface_field(
         self,
         variable: str,
         date_str: str,
+        depth_m: float = 0.0,
         bbox_str: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Extract raw or reconstructed surface field matching frontend SurfaceField."""
         time_idx, date_used = self.find_nearest_date(date_str)
         var_lower = variable.lower().strip()
 
-        # Variable mapping
-        # Supported: 'sst', 'sss', 'ssh' (or 'sla'), 'currents', 'winds'
-        if var_lower in {"sst", "analysed_sst"}:
-            raw = self._sf_ds["analysed_sst"].isel(time=time_idx).values.astype(np.float32)
+        # Variable mapping using parallel cached surface channels
+        # Supported: 'sst', 'sss', 'ssh', 'currents', 'winds', 'subsurface_temp', 'thermal_anomaly', 'embedding'
+        if var_lower in {"thermal_anomaly", "anomaly"}:
+            return self.get_anomaly_field(date=date_str, depth_m=depth_m)
+        elif var_lower == "confidence":
+            raise ValueError("The 'confidence' variable has been removed. Use 'thermal_anomaly' instead.")
+        elif var_lower in {"sst", "analysed_sst"}:
+            surf = self.get_surface_channels(time_idx)
+            raw = surf[0]
             unit = "°C"
             color_range = (24.0, 32.0)
             u_grid = v_grid = None
         elif var_lower in {"sss", "sos"}:
-            raw = self._sf_ds["sos"].isel(time=time_idx).values.astype(np.float32)
+            surf = self.get_surface_channels(time_idx)
+            raw = surf[1]
             unit = "PSU"
             color_range = (32.0, 37.0)
             u_grid = v_grid = None
         elif var_lower in {"ssh", "sla"}:
-            raw = self._sf_ds["sla"].isel(time=time_idx).values.astype(np.float32)
+            surf = self.get_surface_channels(time_idx)
+            raw = surf[2]
             unit = "m"
             color_range = (-0.3, 0.3)
             u_grid = v_grid = None
         elif var_lower == "currents":
-            u_arr = self._sf_ds["u"].isel(time=time_idx).values.astype(np.float32)
-            v_arr = self._sf_ds["v"].isel(time=time_idx).values.astype(np.float32)
+            surf = self.get_surface_channels(time_idx)
+            u_arr = surf[3]
+            v_arr = surf[4]
             raw = np.sqrt(u_arr ** 2 + v_arr ** 2)
             # Mask land just in case
             raw[~self.clim_service.ocean_mask] = np.nan
@@ -467,8 +599,9 @@ class ModelService:
             u_grid = [[None if np.isnan(x) else round(float(x), 3) for x in row] for row in u_arr]
             v_grid = [[None if np.isnan(x) else round(float(x), 3) for x in row] for row in v_arr]
         elif var_lower == "winds":
-            u_arr = self._sf_ds["uwnd"].isel(time=time_idx).values.astype(np.float32)
-            v_arr = self._sf_ds["vwnd"].isel(time=time_idx).values.astype(np.float32)
+            surf = self.get_surface_channels(time_idx)
+            u_arr = surf[5]
+            v_arr = surf[6]
             raw = np.sqrt(u_arr ** 2 + v_arr ** 2)
             # Strictly mask land out of atmospheric winds
             raw[~self.clim_service.ocean_mask] = np.nan
@@ -482,15 +615,6 @@ class ModelService:
             raw = temp_3d[4] # ~100m depth
             unit = "°C"
             color_range = (10.0, 28.0)
-            u_grid = v_grid = None
-        elif var_lower == "confidence":
-            _, _, anom_3d, _ = self.predict_full_3d(date_str)
-            # Amplify the small anomalies to generate a meaningful percentage (0-100%)
-            raw = 100.0 - (np.abs(anom_3d[0]) * 1000.0) 
-            raw = np.clip(raw, 0.0, 100.0)
-            raw[~self.clim_service.ocean_mask] = np.nan
-            unit = "%"
-            color_range = (float(np.nanmin(raw)), float(np.nanmax(raw)))
             u_grid = v_grid = None
         elif var_lower == "embedding":
             # Extract first layer CNN features
@@ -508,7 +632,7 @@ class ModelService:
             color_range = (float(np.nanmin(raw)), float(np.nanmax(raw)))
             u_grid = v_grid = None
         else:
-            raise ValueError(f"Unknown surface variable: {variable}. Supported: sst, sss, ssh, currents, winds, subsurface_temp, confidence, embedding")
+            raise ValueError(f"Unknown surface variable: {variable}. Supported: sst, sss, ssh, currents, winds, subsurface_temp, thermal_anomaly, embedding")
 
         grid = [
             [None if np.isnan(val) else round(float(val), 3) for val in row]

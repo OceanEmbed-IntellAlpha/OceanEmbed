@@ -27,7 +27,6 @@ class DepthProfilePoint(BaseModel):
     temperature_c: float = Field(..., description="Reconstructed total temperature in °C")
     climatology_c: float = Field(..., description="Baseline climatology temperature in °C")
     anomaly_c: float = Field(..., description="Model-predicted anomaly in °C")
-    confidence_c: Optional[float] = Field(None, description="Expected 1-sigma error bound in °C")
 
 
 class ProfileRequest(BaseModel):
@@ -50,5 +49,6 @@ class FrontendSubsurfaceProfile(BaseModel):
     date: str
     depths: List[float]
     temperature: List[float]
-    confidence: Optional[List[float]] = None
+    anomaly: Optional[List[float]] = None
+    climatology: Optional[List[float]] = None
     source: str = "model"

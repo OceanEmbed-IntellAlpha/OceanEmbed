@@ -36,6 +36,18 @@ class Settings(BaseSettings):
     earthdata_username: str = ""
     earthdata_password: str = ""
 
+    # Cloudflare R2 Object Storage
+    r2_bucket_name: str = "oceanembed"
+    r2_account_id: str = ""
+    r2_access_key_id: str = ""
+    r2_secret_access_key: str = ""
+    r2_endpoint_url: str = ""
+    r2_public_url: str = ""
+
+    # Supabase Metadata Catalog
+    supabase_url: str = ""
+    supabase_key: str = ""
+
     @property
     def cors_origins(self) -> List[str]:
         """Return allowed origins as a list (split on commas)."""
@@ -43,4 +55,22 @@ class Settings(BaseSettings):
 
 
 # Module-level singleton — import this everywhere
-settings = Settings()
+settings = Settings(_env_file=(".env", "backend/.env"))
+
+
+def ensure_backend_directories() -> None:
+    """Ensure all required runtime directories exist on disk."""
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    dirs = [
+        root / "data" / "raw",
+        root / "data" / "interim",
+        root / "data" / "processed",
+        root / "data" / "argo",
+        root / "runs" / "_final_v2",
+        root / "backend" / "database",
+        root / "backend" / "storage",
+    ]
+    for d in dirs:
+        d.mkdir(parents=True, exist_ok=True)
+

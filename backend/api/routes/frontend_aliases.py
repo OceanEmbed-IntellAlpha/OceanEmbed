@@ -81,19 +81,48 @@ async def predict_subsurface(
 
 
 @router.get(
+    "/predict",
+    response_model=FrontendSubsurfaceProfile,
+    summary="Frontend alias: Predict subsurface profile (GET)",
+    description="Direct compatibility alias for query-based profile requests.",
+)
+async def predict_subsurface_get(
+    lat: float = Query(..., ge=5.0, le=30.0, description="Latitude (5°N to 30°N)"),
+    lon: float = Query(..., ge=45.0, le=105.0, description="Longitude (45°E to 105°E)"),
+    date: str = Query(..., description="Date in YYYY-MM-DD format"),
+    service: ModelService = Depends(get_model_service),
+) -> FrontendSubsurfaceProfile:
+    try:
+        res = service.predict_frontend_profile(lat=lat, lon=lon, date_str=date)
+        return FrontendSubsurfaceProfile(**res)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Predict alias error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Inference error: {str(e)}")
+
+
+@router.get(
     "/field",
     response_model=FrontendSurfaceField,
     summary="Frontend alias: Surface observations heatmap",
     description="Direct compatibility alias for frontend `useSurfaceField` hook.",
 )
 async def get_surface_field(
-    variable: str = Query("sst", description="'sst', 'sss', 'ssh', 'currents', 'winds'"),
+    variable: str = Query("sst", description="'sst', 'sss', 'ssh', 'currents', 'winds', 'thermal_anomaly'"),
     date: str = Query(..., description="Date in YYYY-MM-DD format"),
+    depth: Optional[float] = Query(0.0, description="Target depth in metres (default: 0.0)"),
     bbox: Optional[str] = Query("45,-5,105,35", description="Bounding box string lonMin,latMin,lonMax,latMax"),
     service: ModelService = Depends(get_model_service),
 ) -> FrontendSurfaceField:
+    var_lower = variable.lower().strip()
+    if var_lower == "confidence":
+        raise HTTPException(
+            status_code=400,
+            detail="The 'confidence' variable has been removed. Use 'thermal_anomaly' instead.",
+        )
     try:
-        res = service.get_frontend_surface_field(variable=variable, date_str=date, bbox_str=bbox)
+        res = service.get_frontend_surface_field(variable=variable, date_str=date, depth_m=depth or 0.0, bbox_str=bbox)
         return FrontendSurfaceField(**res)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

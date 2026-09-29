@@ -57,14 +57,53 @@ async def reconstruct_profile(
 async def reconstruct_map(
     body: MapRequest,
     format: str = Query("json", description="'json' for nested arrays, 'base64' for float32 binary buffer"),
+    variable: Optional[str] = Query(None, description="'thermal_anomaly', 'anomaly', etc."),
     service: ModelService = Depends(get_model_service),
 ) -> MapResponse:
+    var_check = (variable or body.variable or "").lower().strip()
+    if var_check == "confidence":
+        raise HTTPException(
+            status_code=400,
+            detail="The 'confidence' variable has been removed. Use 'thermal_anomaly' instead.",
+        )
     try:
         bbox_dict = body.bbox.model_dump() if body.bbox else None
         res = service.predict_map(
             date_str=body.date,
             depth_m=body.depth_m,
             bbox=bbox_dict,
+            fmt=format.lower(),
+        )
+        return MapResponse(**res)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Map reconstruction error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Inference error: {str(e)}")
+
+
+@router.get(
+    "/map",
+    response_model=MapResponse,
+    summary="Reconstruct 2D horizontal temperature map (GET)",
+)
+async def reconstruct_map_get(
+    date: str = Query(..., description="Date in YYYY-MM-DD format"),
+    depth_m: float = Query(0.0, description="Target depth in metres"),
+    variable: Optional[str] = Query(None, description="Variable (e.g. 'thermal_anomaly')"),
+    format: str = Query("json", description="'json' or 'base64'"),
+    service: ModelService = Depends(get_model_service),
+) -> MapResponse:
+    var_check = (variable or "").lower().strip()
+    if var_check == "confidence":
+        raise HTTPException(
+            status_code=400,
+            detail="The 'confidence' variable has been removed. Use 'thermal_anomaly' instead.",
+        )
+    try:
+        res = service.predict_map(
+            date_str=date,
+            depth_m=depth_m,
             fmt=format.lower(),
         )
         return MapResponse(**res)

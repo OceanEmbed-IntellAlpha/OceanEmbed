@@ -124,15 +124,13 @@ curl -X POST "http://localhost:8000/api/v1/reconstruct/profile" \
       "depth_m": 0.49,
       "temperature_c": 30.211,
       "climatology_c": 29.845,
-      "anomaly_c": 0.366,
-      "confidence_c": 0.415
+      "anomaly_c": 0.366
     },
     {
       "depth_m": 902.34,
       "temperature_c": 9.278,
       "climatology_c": 9.312,
-      "anomaly_c": -0.034,
-      "confidence_c": 0.239
+      "anomaly_c": -0.034
     }
   ]
 }
@@ -216,7 +214,6 @@ curl -X POST "http://localhost:8000/api/predict" \
   "date": "2022-06-15",
   "depths": [0.49, 5.08, 9.57, 18.5, 29.44, 47.37, 77.85, 92.33, 130.67, 155.85, 186.13, 318.13, 541.09, 643.57, 902.34],
   "temperature": [30.211, 30.27, 30.236, 30.258, 30.117, 28.823, 26.1, 25.236, 22.447, 20.317, 18.172, 13.833, 12.012, 11.197, 9.278],
-  "confidence": [0.415, 0.411, 0.407, 0.426, 0.459, 0.527, 0.751, 0.84, 0.787, 0.694, 0.562, 0.316, 0.227, 0.234, 0.239],
   "source": "model"
 }
 ```

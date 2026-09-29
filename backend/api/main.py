@@ -21,6 +21,7 @@ from backend.api.routes import experiments, frontend_aliases, model_info, recons
 from backend.api.schemas.common import HealthResponse
 from backend.api.services.model_service import ModelService
 from backend.api.services.argo_service import ArgoService
+from backend.config import ensure_backend_directories
 
 logging.basicConfig(
     level=logging.INFO,
@@ -33,6 +34,9 @@ logger = logging.getLogger("oceanembed_api")
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Startup and shutdown events: loads model and data singletons once."""
     t0 = time.perf_counter()
+    logger.info("Verifying backend directory structure...")
+    ensure_backend_directories()
+
     logger.info("Initializing OceanEmbed ModelService and data handles...")
     
     # Initialize singleton and assign to app.state

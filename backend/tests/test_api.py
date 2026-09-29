@@ -87,6 +87,7 @@ def test_reconstruct_profile_valid(client: TestClient):
     assert 25.0 <= surf_temp <= 33.0, f"Expected surface temp ~28-30°C, got {surf_temp}"
     assert 5.0 <= deep_temp <= 15.0, f"Expected deep temp ~8-10°C, got {deep_temp}"
     assert surf_temp > deep_temp, "Surface should be warmer than deep ocean"
+    assert "confidence_c" not in data["profile"][0]
 
 
 def test_reconstruct_profile_custom_depths(client: TestClient):
@@ -220,7 +221,15 @@ def test_frontend_predict_alias(client: TestClient):
     assert data["source"] == "model"
     assert len(data["depths"]) == 15
     assert len(data["temperature"]) == 15
-    assert len(data["confidence"]) == 15
+    assert "confidence" not in data
+    assert "confidence_c" not in data
+
+    # Test GET alias as well
+    get_res = client.get("/api/predict?lat=15.5&lon=68.0&date=2022-06-15")
+    assert get_res.status_code == 200
+    get_data = get_res.json()
+    assert "confidence" not in get_data
+    assert "confidence_c" not in get_data
 
 
 def test_frontend_field_alias(client: TestClient):
@@ -231,6 +240,47 @@ def test_frontend_field_alias(client: TestClient):
     assert data["unit"] == "°C"
     assert len(data["grid"]) == 101
     assert len(data["grid"][0]) == 241
+
+
+def test_frontend_field_thermal_anomaly(client: TestClient):
+    res = client.get("/api/field?variable=thermal_anomaly&date=2022-06-15")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["variable"] == "thermal_anomaly"
+    assert data["unit"] == "°C"
+    assert len(data["grid"]) == 101
+    assert len(data["grid"][0]) == 241
+    assert "values" in data
+    assert len(data["values"]) == 101
+    assert data["vmin"] == 0.0
+    assert data["vmax"] > 0.0
+    # Verify values are positive anomalies
+    non_null_vals = [v for row in data["values"] for v in row if v is not None]
+    assert len(non_null_vals) > 0
+    assert all(v >= 0.0 for v in non_null_vals)
+    assert max(non_null_vals) <= 5.0
+
+
+def test_frontend_field_anomaly_alias(client: TestClient):
+    res = client.get("/api/field?variable=anomaly&date=2022-06-15")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["variable"] == "thermal_anomaly"
+    assert data["unit"] == "°C"
+
+
+def test_frontend_field_confidence_removed(client: TestClient):
+    res = client.get("/api/field?variable=confidence&date=2022-06-15")
+    assert res.status_code == 400
+    data = res.json()
+    assert data["detail"] == "The 'confidence' variable has been removed. Use 'thermal_anomaly' instead."
+
+
+def test_reconstruct_map_confidence_removed(client: TestClient):
+    res = client.post("/api/v1/reconstruct/map?variable=confidence", json={"date": "2022-06-15", "depth_m": 0.0})
+    assert res.status_code == 400
+    data = res.json()
+    assert data["detail"] == "The 'confidence' variable has been removed. Use 'thermal_anomaly' instead."
 
 
 def test_frontend_datasets_alias(client: TestClient):
