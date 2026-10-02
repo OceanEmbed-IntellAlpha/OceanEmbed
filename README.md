@@ -1,291 +1,359 @@
-# OceanEmbed Data Pipeline — From Raw Satellite Data to Training-Ready Zarr
+# OceanEmbed — Satellite-Driven Subsurface Ocean Temperature Reconstruction
 
-> **SIH26066** | Ministry of Earth Sciences / INCOIS
-> Satellite Embedding-Based Subsurface Ocean Temperature Reconstruction
-
----
-
-## 1. Overview
-
-This PR implements a **production-grade data pipeline** that downloads, preprocesses, quality-controls, and standardizes multi-source satellite and ocean reanalysis data into training-ready Zarr tensor stores for the OceanEmbed deep learning model.
-
-**Domain:** North Indian Ocean (5°N–30°N, 45°E–105°E)
-**Spatial Resolution:** 0.25° × 0.25° (canonical grid: 101 lat × 241 lon)
-**Temporal Resolution:** Daily
-**Output:**
-- `data/processed/surface_features.zarr` — 7 surface input channels
-- `data/processed/target_glorys.zarr` — 3D subsurface temperature at 15 standard depths
+> **Smart India Hackathon (SIH 2026) | Problem Statement SIH26066**<br/>
+> **Ministry of Earth Sciences (MoES) / INCOIS**<br/>
+> *An end-to-end deep learning platform inferring 3D ocean thermal structure down to 1,000 meters across 15 depth levels from multi-sensor satellite observations.*
 
 ---
 
-## 2. Pipeline Architecture
+## Overview
 
-```
-pipeline_config.yaml
-        │
-        ▼
-┌──────────────────────┐
-│   DataDownloader     │ ◄── Credentials from .env
-│  (downloader.py)     │
-└──────┬───────────────┘
-       │
-       │  Downloads raw NetCDF from CMEMS / PO.DAAC / GDAC
-       ▼
-  data/raw/
-  ├── sst.nc           (OSTIA 0.05°)
-  ├── sss.nc           (CMEMS 0.125°)
-  ├── ssh.nc           (DUACS 0.25°)
-  ├── currents/        (OSCAR 0.25°, multi-granule)
-  ├── winds/           (CCMP 0.25°, multi-granule 6-hourly)
-  ├── target_glorys.nc (GLORYS 0.083°, 50 depth levels)
-  └── argo_profiles/   (Argo .nc files for validation)
-       │
-       ▼
-┌──────────────────────┐
-│   Pipeline Adapters  │ ◄── One adapter per data source
-│  (adapters/*.py)     │     Each does: Load → Kelvin→°C → Subset → Regrid 0.25° → QC → Align Time
-└──────┬───────────────┘
-       │
-       │  All datasets now on identical 0.25° × daily grid
-       ▼
-┌──────────────────────┐
-│   GridProcessor      │ ◄── Core regridding engine
-│  (processor.py)      │     Uses xarray.interp() for bilinear interpolation
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│   TensorGenerator    │ ◄── Merges all surface datasets into one Zarr store
-│  (generator.py)      │
-└──────┬───────────────┘
-       │
-       ▼
-  data/processed/
-  ├── surface_features.zarr   ← [time, lat=101, lon=241] × 7 variables
-  └── target_glorys.zarr      ← [time, depth=15, lat=101, lon=241] × 1 variable
-```
+### The Problem
+Earth observation satellites provide high-resolution, daily views of sea surface temperature, salinity, sea level anomalies, surface currents, and surface winds. However, optical and radar satellite sensors cannot penetrate beneath the surface layer. Direct subsurface measurements rely on in-situ instruments like autonomous profiling floats (the Argo network), which offer high vertical accuracy but are spatially sparse (~300 km apart) and cycle only every 10 days.
+
+### The OceanEmbed Approach
+OceanEmbed bridges the gap between wide-coverage satellite observations and depth-resolved ocean thermal structure. By exploiting the physical coupling between surface signals (notably sea level height variations reflecting vertically integrated density changes) and subsurface dynamics, OceanEmbed uses a 2D convolutional deep learning model (U-Net) to reconstruct 3D subsurface temperature fields:
+
+- **Geographic Domain:** North Indian Ocean ($5.0^\circ\text{N}–30.0^\circ\text{N}, 45.0^\circ\text{E}–105.0^\circ\text{E}$), covering the Arabian Sea, Bay of Bengal, and equatorial waters.
+- **Horizontal Resolution:** Canonical $0.25^\circ \times 0.25^\circ$ daily grid ($101 \text{ lat} \times 241 \text{ lon}$).
+- **Vertical Reach:** 15 standard depth levels from surface to $1,000\text{ m}$ ($0.49, 5.08, 9.57, 18.50, 29.44, 47.37, 77.85, 92.33, 130.67, 155.85, 186.13, 318.13, 541.09, 643.57, \text{and } 902.34\text{ m}$).
 
 ---
 
-## 3. Data Sources & Adapters
+## What OceanEmbed Does
 
-Each adapter is responsible for loading raw NetCDF data from a specific satellite product, applying product-specific preprocessing, and returning a clean `xr.Dataset` on the canonical 0.25° grid.
-
-### 3.1 Surface Input Variables (7 channels)
-
-| # | Variable | Adapter | Source Product | Native Res | NetCDF Variable | QC Range |
-|---|----------|---------|---------------|-----------|-----------------|----------|
-| 1 | **SST** | `OSTIAAdapter` (`sst_ostia.py`) | OSTIA L4 Reprocessed | 0.05° daily | `analysed_sst` | -2.5 to 40°C |
-| 2 | **SSS** | `CMEMSAdapter` (`sss_cmems.py`) | CMEMS Multi-Obs SSS | 0.125° daily | `sos` | 20 to 42 PSU |
-| 3 | **SSH/SLA** | `DUACSAdapter` (`ssh_duacs.py`) | DUACS L4 Altimetry | 0.25° daily | `sla` | -2 to 2 m |
-| 4 | **Current U** | `OSCARAdapter` (`currents_oscar.py`) | OSCAR L4 v2.0 | 0.25° 5-day | `u` | -5 to 5 m/s |
-| 5 | **Current V** | `OSCARAdapter` (`currents_oscar.py`) | OSCAR L4 v2.0 | 0.25° 5-day | `v` | -5 to 5 m/s |
-| 6 | **Wind U** | `CCMPAdapter` (`winds_ccmp.py`) | CCMP v3.1 L4 | 0.25° 6-hourly | `uwnd` | -50 to 50 m/s |
-| 7 | **Wind V** | `CCMPAdapter` (`winds_ccmp.py`) | CCMP v3.1 L4 | 0.25° 6-hourly | `vwnd` | -50 to 50 m/s |
-
-### 3.2 Target Variable
-
-| Variable | Adapter | Source Product | Native Res | Depth Levels | QC Range |
-|----------|---------|---------------|-----------|-------------|----------|
-| **Subsurface Temperature** | `GLORYSAdapter` (`target_glorys.py`) | GLORYS12V1 Reanalysis | 0.083° daily, 50 depths | 15 SIH standard depths | -5 to 40°C |
-
-**15 Standard Depths (metres):** 0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000
-
-### 3.3 Validation Data
-
-| Data | Adapter | Source |
-|------|---------|--------|
-| **Argo Float Profiles** | `ArgoAdapter` (`validation_argo.py`) | IFREMER GDAC / INCOIS ERDDAP |
-
-The Argo adapter loads real in-situ temperature profiles, filters to the NIO domain, applies QC flags (keeping only QC=1 and QC=2), and returns a structured DataFrame for model evaluation.
+- **Subsurface Temperature Reconstruction:** Predicts 3D temperature fields across 15 vertical depth layers from 7 surface observation channels.
+- **Fast Inference API:** Serves point profile reconstructions (~70 ms), 2D horizontal depth slices, timeseries, and regional basin statistics via a FastAPI REST service.
+- **Interactive 3D Digital Twin:** Offers an interactive web platform built with CesiumJS and Three.js featuring 3D globe visualization, depth-level slicing, dynamic colormaps, and water-column cutaways.
+- **Research & Benchmarking Suite:** Features an interactive Research Lab dashboard tracking 8 systematic ablation experiments, depth-wise error breakdowns, and regional regime evaluations.
+- **Multi-Source Data Harmonization:** Preprocesses multi-satellite NetCDF products from CMEMS and NASA PO.DAAC into canonical, standardized daily Zarr stores.
 
 ---
 
-## 4. Preprocessing Steps (Per Adapter)
+## How It Works
 
-Every adapter follows this standardized preprocessing pipeline:
+```mermaid
+flowchart TD
+    subgraph SATELLITE["Multi-Source Satellite & Reanalysis Products"]
+        direction TB
+        SST["OSTIA SST (CMEMS)<br/>0.05° Daily"]
+        SSS["SMOS/SMAP SSS (CMEMS)<br/>0.125° Daily"]
+        SSH["DUACS SLA / SSH (CMEMS)<br/>0.125° Daily"]
+        CUR["OSCAR Currents u,v (PO.DAAC)<br/>0.25° 5-Day"]
+        WND["CCMP Winds u,v (PO.DAAC)<br/>0.25° 6-Hourly"]
+        TGT["GLORYS12V1 Reanalysis (CMEMS)<br/>0.083° 50 Depths"]
+    end
 
-### Step 1: Load Raw Data
-- Single-file products → `xr.open_dataset()` with Dask lazy loading
-- Multi-granule products (OSCAR, CCMP) → `xr.open_mfdataset()` for automatic concatenation
+    subgraph PIPELINE["Harmonization & ETL Pipeline"]
+        direction TB
+        ADAPT["Pipeline Adapters<br/>• Kelvin → °C conversion<br/>• Spatial crop (5°N–30°N, 45°E–105°E)<br/>• Bilinear regridding to 0.25°<br/>• Daily time alignment<br/>• Physical range QC masking"]
+        ZARR_IN["data/processed/surface_features.zarr<br/>[time, 7 variables, 101 lat, 241 lon]"]
+        ZARR_OUT["data/processed/target_glorys.zarr<br/>[time, 15 depths, 101 lat, 241 lon]"]
+    end
 
-### Step 2: Unit Conversion (SST only)
-- OSTIA stores `analysed_sst` in **Kelvin**
-- Auto-detected via heuristic: if `mean > 100`, apply `K → °C` conversion (`value - 273.15`)
+    subgraph MODELING["Deep Learning Core (OceanEmbed v2)"]
+        CLIM["Day-of-Year Climatology<br/>Baseline (2010–2020)"]
+        UNET["2D U-Net CNN (BaselineModel)<br/>7.85M Parameters<br/>Joint 15-channel output"]
+        PRED["Reconstructed Temperature Field<br/>T = Climatology + Anomaly"]
+    end
 
-### Step 3: Spatial Subset
-- Crops dataset to NIO bounding box: `lat=[5.0, 30.0]`, `lon=[45.0, 105.0]`
-- Handles inverted latitude axes by auto-sorting before slicing
+    subgraph SERVING["Application & Serving Layer"]
+        API["FastAPI REST Backend<br/>• /api/v1/reconstruct/*<br/>• /api/v1/validation/*<br/>• /api/v1/experiments"]
+        FRONT["Next.js 14 Frontend<br/>• CesiumJS 3D Digital Globe<br/>• Three.js Water Column Cutaway<br/>• Research Lab Dashboard"]
+    end
 
-### Step 4: Regrid to 0.25° × 0.25°
-- Target grid: `np.arange(5.0, 30.25, 0.25)` × `np.arange(45.0, 105.25, 0.25)` → **101 × 241 points**
-- Method: Bilinear interpolation via `xarray.interp()`
-- Rationale: Chosen over xESMF to avoid heavy C++ dependencies while maintaining production-quality spatial smoothness
-
-### Step 5: Temporal Alignment
-- Resamples all data to daily frequency using `.resample("1D").mean()`
-- Converts `cftime` calendar objects to standard `datetime64` for cross-dataset compatibility
-
-### Step 6: Quality Control (QC)
-- Each variable is range-checked against physically realistic thresholds
-- Out-of-range values are replaced with `NaN` (masked out)
-- NaN values propagate naturally through the model's missingness masks during training
-
----
-
-## 5. GridProcessor — The Core Regridding Engine
-
-**File:** `backend/pipeline/processor.py`
-
-The `GridProcessor` class is the central component ensuring all datasets end up on the exact same grid:
-
-```python
-class GridProcessor:
-    def subset(ds, lat_name, lon_name)   # Crop to NIO domain
-    def regrid(ds, lat_name, lon_name)   # Interpolate to 0.25° grid
-    def align_time(ds, time_name)        # Resample to daily mean
-```
-
-Key implementation details:
-- Generates target coordinates via `np.arange` with `resolution/2` padding to include the endpoint
-- Auto-sorts coordinates before slicing (handles datasets with descending lat order)
-- Uses `xarray.interp(method="linear")` — native, fast, no external dependencies
-
----
-
-## 6. TensorGenerator — Merging into Zarr
-
-**File:** `backend/pipeline/generator.py`
-
-After all adapters produce individually preprocessed datasets on the canonical grid:
-
-1. **Surface features**: `xr.merge()` combines all 7 surface variables into a single `xr.Dataset`, then writes to `surface_features.zarr` with chunking `{time: 30, latitude: -1, longitude: -1}` for efficient batch loading.
-
-2. **Target GLORYS**: Writes the 3D temperature field to `target_glorys.zarr` with chunking `{time: 30, depth: -1, latitude: -1, longitude: -1}`.
-
----
-
-## 7. Output Zarr Store Schemas
-
-### `surface_features.zarr`
-```
-Dimensions:     (time: N, latitude: 101, longitude: 241)
-Variables:
-    analysed_sst  (time, latitude, longitude)  — Sea Surface Temperature (°C)
-    sos           (time, latitude, longitude)  — Sea Surface Salinity (PSU)
-    sla           (time, latitude, longitude)  — Sea Level Anomaly (m)
-    u             (time, latitude, longitude)  — Surface Current Eastward (m/s)
-    v             (time, latitude, longitude)  — Surface Current Northward (m/s)
-    uwnd          (time, latitude, longitude)  — Surface Wind Eastward (m/s)
-    vwnd          (time, latitude, longitude)  — Surface Wind Northward (m/s)
-Coordinates:
-    latitude      101 values from 5.0 to 30.0 (0.25° spacing)
-    longitude     241 values from 45.0 to 105.0 (0.25° spacing)
-    time          daily timestamps
-```
-
-### `target_glorys.zarr`
-```
-Dimensions:     (time: N, depth: 15, latitude: 101, longitude: 241)
-Variables:
-    thetao        (time, depth, latitude, longitude) — Potential Temperature (°C)
-Coordinates:
-    latitude      101 values from 5.0 to 30.0
-    longitude     241 values from 45.0 to 105.0
-    depth         [0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000]
-    time          daily timestamps
+    SST & SSS & SSH & CUR & WND --> ADAPT
+    TGT --> ADAPT
+    ADAPT --> ZARR_IN & ZARR_OUT
+    ZARR_IN --> UNET
+    UNET --> PRED
+    CLIM --> PRED
+    PRED --> API
+    API --> FRONT
 ```
 
 ---
 
-## 8. Pipeline Validation
+## Data & Scientific Basis
 
-**File:** `backend/pipeline/validate_pipeline.py`
+OceanEmbed uses seven surface observation channels as inputs and evaluates against GLORYS12V1 reanalysis targets and independent Argo floats:
 
-After the pipeline completes, run the validation script to verify:
-- ✅ Latitude/longitude coordinates are identical between surface and target Zarr stores
-- ✅ Grid spacing is exactly 0.25°
-- ✅ All 7 expected surface variables are present
-- ✅ Visual inspection plot saved to `data/processed/pipeline_validation.png`
+| Dataset | Provider | Variable | Processing Applied | Role |
+| :--- | :--- | :--- | :--- | :--- |
+| **OSTIA SST** | UK Met Office / CMEMS | `analysed_sst` | Kelvin $\to$ °C, regridded 0.05° to 0.25° | Surface Input (Channel 1) |
+| **Multi-Obs SSS** | Copernicus Marine (CMEMS) | `sos` | Regridded 0.125° to 0.25°, QC (20–42 PSU) | Surface Input (Channel 2) |
+| **DUACS Altimetry** | CNES / CMEMS | `sla` | Sea Level Anomaly extracted, regridded to 0.25° | Surface Input (Channel 3) |
+| **OSCAR v2.0** | NASA PO.DAAC / Earthdata | `u`, `v` | Coordinate standardization, 5-day to daily interpolation | Surface Input (Channels 4 & 5) |
+| **CCMP v3.1** | NASA PO.DAAC / Earthdata | `uwnd`, `vwnd` | 6-hourly to daily mean aggregation | Surface Input (Channels 6 & 7) |
+| **GLORYS12V1** | Mercator Ocean / CMEMS | `thetao` | Regridded 0.083° to 0.25°, 15 standard depths extracted | Reanalysis Training Target |
+| **Argo Profiles** | IFREMER GDAC / ArgoVis | `TEMP`, `PRES` | Quality flags (QC 1/2), collocated depth matching | Independent Holdout Validation |
+
+For dataset identifiers, download methods, and raw vs. processed comparisons, see [dataset_documentation.md](dataset_documentation.md).
 
 ---
 
-## 9. Commands
+## Model & Methodology
 
-### Prerequisites
+### 1. Anomaly Formulation
+Direct prediction of absolute temperature often leads neural networks to memorize the seasonal cycle rather than learning subsurface responses. OceanEmbed formulates reconstruction as an anomaly prediction problem:
+
+$$\hat{T}(x, y, z, t) = T_{\text{clim}}(\text{doy}(t), z, y, x) + f_\theta(\mathbf{X}_{\text{surface}}(t))$$
+
+where $T_{\text{clim}}$ is a day-of-year lookup table computed from 2010–2020 GLORYS reanalysis, and $f_\theta$ is the deep neural network trained to predict deviations from historical averages using mean squared error (MSE) loss on valid ocean pixels.
+
+### 2. Architecture Selection: U-Net vs. Fourier Decoder
+Earlier experiments evaluated an architecture using a ResNet spatial encoder combined with a continuous Fourier coordinate depth MLP decoder that queried each depth level independently. However, systematic benchmarking revealed that evaluating depth coordinates in isolation lacked direct layer-to-layer communication, resulting in degraded accuracy around the sharp thermocline boundary ($50–200\text{ m}$).
+
+The current model (`runs/_final_v2/model_v2.pt`) employs a 4-level **2D U-Net CNN encoder-decoder with skip connections** (~7.85M parameters):
+- **Inputs:** 7 surface channels (plus valid ocean masks) on the $101 \times 241$ grid.
+- **Skip Connections:** Preserve horizontal spatial detail across resolution levels.
+- **Joint 15-Channel Output Head:** Predicts all 15 vertical depth anomalies simultaneously; joint 15-channel prediction learns cross-depth relationships and performed better in the evaluated experiments.
+
+For the structural evaluation of the decoder architectures, see [docs/finding_fourier_decoder_limitations.md](docs/finding_fourier_decoder_limitations.md).
+
+---
+
+## Results & Validation
+
+All reported metrics are verified directly from tracked experiment checkpoints and evaluation runs in the repository.
+
+### 1. Test Split Evaluation vs. GLORYS Reanalysis (2022 Split)
+Evaluated across all 365 daily fields of 2022 over the North Indian Ocean at 15 depth levels (133,266,975 valid evaluation points):
+
+| Evaluation Metric | OceanEmbed v2 (All-7 U-Net) | Climatology Baseline | Improvement |
+| :--- | :---: | :---: | :---: |
+| **Overall RMSE** | **0.5246 °C** | 0.6429 °C | **+18.4%** |
+| **Overall MAE** | **0.2331 °C** | 0.2719 °C | +14.3% |
+| **Bias** | -0.0155 °C | — | — |
+| **Coefficient of Determination ($R^2$)** | **0.9980** | 0.9970 | — |
+| **Pearson Correlation ($r$)** | **0.9990** | — | — |
+
+#### Error Breakdown by Depth Band
+- **Mixed Layer ($0–50\text{ m}$):** **0.4429 °C** RMSE (vs. 0.4909 °C Climatology)
+- **Thermocline ($50–200\text{ m}$):** **0.7331 °C** RMSE (vs. 0.9466 °C Climatology, **22.6% improvement**)
+- **Deep Ocean ($200–1,000\text{ m}$):** **0.2565 °C** RMSE (vs. 0.2612 °C Climatology)
+
+![OceanEmbed v2 Test RMSE vs Depth](runs/_final_v2/test_rmse_vs_depth_v2.png)
+
+### 2. Variable Ablation: The SLA Dominance Finding
+Systematic ablation of input channels showed that multi-sensor inputs are beneficial, with Sea Level Anomaly (SLA) contributing the largest share of subsurface skill:
+
+| Variant | Input Variables | Test RMSE (°C) | Improvement vs. Clim | Key Takeaway |
+| :--- | :--- | :---: | :---: | :--- |
+| **Climatology** | None *(Historical Day-of-Year Mean)* | 0.6429 | 0.0% | Baseline lookup table |
+| **V1** | SST only | 0.6181 | -3.9% | Surface temperature alone provides weak subsurface constraints (errors reach 1.1 °C at 92 m) |
+| **V2** | SST + SLA | 0.5363 | -16.6% | **SLA accounts for 87.5% of total multi-variable skill gain** |
+| **V3** | SST + SLA + SSS | 0.5306 | -17.5% | Salinity refines mixed-layer halocline and upper pycnocline |
+| **V4 (v2)** | All 7 Channels (SST, SSS, SLA, Winds, Currents) | **0.5246** | **-18.4%** | Atmospheric and advective forcing refine surface boundary shear |
+
+**Physical Context:** Satellite-derived Sea Level Anomaly reflects vertically integrated density changes (steric height). Under a two-layer ocean approximation, sea surface displacement ($\eta$) is directly proportional to thermocline displacement ($h' \approx -\frac{g}{g'} \eta$). Altimetry provides the model with direct information about thermocline depressions and elevations associated with mesoscale eddies and planetary waves. For detailed ablation analysis, see [docs/phase6_findings.md](docs/phase6_findings.md).
+
+### 3. Independent In-Situ Argo Float Validation (2020–2022)
+To verify generalization against real in-situ observations rather than reanalysis alone, OceanEmbed predictions were collocated with **8,883 physical Argo float profiles** (120,988 depth measurements) across the North Indian Ocean:
+
+- **North Indian Ocean Basin RMSE:** **1.5719 °C** (MAE: 1.1186 °C, Bias: -0.2984 °C, Pearson $r$: 0.9796)
+- **Arabian Sea (5,943 profiles):** **1.6463 °C** RMSE
+- **Bay of Bengal (2,779 profiles):** **1.3903 °C** RMSE
+
+For regional and seasonal breakdowns across monsoon regimes, see [docs/FINAL_RESULTS.md](docs/FINAL_RESULTS.md) and [docs/phase7_seasonal_analysis.md](docs/phase7_seasonal_analysis.md).
+
+---
+
+## Platform
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Next.js 14 Frontend                    │
+│  ┌───────────────────────┐       ┌───────────────────────┐  │
+│  │   CesiumJS 3D Globe   │       │   Research Lab Suite  │  │
+│  │   • Observation maps  │       │   • Model benchmarks  │  │
+│  │   • Argo float replay │       │   • Variable ablation │  │
+│  │   • Three.js cutaway  │       │   • Regime analysis   │  │
+│  └───────────┬───────────┘       └───────────┬───────────┘  │
+└──────────────┼───────────────────────────────┼──────────────┘
+               │  HTTP / JSON                  │
+               ▼                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     FastAPI REST Backend                    │
+│  • /api/v1/reconstruct/profile     • /api/v1/experiments    │
+│  • /api/v1/reconstruct/map         • /api/v1/validation/*   │
+│  • /api/v1/reconstruct/timeseries  • /api/v1/model/info     │
+└──────────────────────────────┬──────────────────────────────┘
+                               │  Singleton Inference
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                PyTorch Inference Engine & Zarr              │
+│  • BaselineModel U-Net (runs/_final_v2/model_v2.pt)         │
+│  • Canonical Zarr arrays & Climatology cache                │
+└─────────────────────────────────────────────────────────────┘
+```
+
+- **Frontend (`frontend/`):** Next.js 14 (App Router) client with CesiumJS for 3D globe visualization, Three.js (@react-three/fiber) for vertical water-column cutaway perspectives, Recharts for vertical temperature profile charts, and TanStack React Query for cached data fetching.
+- **Research Lab (`frontend/app/research-lab/`):** Interactive benchmarking environment displaying ablation studies, model iterations, and regional regime breakdowns.
+- **Backend API (`backend/api/`):** FastAPI application with automatic OpenAPI documentation (`/docs`), GZip response compression, request ID tracing, and frontend route compatibility. For full API documentation, see [backend/api/README.md](backend/api/README.md).
+
+---
+
+## Quickstart
+
+### Running the Platform with Existing Model Artifacts
+The quickstart below runs the FastAPI backend and Next.js frontend using the pre-computed model weights and data stores included in the repository. **No external satellite credentials are required** for this setup.
+
+#### 1. Prerequisites
+- **Python:** 3.11 or 3.12
+- **Node.js:** 18+ or 20+ (with npm)
+- **System Tools:** `curl`, `git`
+
+#### 2. Backend Setup
+1. Create and activate a Python virtual environment:
+   ```bash
+   python -m venv .venv
+   # Windows (PowerShell):
+   .venv\Scripts\Activate.ps1
+   # Linux / macOS:
+   source .venv/bin/activate
+   ```
+2. Install Python dependencies:
+   ```bash
+   pip install --upgrade pip
+   pip install -r backend/requirements.txt
+   ```
+3. Initialize the environment template:
+   ```bash
+   cp backend/.env.example backend/.env
+   ```
+4. Start the FastAPI development server:
+   ```bash
+   uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+   Check status at [http://localhost:8000/health](http://localhost:8000/health) or explore endpoints at [http://localhost:8000/docs](http://localhost:8000/docs).
+
+#### 3. Frontend Setup
+1. In a separate terminal, install dependencies:
+   ```bash
+   cd frontend
+   npm install
+   ```
+2. Start the Next.js development server:
+   ```bash
+   npm run dev
+   ```
+3. Open [http://localhost:3000](http://localhost:3000) in your browser. The 3D globe explorer is at `/explorer` and the research dashboard is at `/research-lab`.
+
+#### 4. Containerized Execution (Optional)
+To build and run the backend via Docker:
 ```bash
-# 1. Install dependencies
-pip install -r backend/requirements.txt
-
-# 2. Configure credentials (copy and fill in)
-cp backend/.env.example backend/.env
+docker build -t oceanembed-backend .
+docker run -p 8000:8000 oceanembed-backend
 ```
 
-### Run the Full Pipeline
+---
+
+## Optional Raw-Data Pipeline
+
+> [!NOTE]
+> This workflow is **optional**. It is only necessary if you intend to download raw satellite products from external providers from scratch and generate new Zarr tensor stores.
+
+Running the full raw-data ETL requires valid registration credentials:
+- **Copernicus Marine Service (CMEMS):** Set `COPERNICUSMARINE_SERVICE_USERNAME` and `COPERNICUSMARINE_SERVICE_PASSWORD` in `backend/.env`.
+- **NASA Earthdata:** Set `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD` in `backend/.env`.
+
+Commands:
 ```bash
-# Downloads all data + preprocesses + generates Zarr stores
+# 1. Download raw products and run full regridding/Zarr generation
 python backend/pipeline/run_pipeline.py
-```
 
-### Run Only Preprocessing (if raw data already downloaded)
-```bash
-python backend/scripts/ingest.py
-```
+# 2. Run preprocessing only on existing raw NetCDF files (skip download)
+python backend/scripts/ingest.py --skip-download
 
-### Validate Pipeline Output
-```bash
+# 3. Validate generated Zarr stores against canonical grid specifications
 python backend/pipeline/validate_pipeline.py
 ```
 
-### Start the Inference API Server
-```bash
-uvicorn backend.api.main:app --reload --port 8000
+---
+
+## Repository Structure
+
+```
+OceanEmbed/
+├── backend/                  # Backend application, ML models, and data pipeline
+│   ├── api/                  # FastAPI app, REST routes, Pydantic schemas, and services
+│   ├── config.py             # Application settings and environment configuration
+│   ├── ocean_embed/          # PyTorch models (U-Net, Fourier baseline), losses, metrics
+│   ├── pipeline/             # Satellite adapters, GridProcessor, and ETL orchestration
+│   ├── requirements.txt      # Python package dependencies
+│   ├── scripts/              # Ingestion, validation calculation, and cron scripts
+│   └── tests/                # Test suite (API endpoints and data harmonization)
+├── frontend/                 # Next.js 14 web application
+│   ├── app/                  # App Router pages (landing, explorer, research-lab, methodology)
+│   ├── components/           # Cesium globe, Three.js cutaway, Recharts, and UI panels
+│   ├── lib/                  # TanStack Query API hooks, Zustand stores, fixtures
+│   └── package.json          # Node.js dependencies and run scripts
+├── docs/                     # Technical reports, scientific findings, and validation studies
+├── notebooks/                # Jupyter exploratory and data sanity notebooks
+├── runs/                     # Model checkpoints, ablation results, and evaluation figures
+│   └── _final_v2/            # Frozen OceanEmbed v2 model (U-Net) and evaluation outputs
+├── .github/                  # Issue and Pull Request templates
+├── dataset_documentation.md  # Detailed reference for every satellite and in-situ dataset
+└── Dockerfile                # Multi-stage Docker configuration for backend deployment
 ```
 
 ---
 
-## 10. File Structure
+## Current Limitations & Future Roadmap
 
-```
-backend/
-├── api/
-│   ├── main.py                      # FastAPI app entry point
-│   └── routes/
-│       └── inference.py             # /api/reconstruct endpoints (wired to engine)
-├── config.py                        # App settings from .env
-├── .env.example                     # Template for credentials
-├── requirements.txt                 # Production dependencies (no stale DB packages)
-├── pipeline/
-│   ├── pipeline_config.yaml         # Domain, time range, product IDs, depths
-│   ├── downloader.py                # Downloads from CMEMS, PO.DAAC, GDAC
-│   ├── processor.py                 # GridProcessor: subset, regrid 0.25°, align time
-│   ├── generator.py                 # TensorGenerator: merge → Zarr stores
-│   ├── run_pipeline.py              # Orchestrates full ETL pipeline
-│   ├── validate_pipeline.py         # Asserts grid alignment + generates plots
-│   ├── test_pipeline.py             # GLORYS adapter integration test
-│   └── adapters/
-│       ├── sst_ostia.py             # SST (Kelvin→°C + QC)
-│       ├── sss_cmems.py             # SSS (QC 20–42 PSU)
-│       ├── ssh_duacs.py             # SSH/SLA (QC -2–2 m)
-│       ├── currents_oscar.py        # Currents U/V (QC -5–5 m/s)
-│       ├── winds_ccmp.py            # Winds U/V (QC -50–50 m/s)
-│       ├── target_glorys.py         # GLORYS temp at 15 depths (QC -5–40°C)
-│       └── validation_argo.py       # Argo float profile loader
-├── ocean_embed/                     # Deep learning model (for teammate)
-│   ├── models/                      # Model architectures
-│   ├── training/                    # Loss functions
-│   ├── evaluation/                  # Metrics + ARGO validation
-│   ├── grid.py                      # Canonical 0.25° grid definition
-│   ├── harmonize.py                 # Additional QC utilities
-│   ├── normalization.py             # Per-channel normalization stats
-│   └── engine.py                    # Inference engine
-└── scripts/
-    └── ingest.py                    # CLI wrapper for pipeline
-```
+### Current Limitations
+- **Geographic Boundary:** The trained model and grid configurations are restricted to the North Indian Ocean ($5^\circ\text{N}–30^\circ\text{N}, 45^\circ\text{E}–105^\circ\text{E}$). Coordinates outside this bounding box are outside the model domain.
+- **Thermocline Error Behavior:** While mixed-layer ($<0.45^\circ\text{C}$) and deep-ocean ($<0.26^\circ\text{C}$) errors are low, RMSE peaks around the main thermocline ($50–200\text{ m}$, reaching $0.84^\circ\text{C}$ at $92\text{ m}$) where vertical temperature gradients and non-linear internal wave activity are highest.
+- **Pre-2015 SSS Ingestion:** SMAP satellite observations began in April 2015. While the pipeline config defines a SMOS fallback for 2010–2015, automated multi-dataset switching is not yet implemented in the download script, leaving pre-2015 SSS reliant on available merged CMEMS coverage.
+- **Spatial Resolution:** The canonical $0.25^\circ \times 0.25^\circ$ (~28 km) grid smooths sub-mesoscale phenomena and near-shore coastal boundaries.
+
+### Planned Enhancements
+- **Cross-Attention Decoders:** Incorporating cross-depth attention to assimilate sparse, irregular in-situ float profiles alongside gridded satellite fields.
+- **Subsurface Salinity Reconstruction:** Expanding the target tensor to predict vertical salinity ($S(z)$) and derive acoustic sound-speed profiles.
+- **Domain Expansion:** Extending training coverage to the wider Indian Ocean basin and equatorial belts.
 
 ---
 
-## 11. Breaking Changes
-- **Database removed:** PostgreSQL / SQLAlchemy / Cloudflare R2 are no longer required. All data lives on the local filesystem as Zarr stores.
-- **Old REST endpoints removed:** `/observations`, `/profiles`, `/catalog` endpoints no longer exist. Use `/api/reconstruct/profile` and `/api/reconstruct/map`.
-- **requirements.txt rewritten:** Stale packages (`sqlalchemy`, `asyncpg`, `xgboost`, `boto3`) removed. New packages (`torch`, `copernicusmarine`, `earthaccess`, `dask`) added.
+## Documentation
+
+- **Dataset Reference:** [dataset_documentation.md](dataset_documentation.md) — Source products, DOIs, preprocessing steps, and raw vs. processed schemas.
+- **Methodology & Architecture Study:** [docs/finding_fourier_decoder_limitations.md](docs/finding_fourier_decoder_limitations.md) — Structural comparison of Fourier MLP decoders vs. joint-depth U-Net convolution.
+- **Ablation Studies:** [docs/phase6_findings.md](docs/phase6_findings.md) — Variable ablation and physical analysis of SLA dominance.
+- **Validation Reports:** [docs/FINAL_RESULTS.md](docs/FINAL_RESULTS.md) and [docs/phase7_seasonal_analysis.md](docs/phase7_seasonal_analysis.md) — Verified test metrics and in-situ Argo collocation.
+- **Backend API Reference:** [backend/api/README.md](backend/api/README.md) — REST endpoints, schemas, request/response examples.
+- **Pipeline Configuration:** [backend/pipeline/pipeline_config.yaml](backend/pipeline/pipeline_config.yaml) — Spatial domain, depth coordinates, and product IDs.
+
+---
+
+## Contributing
+
+Contributions, bug reports, and enhancements are welcome:
+
+1. **Issue Tracking:** Use the [Issue Template](.github/ISSUE_TEMPLATE.md) to report reproducible bugs or suggest enhancements.
+2. **Pull Requests:** Follow the [Pull Request Template](.github/PULL_REQUEST_TEMPLATE.md), describe testing steps, and verify that changes pass existing tests.
+3. **Data Provenance Standard:** In accordance with project research guidelines, all benchmark results and metrics submitted must include verifiable computation provenance and checkpoint hashes. Mock or synthetic results are strictly prohibited.
+4. **Running Tests:**
+   ```bash
+   pytest backend/tests/test_api.py
+   pytest backend/tests/test_harmonization.py
+   cd frontend && npm run lint
+   ```
+
+---
+
+## Acknowledgments & Data Sources
+
+OceanEmbed relies on public Earth observation and ocean reanalysis data from the following institutions:
+
+- **Copernicus Marine Environment Monitoring Service (CMEMS):**
+  - OSTIA Sea Surface Temperature (DOI: [10.48670/moi-00168](https://doi.org/10.48670/moi-00168))
+  - Multi-Obs Sea Surface Salinity (DOI: [10.48670/moi-00051](https://doi.org/10.48670/moi-00051))
+  - DUACS Multi-Mission Altimetry (DOI: [10.48670/moi-00145](https://doi.org/10.48670/moi-00145))
+  - GLORYS12V1 Global Ocean Reanalysis (DOI: [10.48670/moi-00021](https://doi.org/10.48670/moi-00021))
+- **NASA Physical Oceanography Distributed Active Archive Center (PO.DAAC):**
+  - OSCAR Ocean Surface Current Analysis Real-time v2.0
+  - CCMP Cross-Calibrated Multi-Platform 10m Surface Winds v3.1
+- **International Argo Program / IFREMER GDAC / ArgoVis:**
+  - Real-time and delayed-mode Argo profiling float observations in the Indian Ocean.
+- **INCOIS (Indian National Centre for Ocean Information Services) & Ministry of Earth Sciences (MoES), Government of India.**
