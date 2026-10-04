@@ -8,7 +8,7 @@ python-dotenv>=1.0.0
 # ── Scientific / Array Computing ─────────────────────────
 numpy>=1.26.0
 xarray>=2024.1.0
-netCDF4>=1.7.0
+netCDF4>=1.7.4
 pandas>=2.2.0
 dask[complete]>=2024.1.0
 zarr>=2.18.0
