@@ -56,7 +56,7 @@ def apply_surface_norm(data, stats, channel_names):
         else:
             out[:, i] = out[:, i] - m
     return out
-from ocean_embed.grid import SIH_DEPTHS
+from ocean_embed.grid import SIH_STANDARD_DEPTHS, GLORYS_NATIVE_DEPTHS, SIH_DEPTHS
 from ocean_embed.models.baseline import BaselineModel
 from backend.api.services.climatology_service import ClimatologyService
 
@@ -140,7 +140,8 @@ class ModelService:
 
         self.lats = self._sf_ds.latitude.values.astype(np.float32)   # 101 points (5.0 to 30.0)
         self.lons = self._sf_ds.longitude.values.astype(np.float32) # 241 points (45.0 to 105.0)
-        self.depths = np.asarray(SIH_DEPTHS, dtype=np.float32)
+        self.depths = np.asarray(GLORYS_NATIVE_DEPTHS, dtype=np.float32)
+        self.standard_depths = np.asarray(SIH_STANDARD_DEPTHS, dtype=np.float32)
 
         # Date lookup table
         time_vals = self._sf_ds.time.values
@@ -340,23 +341,15 @@ class ModelService:
         native_clims = clim_3d[:, lat_idx, lon_idx]
         native_anoms = anom_3d[:, lat_idx, lon_idx]
 
-        target_depths = custom_depths if custom_depths is not None else list(SIH_DEPTHS)
+        target_depths = custom_depths if custom_depths is not None else list(SIH_STANDARD_DEPTHS)
 
-        # Interpolation if custom depths requested
+        # 1D vertical interpolation across standard/custom depths
         profile_list = []
         for z in target_depths:
             z_float = float(z)
-            if custom_depths is None:
-                # Exact native levels
-                idx = int(np.argmin(np.abs(self.depths - z_float)))
-                t_val = float(native_temps[idx])
-                c_val = float(native_clims[idx])
-                a_val = float(native_anoms[idx])
-            else:
-                # 1D linear interpolation
-                t_val = float(np.interp(z_float, self.depths, native_temps))
-                c_val = float(np.interp(z_float, self.depths, native_clims))
-                a_val = float(np.interp(z_float, self.depths, native_anoms))
+            t_val = float(np.interp(z_float, self.depths, native_temps))
+            c_val = float(np.interp(z_float, self.depths, native_clims))
+            a_val = float(np.interp(z_float, self.depths, native_anoms))
 
             # Land check
             if np.isnan(t_val):
@@ -412,20 +405,15 @@ class ModelService:
 
         # Interpolate along depth axis if depth_m is between native levels
         d_idx = int(np.argmin(np.abs(self.depths - depth_m)))
-        if abs(self.depths[d_idx] - depth_m) < 1.0:
+        if abs(self.depths[d_idx] - depth_m) < 0.05:
             temp_2d = temp_3d[d_idx]
             clim_2d = clim_3d[d_idx]
             anom_2d = anom_3d[d_idx]
         else:
-            # Linear interpolation between depths
-            temp_2d = np.zeros((101, 241), dtype=np.float32)
-            clim_2d = np.zeros((101, 241), dtype=np.float32)
-            anom_2d = np.zeros((101, 241), dtype=np.float32)
-            for i in range(101):
-                for j in range(241):
-                    temp_2d[i, j] = np.interp(depth_m, self.depths, temp_3d[:, i, j])
-                    clim_2d[i, j] = np.interp(depth_m, self.depths, clim_3d[:, i, j])
-                    anom_2d[i, j] = np.interp(depth_m, self.depths, anom_3d[:, i, j])
+            from scipy.interpolate import interp1d
+            temp_2d = interp1d(self.depths, temp_3d, axis=0, bounds_error=False, fill_value="extrapolate")(depth_m).astype(np.float32)
+            clim_2d = interp1d(self.depths, clim_3d, axis=0, bounds_error=False, fill_value="extrapolate")(depth_m).astype(np.float32)
+            anom_2d = interp1d(self.depths, anom_3d, axis=0, bounds_error=False, fill_value="extrapolate")(depth_m).astype(np.float32)
 
         # Sub-select bounding box if requested
         if bbox is not None:
@@ -502,13 +490,11 @@ class ModelService:
 
         # Interpolate along depth axis if depth_m is between native levels
         d_idx = int(np.argmin(np.abs(self.depths - depth_m)))
-        if abs(self.depths[d_idx] - depth_m) < 1.0:
+        if abs(self.depths[d_idx] - depth_m) < 0.05:
             anom_2d = anom_3d[d_idx]
         else:
-            anom_2d = np.zeros((101, 241), dtype=np.float32)
-            for i in range(101):
-                for j in range(241):
-                    anom_2d[i, j] = np.interp(depth_m, self.depths, anom_3d[:, i, j])
+            from scipy.interpolate import interp1d
+            anom_2d = interp1d(self.depths, anom_3d, axis=0, bounds_error=False, fill_value="extrapolate")(depth_m).astype(np.float32)
 
         # Anomaly magnitude in °C (|T_anomaly|)
         raw = np.abs(anom_2d)
@@ -610,7 +596,11 @@ class ModelService:
         elif var_lower in {"subsurface_temp", "subsurface"}:
             temp_3d, _, _, _ = self.predict_full_3d(date_str)
             d_idx = int(np.argmin(np.abs(self.depths - depth_m)))
-            raw = temp_3d[d_idx]
+            if abs(self.depths[d_idx] - depth_m) < 0.05:
+                raw = temp_3d[d_idx]
+            else:
+                from scipy.interpolate import interp1d
+                raw = interp1d(self.depths, temp_3d, axis=0, bounds_error=False, fill_value="extrapolate")(depth_m).astype(np.float32)
             unit = "°C"
             color_range = (10.0, 28.0)
             u_grid = v_grid = None
@@ -683,9 +673,9 @@ class ModelService:
             d_str = curr.strftime("%Y-%m-%d")
             if d_str in self.date_to_idx:
                 temp_3d, clim_3d, anom_3d, _ = self.predict_full_3d(d_str)
-                t_val = float(temp_3d[d_idx, lat_idx, lon_idx])
-                c_val = float(clim_3d[d_idx, lat_idx, lon_idx])
-                a_val = float(anom_3d[d_idx, lat_idx, lon_idx])
+                t_val = float(np.interp(depth_m, self.depths, temp_3d[:, lat_idx, lon_idx]))
+                c_val = float(np.interp(depth_m, self.depths, clim_3d[:, lat_idx, lon_idx]))
+                a_val = float(np.interp(depth_m, self.depths, anom_3d[:, lat_idx, lon_idx]))
 
                 dates_out.append(d_str)
                 temps_out.append(round(0.0 if np.isnan(t_val) else t_val, 3))
@@ -697,7 +687,7 @@ class ModelService:
         return {
             "lat": near_lat,
             "lon": near_lon,
-            "depth_m": float(self.depths[d_idx]),
+            "depth_m": round(float(depth_m), 2),
             "dates": dates_out,
             "temperature_c": temps_out,
             "climatology_c": clims_out,
@@ -713,10 +703,15 @@ class ModelService:
         """Compute regional summary statistics."""
         temp_3d, clim_3d, anom_3d, date_used = self.predict_full_3d(date_str)
         d_idx = int(np.argmin(np.abs(self.depths - depth_m)))
-
-        temp_2d = temp_3d[d_idx]
-        clim_2d = clim_3d[d_idx]
-        anom_2d = anom_3d[d_idx]
+        if abs(self.depths[d_idx] - depth_m) < 0.05:
+            temp_2d = temp_3d[d_idx]
+            clim_2d = clim_3d[d_idx]
+            anom_2d = anom_3d[d_idx]
+        else:
+            from scipy.interpolate import interp1d
+            temp_2d = interp1d(self.depths, temp_3d, axis=0, bounds_error=False, fill_value="extrapolate")(depth_m).astype(np.float32)
+            clim_2d = interp1d(self.depths, clim_3d, axis=0, bounds_error=False, fill_value="extrapolate")(depth_m).astype(np.float32)
+            anom_2d = interp1d(self.depths, anom_3d, axis=0, bounds_error=False, fill_value="extrapolate")(depth_m).astype(np.float32)
 
         selected_regions = region_ids or list(PREDEFINED_REGIONS.keys())
         out_regions = []
@@ -760,6 +755,6 @@ class ModelService:
 
         return {
             "date": date_used,
-            "depth_m": float(self.depths[d_idx]),
+            "depth_m": round(float(depth_m), 2),
             "regions": out_regions,
         }

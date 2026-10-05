@@ -43,8 +43,12 @@ class GLORYSAdapter:
         ds = self.processor.subset(ds, lat_name="latitude", lon_name="longitude")
         ds = self.processor.regrid(ds, lat_name="latitude", lon_name="longitude", method="linear")
 
-        # Subset depths to the 15 standard SIH depths using nearest neighbor
-        ds = ds.sel(depth=self.target_depths, method="nearest")
+        # Standardize vertical coordinate to standard SIH depths via linear interpolation
+        try:
+            ds = ds.interp(depth=self.target_depths, method="linear")
+        except Exception as e:
+            logger.warning(f"Linear vertical depth interpolation failed ({e}); falling back to nearest-neighbor.")
+            ds = ds.sel(depth=self.target_depths, method="nearest")
 
         ds = self.processor.align_time(ds, time_name="time")
 
