@@ -60,7 +60,15 @@ class DataDownloader:
         self.raw_dir.mkdir(parents=True, exist_ok=True)
 
     def download_cmems(self, product_key: str):
-        """Downloads data from Copernicus Marine Service using subsetting."""
+        """Downloads data from Copernicus Marine Service using subsetting.
+        
+        For SSS data, this method automatically handles the SMOS→SMAP satellite
+        transition at 2015-04-01. Before that date, SSS is downloaded from the
+        SMOS-only product (cmems_obs-mob_glo_phy-sss_my_smos_P1D). From
+        2015-04-01 onward, the merged SMAP+SMOS product is used. The two
+        segments are saved as separate files (sss_smos.nc and sss_smap.nc)
+        and merged by the SSS adapter during preprocessing.
+        """
         if copernicusmarine is None:
             logger.error("copernicusmarine package is not installed. Run: pip install copernicusmarine")
             return
@@ -70,6 +78,18 @@ class DataDownloader:
         domain = self.config["domain"]
         time_range = self.config["time_range"]
 
+        # ── SSS: Handle SMOS/SMAP satellite transition ──────────────────────
+        # SMAP launched 2015-04-01. Before that date, only SMOS provides SSS.
+        # The config defines a fallback dataset ID and switchover date.
+        smos_dataset_id = config_entry.get("smos_only_dataset_id")
+        smap_start_date = config_entry.get("smap_start_date")
+
+        if product_key == "sss" and smos_dataset_id and smap_start_date:
+            self._download_sss_with_smos_fallback(
+                config_entry, domain, time_range, smos_dataset_id, smap_start_date
+            )
+            return
+
         output_file = self.raw_dir / f"{product_key}.nc"
         if output_file.exists():
             logger.info(f"File {output_file} already exists. Skipping download.")
@@ -77,32 +97,7 @@ class DataDownloader:
 
         logger.info(f"Downloading CMEMS {product_key} ({dataset_id}) to {output_file}")
 
-        kwargs = {
-            "dataset_id": dataset_id,
-            "username": os.getenv("COPERNICUSMARINE_SERVICE_USERNAME"),
-            "password": os.getenv("COPERNICUSMARINE_SERVICE_PASSWORD"),
-            "start_datetime": time_range["start_date"],
-            "end_datetime": time_range["end_date"],
-            "minimum_longitude": domain["lon_min"],
-            "maximum_longitude": domain["lon_max"],
-            "minimum_latitude": domain["lat_min"],
-            "maximum_latitude": domain["lat_max"],
-            "output_filename": output_file.name,
-            "output_directory": str(self.raw_dir)
-        }
-
-        # Filter by variables if specified
-        variables = config_entry.get("variables")
-        if not variables and "variable" in config_entry:
-            variables = [config_entry["variable"]]
-        if variables:
-            kwargs["variables"] = variables
-
-        # Filter by depth if specified
-        if "depth_min" in config_entry:
-            kwargs["minimum_depth"] = float(config_entry["depth_min"])
-        if "depth_max" in config_entry:
-            kwargs["maximum_depth"] = float(config_entry["depth_max"])
+        kwargs = self._build_cmems_kwargs(config_entry, domain, time_range, output_file)
 
         # Using copernicusmarine subset to only download the NIO domain + variables + depths
         start_year = int(time_range["start_date"].split("-")[0])
@@ -137,6 +132,148 @@ class DataDownloader:
         else:
             copernicusmarine.subset(**kwargs)
             logger.info(f"Successfully downloaded {product_key}.")
+
+    def _build_cmems_kwargs(self, config_entry: dict, domain: dict, time_range: dict, output_file: Path) -> dict:
+        """Builds the kwargs dict for copernicusmarine.subset()."""
+        kwargs = {
+            "dataset_id": config_entry["dataset_id"],
+            "username": os.getenv("COPERNICUSMARINE_SERVICE_USERNAME"),
+            "password": os.getenv("COPERNICUSMARINE_SERVICE_PASSWORD"),
+            "start_datetime": time_range["start_date"],
+            "end_datetime": time_range["end_date"],
+            "minimum_longitude": domain["lon_min"],
+            "maximum_longitude": domain["lon_max"],
+            "minimum_latitude": domain["lat_min"],
+            "maximum_latitude": domain["lat_max"],
+            "output_filename": output_file.name,
+            "output_directory": str(self.raw_dir)
+        }
+
+        # Filter by variables if specified
+        variables = config_entry.get("variables")
+        if not variables and "variable" in config_entry:
+            variables = [config_entry["variable"]]
+        if variables:
+            kwargs["variables"] = variables
+
+        # Filter by depth if specified
+        if "depth_min" in config_entry:
+            kwargs["minimum_depth"] = float(config_entry["depth_min"])
+        if "depth_max" in config_entry:
+            kwargs["maximum_depth"] = float(config_entry["depth_max"])
+
+        return kwargs
+
+    def _download_sss_with_smos_fallback(
+        self,
+        config_entry: dict,
+        domain: dict,
+        time_range: dict,
+        smos_dataset_id: str,
+        smap_start_date: str,
+    ):
+        """Downloads SSS data with automatic SMOS/SMAP satellite switching.
+
+        SMAP satellite data is only available from 2015-04-01 onward. For dates
+        before the switchover, SSS is downloaded from the SMOS-only product.
+        After the switchover, the merged SMAP+SMOS multi-observation product is
+        used. The two segments are saved as separate files and later merged by
+        the SSS preprocessing adapter.
+
+        Produces:
+          - data/raw/sss_smos.nc   (pre-SMAP period, if applicable)
+          - data/raw/sss_smap.nc   (post-SMAP period, if applicable)
+          - OR data/raw/sss.nc     (if the entire range falls within one product)
+        """
+        merged_dataset_id = config_entry["dataset_id"]
+        start_date = time_range["start_date"]
+        end_date = time_range["end_date"]
+
+        needs_smos = start_date < smap_start_date
+        needs_smap = end_date >= smap_start_date
+
+        # ── Case 1: Entire range is pre-SMAP → download SMOS-only as sss.nc ──
+        if needs_smos and not needs_smap:
+            output_file = self.raw_dir / "sss.nc"
+            if output_file.exists():
+                logger.info(f"SSS file {output_file} already exists. Skipping.")
+                return
+
+            logger.info(
+                f"SSS: Entire range ({start_date} → {end_date}) is pre-SMAP. "
+                f"Downloading SMOS-only product ({smos_dataset_id})."
+            )
+            smos_entry = config_entry.copy()
+            smos_entry["dataset_id"] = smos_dataset_id
+            kwargs = self._build_cmems_kwargs(smos_entry, domain, time_range, output_file)
+            copernicusmarine.subset(**kwargs)
+            logger.info("Successfully downloaded SSS (SMOS-only).")
+            return
+
+        # ── Case 2: Entire range is post-SMAP → download merged as sss.nc ──
+        if needs_smap and not needs_smos:
+            output_file = self.raw_dir / "sss.nc"
+            if output_file.exists():
+                logger.info(f"SSS file {output_file} already exists. Skipping.")
+                return
+
+            logger.info(
+                f"SSS: Entire range ({start_date} → {end_date}) is post-SMAP. "
+                f"Downloading merged product ({merged_dataset_id})."
+            )
+            kwargs = self._build_cmems_kwargs(config_entry, domain, time_range, output_file)
+            copernicusmarine.subset(**kwargs)
+            logger.info("Successfully downloaded SSS (merged SMAP+SMOS).")
+            return
+
+        # ── Case 3: Range spans the SMAP transition → split into two files ──
+        logger.info(
+            f"SSS: Date range ({start_date} → {end_date}) spans the SMAP transition "
+            f"at {smap_start_date}. Downloading in two segments:"
+        )
+
+        # Compute the day before SMAP start for the SMOS segment end date
+        from datetime import datetime, timedelta
+        smap_dt = datetime.strptime(smap_start_date, "%Y-%m-%d")
+        smos_end_date = (smap_dt - timedelta(days=1)).strftime("%Y-%m-%d")
+
+        # Segment 1: SMOS-only (start_date → day before smap_start_date)
+        smos_file = self.raw_dir / "sss_smos.nc"
+        if smos_file.exists():
+            logger.info(f"SMOS segment {smos_file} already exists. Skipping.")
+        else:
+            logger.info(
+                f"  Segment 1/2: SMOS-only ({start_date} → {smos_end_date}) "
+                f"using {smos_dataset_id}"
+            )
+            smos_entry = config_entry.copy()
+            smos_entry["dataset_id"] = smos_dataset_id
+            smos_time_range = {"start_date": start_date, "end_date": smos_end_date}
+            kwargs = self._build_cmems_kwargs(smos_entry, domain, smos_time_range, smos_file)
+            try:
+                copernicusmarine.subset(**kwargs)
+                logger.info("Successfully downloaded SSS SMOS segment.")
+            except Exception as e:
+                logger.error(f"Failed to download SMOS SSS segment: {e}")
+
+        # Segment 2: Merged SMAP+SMOS (smap_start_date → end_date)
+        smap_file = self.raw_dir / "sss_smap.nc"
+        if smap_file.exists():
+            logger.info(f"SMAP segment {smap_file} already exists. Skipping.")
+        else:
+            logger.info(
+                f"  Segment 2/2: Merged SMAP+SMOS ({smap_start_date} → {end_date}) "
+                f"using {merged_dataset_id}"
+            )
+            smap_time_range = {"start_date": smap_start_date, "end_date": end_date}
+            kwargs = self._build_cmems_kwargs(config_entry, domain, smap_time_range, smap_file)
+            try:
+                copernicusmarine.subset(**kwargs)
+                logger.info("Successfully downloaded SSS merged SMAP+SMOS segment.")
+            except Exception as e:
+                logger.error(f"Failed to download merged SSS segment: {e}")
+
+        logger.info("SSS download complete (both SMOS and SMAP segments).")
 
     def download_podaac(self, product_key: str):
         """Downloads and subsets data from NASA Earthdata (PO.DAAC) in yearly chunks."""

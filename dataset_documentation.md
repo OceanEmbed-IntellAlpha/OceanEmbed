@@ -76,10 +76,10 @@ flowchart LR
 
 | Phase | Script | What It Does |
 |-------|--------|--------------|
-| **Phase 1** | [downloader.py](file:///c:/SIH_2026/digital_ocean_twin/backend/pipeline/downloader.py) | Downloads raw NetCDF data from CMEMS and PO.DAAC |
-| **Phase 2** | Adapters in [adapters/](file:///c:/SIH_2026/digital_ocean_twin/backend/pipeline/adapters) + [processor.py](file:///c:/SIH_2026/digital_ocean_twin/backend/pipeline/processor.py) | Subset, regrid, QC, time-align each dataset |
-| **Phase 3** | [generator.py](file:///c:/SIH_2026/digital_ocean_twin/backend/pipeline/generator.py) | Save processed data as training-ready Zarr stores |
-| **Phase 4** | [downloader.py](file:///c:/SIH_2026/digital_ocean_twin/backend/pipeline/downloader.py) → [validation_argo.py](file:///c:/SIH_2026/digital_ocean_twin/backend/pipeline/adapters/validation_argo.py) | Download + process Argo profiles for final evaluation |
+| **Phase 1** | [downloader.py](file:///c:/OceanEmbed/backend/pipeline/downloader.py) | Downloads raw NetCDF data from CMEMS and PO.DAAC |
+| **Phase 2** | Adapters in [adapters/](file:///c:/OceanEmbed/backend/pipeline/adapters) + [processor.py](file:///c:/OceanEmbed/backend/pipeline/processor.py) | Subset, regrid, QC, time-align each dataset |
+| **Phase 3** | [generator.py](file:///c:/OceanEmbed/backend/pipeline/generator.py) | Save processed data as training-ready Zarr stores |
+| **Phase 4** | [downloader.py](file:///c:/OceanEmbed/backend/pipeline/downloader.py) → [validation_argo.py](file:///c:/OceanEmbed/backend/pipeline/adapters/validation_argo.py) | Download + process Argo profiles for final evaluation |
 
 ---
 
@@ -88,7 +88,7 @@ flowchart LR
 | # | Dataset | Source | Download Method | Native Resolution | Output Resolution | Variables | Time Range | Role |
 |---|---------|--------|----------------|-------------------|-------------------|-----------|------------|------|
 | 1 | **SST** | OSTIA (CMEMS) | `copernicusmarine.subset()` | 0.05° daily | 0.25° daily | `analysed_sst` | 2010–2023 | Input |
-| 2 | **SSS** | CMEMS Multi-Obs | `copernicusmarine.subset()` | 0.125° daily | 0.25° daily | `sos` | 2010–2023 | Input |
+| 2 | **SSS** | CMEMS SMOS (pre-2015) + SMAP+SMOS Merged (post-2015) | `copernicusmarine.subset()` | 0.125° daily | 0.25° daily | `sos` | 2010–2023 | Input |
 | 3 | **SSH** | DUACS (CMEMS) | `copernicusmarine.subset()` | 0.125° daily | 0.25° daily | `sla`, `adt`, `ugos`, `vgos` | 2010–2023 | Input |
 | 4 | **Currents** | OSCAR v2.0 (PO.DAAC) | `earthaccess` | 0.25° 5-daily | 0.25° daily | `u`, `v` | 2010–2023 | Input |
 | 5 | **Winds** | CCMP v3.1 (PO.DAAC) | `earthaccess` | 0.25° 6-hourly | 0.25° daily | `uwnd`, `vwnd` | 2010–2023 | Input |
@@ -112,7 +112,7 @@ OSTIA (Operational Sea Surface Temperature and Ice Analysis) is a **Level 4 gap-
 - **Library:** `copernicusmarine.subset()`
 - **Method:** Server-side subsetting — only the NIO bounding box (`5–30°N, 45–105°E`) for the configured date range is downloaded. The full global dataset is never pulled.
 - **Output:** Single file `data/raw/sst.nc`
-- **Adapter:** [sst_ostia.py](file:///c:/SIH_2026/digital_ocean_twin/backend/pipeline/adapters/sst_ostia.py)
+- **Adapter:** [sst_ostia.py](file:///c:/OceanEmbed/backend/pipeline/adapters/sst_ostia.py)
 
 ### Preprocessing Steps
 1. **Load** with Dask (out-of-core, lazy computation)
@@ -139,38 +139,51 @@ OSTIA (Operational Sea Surface Temperature and Ice Analysis) is a **Level 4 gap-
 ## 5. Dataset 2: SSS (Sea Surface Salinity)
 
 ### What Is It?
-A **merged SMOS + SMAP satellite-derived sea surface salinity** product. Salinity is a critical input because it affects ocean density and mixing — key drivers of subsurface temperature structure.
+Satellite-derived sea surface salinity from **two missions** with automatic transition handling. Salinity is a critical input because it affects ocean density and mixing — key drivers of subsurface temperature structure.
+
+- **Pre-2015-04-01:** SMOS-only product (`cmems_obs-mob_glo_phy-sss_my_smos_P1D`)
+- **Post-2015-04-01:** Merged SMAP+SMOS multi-observation product (`cmems_obs-mob_glo_phy-sss_my_multi_P1D`)
+
+The SMAP satellite launched on 2015-04-01, providing improved L-band radiometry for SSS. For training periods starting before this date (e.g., 2010), the pipeline automatically downloads SSS from the SMOS-only product for the pre-SMAP era and switches to the higher-quality merged product afterward.
 
 ### Source & Credentials
 - **Provider:** Copernicus Marine Service (CMEMS)
-- **Dataset ID:** `cmems_obs-mob_glo_phy-sss_my_multi_P1D`
+- **Merged Dataset ID:** `cmems_obs-mob_glo_phy-sss_my_multi_P1D` (2015-04-01 onward)
+- **SMOS-only Dataset ID:** `cmems_obs-mob_glo_phy-sss_my_smos_P1D` (pre-2015-04-01)
+- **Switchover Date:** `2015-04-01` (configured in `pipeline_config.yaml` as `smap_start_date`)
 - **Auth:** CMEMS username + password in `.env`
 
-> [!IMPORTANT]
-> SMAP data is only available from **2015-04-01**. Before that date, only SMOS data exists. The config specifies a fallback dataset `cmems_obs-mob_glo_phy-sss_my_smos_P1D` for the pre-SMAP period (2010–2015), but the current downloader code does **not** handle this split automatically. The entire 2010–2023 range is downloaded from the merged product, which means **2010–2015 SSS data will have gaps or be SMOS-only** depending on what CMEMS serves.
+> [!NOTE]
+> The downloader automatically handles the SMOS→SMAP transition. When the configured `time_range` spans the `smap_start_date` (2015-04-01), two separate files are downloaded:
+> - `data/raw/sss_smos.nc` — SMOS-only product for dates before 2015-04-01
+> - `data/raw/sss_smap.nc` — Merged SMAP+SMOS product for dates from 2015-04-01 onward
+>
+> The SSS adapter ([`sss_cmems.py`](file:///c:/OceanEmbed/backend/pipeline/adapters/sss_cmems.py)) detects both segments, concatenates them along the time dimension, and preprocesses the combined record seamlessly. If the entire date range falls within one era (e.g., 2016–2020), a single `sss.nc` file is downloaded instead.
 
 ### How It Is Downloaded
 - **Library:** `copernicusmarine.subset()`
-- **Method:** Server-side subsetting to NIO + date range
-- **Output:** Single file `data/raw/sss.nc`
-- **Adapter:** [sss_cmems.py](file:///c:/SIH_2026/digital_ocean_twin/backend/pipeline/adapters/sss_cmems.py)
+- **Method:** Server-side subsetting to NIO + date range, with automatic dataset switching at the SMAP transition date
+- **Output:** Either `data/raw/sss.nc` (single era) or `data/raw/sss_smos.nc` + `data/raw/sss_smap.nc` (cross-era)
+- **Adapter:** [sss_cmems.py](file:///c:/OceanEmbed/backend/pipeline/adapters/sss_cmems.py)
 
 ### Preprocessing Steps
-1. **Load** with Dask chunking
-2. **Spatial subset** to NIO domain
-3. **Regrid** from ~0.125° → 0.25° (bilinear)
-4. **Time alignment** to daily mean
-5. **QC:** Mask values outside `20–42 PSU`
+1. **Detect** SSS files — single file or SMOS+SMAP split segments
+2. **Load** with Dask chunking; concatenate segments if split
+3. **Spatial subset** to NIO domain
+4. **Regrid** from ~0.125° → 0.25° (bilinear)
+5. **Time alignment** to daily mean
+6. **QC:** Mask values outside `20–42 PSU`
 
 ### Raw vs Processed
 
-| Property | Raw (`sss.nc`) | Processed (`sss.zarr`) |
-|----------|----------------|------------------------|
+| Property | Raw (`sss_smos.nc` + `sss_smap.nc` or `sss.nc`) | Processed (`sss.zarr`) |
+|----------|--------------------------------------------------|------------------------|
 | **Resolution** | ~0.125° | 0.25° |
 | **Grid size** | ~200 × 480 per day | 101 × 241 per day |
 | **Units** | PSU | PSU (unchanged) |
+| **Source sensor** | SMOS (pre-2015) / SMAP+SMOS (post-2015) | Seamlessly merged |
 | **Bad values** | Fill values, possible NaN over land | Masked to 20–42 PSU |
-| **Format** | NetCDF4 | Zarr |
+| **Format** | NetCDF4 (1 or 2 files) | Zarr |
 
 ---
 
@@ -189,7 +202,7 @@ A **merged SMOS + SMAP satellite-derived sea surface salinity** product. Salinit
 - **Library:** `copernicusmarine.subset()`
 - **Method:** Server-side subsetting (NIO + date range + 4 variables)
 - **Output:** Single file `data/raw/ssh.nc`
-- **Adapter:** [ssh_duacs.py](file:///c:/SIH_2026/digital_ocean_twin/backend/pipeline/adapters/ssh_duacs.py)
+- **Adapter:** [ssh_duacs.py](file:///c:/OceanEmbed/backend/pipeline/adapters/ssh_duacs.py)
 
 ### Preprocessing Steps
 1. **Load** with Dask chunking
@@ -233,7 +246,7 @@ A **merged SMOS + SMAP satellite-derived sea surface salinity** product. Salinit
   4. Downloaded in **yearly chunks** to prevent disk space explosion
   5. Each year: download global files → open with `xr.open_mfdataset()` → slice to NIO → save as `currents_YYYY.nc` → delete global files
 - **Output:** Multiple files `data/raw/currents_2010.nc`, `currents_2011.nc`, ... `currents_2023.nc`
-- **Adapter:** [currents_oscar.py](file:///c:/SIH_2026/digital_ocean_twin/backend/pipeline/adapters/currents_oscar.py)
+- **Adapter:** [currents_oscar.py](file:///c:/OceanEmbed/backend/pipeline/adapters/currents_oscar.py)
 
 > [!WARNING]
 > PO.DAAC downloads are significantly slower than CMEMS because you must download **entire global granules** first, then subset locally. For OSCAR, each granule is a global 0.25° grid. For 14 years at 5-day intervals, this is ~1000+ granules downloaded in batches of 30.
@@ -276,7 +289,7 @@ A **merged SMOS + SMAP satellite-derived sea surface salinity** product. Salinit
   1. Search → download global granules → local subset → yearly chunks
   2. Each global 6-hourly granule is one file, so **14 years × 365 days × 4 per day ≈ 20,440 granules** (this is why batching at 30 per batch is critical)
 - **Output:** Multiple files `data/raw/winds_2010.nc`, ... `winds_2023.nc`
-- **Adapter:** [winds_ccmp.py](file:///c:/SIH_2026/digital_ocean_twin/backend/pipeline/adapters/winds_ccmp.py)
+- **Adapter:** [winds_ccmp.py](file:///c:/OceanEmbed/backend/pipeline/adapters/winds_ccmp.py)
 
 > [!CAUTION]
 > CCMP has the **most granules** of any dataset in the pipeline (~20,000 files). Downloading can take many hours and is prone to connection timeouts. The batch retry logic handles this, but expect the longest download times here.
@@ -318,7 +331,7 @@ A **merged SMOS + SMAP satellite-derived sea surface salinity** product. Salinit
 - **Method:** Server-side subsetting with **depth filtering** (0–1000m) + NIO bbox + date range
 - **Chunking:** Downloaded in **yearly chunks** because GLORYS is massive (3D × 14 years at 0.083°):
   - `target_glorys_2010.nc`, `target_glorys_2011.nc`, ... `target_glorys_2023.nc`
-- **Adapter:** [target_glorys.py](file:///c:/SIH_2026/digital_ocean_twin/backend/pipeline/adapters/target_glorys.py)
+- **Adapter:** [target_glorys.py](file:///c:/OceanEmbed/backend/pipeline/adapters/target_glorys.py)
 
 > [!WARNING]
 > GLORYS is the **single largest dataset** in the pipeline. Even with server-side subsetting and yearly chunking, each yearly chunk for the NIO domain with 50 depth levels at 0.083° is several GB. Total raw download is ~30–50 GB.
@@ -433,7 +446,7 @@ The Argo downloader was downloading an extremely small amount of data — only ~
 
 ### Root Cause: Three Hard-Coded Limits
 
-The original code in [downloader.py](file:///c:/SIH_2026/digital_ocean_twin/backend/pipeline/downloader.py) had three artificial limits that severely restricted how much data was downloaded:
+The original code in [downloader.py](file:///c:/OceanEmbed/backend/pipeline/downloader.py) had three artificial limits that severely restricted how much data was downloaded:
 
 ```diff
 - # OLD CODE (BUGGY)
@@ -591,7 +604,7 @@ flowchart TB
 
     subgraph DOWNLOAD["Phase 1: Download → data/raw/"]
         D1["sst.nc<br/>OSTIA, 0.05°"]
-        D2["sss.nc<br/>CMEMS Multi, 0.125°"]
+        D2["sss_smos.nc + sss_smap.nc<br/>SMOS pre-2015 / Merged post-2015"]
         D3["ssh.nc<br/>DUACS, 0.125°"]
         D4["currents_YYYY.nc<br/>OSCAR, 0.25°, 5d"]
         D5["winds_YYYY.nc<br/>CCMP, 0.25°, 6hr"]
@@ -650,5 +663,5 @@ flowchart TB
 ---
 
 > [!TIP]
-> **Remaining minor improvement opportunity:**
-> The **SSS downloader** could be enhanced to handle the SMOS-only fallback for 2010–2015 (before SMAP launched). The config already specifies the fallback dataset ID, but the code doesn't implement the split logic yet.
+> **SSS Satellite Transition Note:**
+> The SSS downloader automatically handles the SMOS→SMAP satellite transition at 2015-04-01. When the configured date range spans this boundary, two files are downloaded (`sss_smos.nc` for pre-2015 and `sss_smap.nc` for post-2015) and seamlessly concatenated by the SSS adapter during preprocessing. This ensures continuous SSS coverage across the full 2010–2023 training window.

@@ -37,7 +37,7 @@ flowchart TD
     subgraph SATELLITE["Multi-Source Satellite & Reanalysis Products"]
         direction TB
         SST["OSTIA SST (CMEMS)<br/>0.05° Daily"]
-        SSS["SMOS/SMAP SSS (CMEMS)<br/>0.125° Daily"]
+        SSS["SMOS/SMAP SSS (CMEMS)<br/>0.125° Daily<br/>Auto-switch at 2015-04"]
         SSH["DUACS SLA / SSH (CMEMS)<br/>0.125° Daily"]
         CUR["OSCAR Currents u,v (PO.DAAC)<br/>0.25° 5-Day"]
         WND["CCMP Winds u,v (PO.DAAC)<br/>0.25° 6-Hourly"]
@@ -81,7 +81,7 @@ OceanEmbed uses seven surface observation channels as inputs and evaluates again
 | Dataset | Provider | Variable | Processing Applied | Role |
 | :--- | :--- | :--- | :--- | :--- |
 | **OSTIA SST** | UK Met Office / CMEMS | `analysed_sst` | Kelvin $\to$ °C, regridded 0.05° to 0.25° | Surface Input (Channel 1) |
-| **Multi-Obs SSS** | Copernicus Marine (CMEMS) | `sos` | Regridded 0.125° to 0.25°, QC (20–42 PSU) | Surface Input (Channel 2) |
+| **Multi-Obs SSS** | Copernicus Marine (CMEMS) | `sos` | SMOS-only pre-2015 → merged SMAP+SMOS post-2015, regridded 0.125° to 0.25°, QC (20–42 PSU) | Surface Input (Channel 2) |
 | **DUACS Altimetry** | CNES / CMEMS | `sla` | Sea Level Anomaly extracted, regridded to 0.25° | Surface Input (Channel 3) |
 | **OSCAR v2.0** | NASA PO.DAAC / Earthdata | `u`, `v` | Coordinate standardization, 5-day to daily interpolation | Surface Input (Channels 4 & 5) |
 | **CCMP v3.1** | NASA PO.DAAC / Earthdata | `uwnd`, `vwnd` | 6-hourly to daily mean aggregation | Surface Input (Channels 6 & 7) |
@@ -305,7 +305,7 @@ OceanEmbed/
 ### Current Limitations
 - **Geographic Boundary:** The trained model and grid configurations are restricted to the North Indian Ocean ($5^\circ\text{N}–30^\circ\text{N}, 45^\circ\text{E}–105^\circ\text{E}$). Coordinates outside this bounding box are outside the model domain.
 - **Thermocline Error Behavior:** While mixed-layer ($<0.45^\circ\text{C}$) and deep-ocean ($<0.26^\circ\text{C}$) errors are low, RMSE peaks around the main thermocline ($50–200\text{ m}$, reaching $0.84^\circ\text{C}$ at $92\text{ m}$) where vertical temperature gradients and non-linear internal wave activity are highest.
-- **Pre-2015 SSS Ingestion:** SMAP satellite observations began in April 2015. While the pipeline config defines a SMOS fallback for 2010–2015, automated multi-dataset switching is not yet implemented in the download script, leaving pre-2015 SSS reliant on available merged CMEMS coverage.
+- **Pre-2015 SSS Temporal Density:** SMAP satellite observations began in April 2015. The pipeline automatically switches between the SMOS-only product (`cmems_obs-mob_glo_phy-sss_my_smos_P1D`) for dates before 2015-04-01 and the merged SMAP+SMOS product for dates after. However, the SMOS-only era has slightly lower spatial and temporal sampling density compared to the merged era.
 - **Spatial Resolution:** The canonical $0.25^\circ \times 0.25^\circ$ (~28 km) grid smooths sub-mesoscale phenomena and near-shore coastal boundaries.
 
 ### Planned Enhancements
@@ -348,7 +348,8 @@ OceanEmbed relies on public Earth observation and ocean reanalysis data from the
 
 - **Copernicus Marine Environment Monitoring Service (CMEMS):**
   - OSTIA Sea Surface Temperature (DOI: [10.48670/moi-00168](https://doi.org/10.48670/moi-00168))
-  - Multi-Obs Sea Surface Salinity (DOI: [10.48670/moi-00051](https://doi.org/10.48670/moi-00051))
+  - Multi-Obs Sea Surface Salinity — Merged SMAP+SMOS (DOI: [10.48670/moi-00051](https://doi.org/10.48670/moi-00051))
+  - SMOS-Only Sea Surface Salinity (pre-2015 fallback)
   - DUACS Multi-Mission Altimetry (DOI: [10.48670/moi-00145](https://doi.org/10.48670/moi-00145))
   - GLORYS12V1 Global Ocean Reanalysis (DOI: [10.48670/moi-00021](https://doi.org/10.48670/moi-00021))
 - **NASA Physical Oceanography Distributed Active Archive Center (PO.DAAC):**
