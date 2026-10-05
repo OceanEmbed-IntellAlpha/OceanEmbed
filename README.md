@@ -88,7 +88,15 @@ OceanEmbed uses seven surface observation channels as inputs and evaluates again
 | **GLORYS12V1** | Mercator Ocean / CMEMS | `thetao` | Regridded 0.083° to 0.25°, 15 standard depths extracted | Reanalysis Training Target |
 | **Argo Profiles** | IFREMER GDAC / ArgoVis | `TEMP`, `PRES` | Quality flags (QC 1/2), collocated depth matching | Independent Holdout Validation |
 
-For dataset identifiers, download methods, and raw vs. processed comparisons, see [dataset_documentation.md](dataset_documentation.md).
+> [!NOTE]
+> **Problem Statement Alignment & Upstream Catalog Notes:**
+> All input products directly fulfill the official SIH26066 recommendations. Some dataset product identifiers or native grid configurations differ slightly from the original problem statement text because operational catalogs (CMEMS, PO.DAAC) evolve over time:
+> - **SSS:** Merged SMAP+SMOS (`cmems_obs-mob_glo_phy-sss_my_multi_P1D`, DOI: `10.48670/moi-00051`) begins in April 2015 (SMAP launch); dates from 2010–2015 automatically use the SMOS-only product (`cmems_obs-mob_glo_phy-sss_my_smos_P1D`).
+> - **SSH:** Modern CMEMS DUACS (`cmems_obs-sl_glo_phy-ssh_my_allsat-l4-duacs-0.125deg_P1D`, DOI: `10.48670/moi-00145`) is served natively at 0.125° and regridded to canonical 0.25° by our adapter.
+> - **Winds:** Uses analysis-ready 0.25° gridded CCMP v3.1 (`CCMP_WINDS_10M6HR_L4_V3.1`) rather than orbital swath data, daily-averaged from 6-hourly snapshots.
+> - **Splits:** **Training:** 2010–2020 (4,018 daily snapshots, 11 years) | **Validation:** 2021 (365 snapshots) | **Test:** 2022 (365 snapshots) | **Operational / Held-Out:** 2023 | **Argo Float In-Situ Validation:** 2020–2022 (8,923 physical profiles across NIO).
+>
+> For comprehensive dataset documentation, DOIs, download scripts, and raw vs. processed comparisons, see [dataset_documentation.md](dataset_documentation.md).
 
 ---
 

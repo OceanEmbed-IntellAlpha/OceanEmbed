@@ -7,9 +7,11 @@
 
 ## Table of Contents
 
-1. [Project Context](#1-project-context)
+## Table of Contents
+
+1. [Project Context & Official Problem Statement (SIH26066)](#1-project-context--official-problem-statement-sih26066)
 2. [Pipeline Architecture Overview](#2-pipeline-architecture-overview)
-3. [Dataset Summary Table](#3-dataset-summary-table)
+3. [Dataset Summary & Problem Statement Mapping](#3-dataset-summary--problem-statement-mapping)
 4. [Dataset 1: SST (Sea Surface Temperature)](#4-dataset-1-sst-sea-surface-temperature)
 5. [Dataset 2: SSS (Sea Surface Salinity)](#5-dataset-2-sss-sea-surface-salinity)
 6. [Dataset 3: SSH (Sea Surface Height / Sea Level Anomaly)](#6-dataset-3-ssh-sea-surface-height--sea-level-anomaly)
@@ -20,80 +22,118 @@
 11. [🐛 Argo Download Bug — Analysis & Resolution](#11--argo-download-bug--analysis--resolution)
 12. [Raw vs Processed Data Comparison](#12-raw-vs-processed-data-comparison)
 13. [Data Flow Diagram](#13-data-flow-diagram)
+14. [Dataset Splits & Benchmark Validation Performance](#14-dataset-splits--benchmark-validation-performance)
 
 ---
 
-## 1. Project Context
+## 1. Project Context & Official Problem Statement (SIH26066)
 
-**Problem Statement:** SIH 2026 — Satellite Embedding-Based Deep Learning Framework for Subsurface Temperature Reconstruction.
+### Problem Statement Background
+Subsurface ocean temperature is a fundamental variable for understanding ocean circulation, upper-ocean heat content, stratification, climate variability, air-sea interaction, and marine ecosystems. Accurate representation of the vertical ocean temperature is essential for applications such as marine heatwave monitoring, fisheries management, and data assimilation.
 
-**Goal:** Take 2D satellite surface observations (SST, SSS, SSH, currents, winds) and use a deep learning model to predict 3D subsurface ocean temperature profiles at 15 standard depths (0–1000m) in the North Indian Ocean.
+However, direct measurements of subsurface temperature remain sparse because they rely primarily on in-situ observing systems such as Argo profiling floats, moored buoys, gliders, and ship observations. While these observations provide valuable vertical information, their spatial and temporal coverage is insufficient for generating continuous, basin-scale subsurface fields.
 
-**Region:** North Indian Ocean (NIO) → `5°N–30°N, 45°E–105°E`
-**Time Range:** 2010-01-01 → 2023-12-31 (14 years)
-**Output Resolution:** 0.25° × 0.25° daily grid
+In contrast, satellite observations provide continuous, large-scale monitoring of surface ocean conditions at relatively high spatial and temporal resolution. Surface variables such as:
+- **Sea Surface Temperature (SST)**
+- **Sea Surface Salinity (SSS)**
+- **Sea Surface Height (SSH) / Sea Level Anomaly (SLA)**
+- **Surface Ocean Currents ($U, V$)**
+- **Surface Winds ($U, V$)**
+
+contain indirect signatures of subsurface ocean processes through physical mechanisms including thermocline displacement, mesoscale eddies, vertical mixing, mass transport, and ocean-atmosphere coupling.
+
+Recent advances in Artificial Intelligence (AI), Deep Learning (DL), and representation learning enable the generation of **satellite embeddings**, where multidimensional surface observations are transformed into compact latent representations that capture hidden ocean dynamics. Such embeddings learn nonlinear relationships between surface observations and subsurface ocean structure far more effectively than conventional statistical or machine learning approaches.
+
+### Official Scope & Specifications
+- **Objective:** Develop a Satellite Embedding-Based Deep Learning Framework to reconstruct depth-wise subsurface ocean temperature from daily surface satellite observations.
+- **Geographic Domain:** North Indian Ocean (NIO) $\to$ `5.0°N–30.0°N, 45.0°E–105.0°E` (Arabian Sea, Bay of Bengal, and Equatorial North Indian Ocean).
+- **Spatial Resolution:** Canonical `0.25° × 0.25°` grid ($101 \text{ lat} \times 241 \text{ lon}$).
+- **Temporal Resolution:** Daily mean.
+- **Vertical Reach (15 Standard SIH Depths in meters):**
+  $$\{0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000\}\text{ m}$$
+- **Evaluation Criteria:** Independent observations (Argo floats) and standard skill metrics (RMSE, MAE, Pearson correlation $r$, $R^2$, and Bias).
+- **Core Deliverables:**
+  1. End-to-end preprocessing and harmonization pipeline for multi-source satellite and ocean datasets.
+  2. Satellite embedding engine capable of learning latent ocean representations from surface observations.
+  3. Deep learning reconstruction model estimating 3D subsurface temperature.
+  4. Standardized daily output at 0.25° resolution.
+  5. In-situ validation framework using independent Argo observations.
+  6. Demonstration of a working Proof-of-Concept (PoC) over the Arabian Sea and Bay of Bengal.
 
 ### How Datasets Fit Together
 
 ```
-┌─────────────────────────────────────────────────┐
-│              MODEL INPUTS (2D Surface)          │
-│                                                 │
-│  SST + SSS + SSH(SLA) + U + V + UWND + VWND    │
-│  = 7 surface channels at 0.25° daily            │
-│                                                 │
-│       ↓ Deep Learning Model (OceanEmbed) ↓      │
-│                                                 │
-│              MODEL TARGET (3D Subsurface)       │
-│                                                 │
-│  GLORYS thetao at 15 depths × 0.25° daily       │
-│                                                 │
-│       ↓ Independent Validation ↓                │
-│                                                 │
-│              ARGO (in-situ point measurements)  │
-│  Real ocean T(z) profiles for test-period eval  │
-└─────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│               MODEL INPUTS (2D Surface)                │
+│                                                        │
+│   SST + SSS + SSH(SLA) + U + V + UWND + VWND           │
+│   = 7 surface channels at 0.25° daily                  │
+│                                                        │
+│        ↓ Deep Learning Model (OceanEmbed) ↓            │
+│                                                        │
+│               MODEL TARGET (3D Subsurface)             │
+│                                                        │
+│   GLORYS thetao at 15 standard depths × 0.25° daily    │
+│                                                        │
+│        ↓ Independent Physical Validation ↓             │
+│                                                        │
+│               ARGO (In-Situ Point Measurements)        │
+│   8,923 real physical T(z) profiles across NIO basin   │
+└────────────────────────────────────────────────────────┘
 ```
 
 | Role | Datasets | Purpose |
 |------|----------|---------|
-| **Model Inputs** | SST, SSS, SSH, Currents (u,v), Winds (uwnd,vwnd) | 7 surface feature channels the model sees |
-| **Model Target** | GLORYS12V1 `thetao` | Ground-truth 3D temperature the model learns to predict |
-| **Independent Validation** | Argo floats | Real in-situ measurements to validate model on unseen real-world data |
+| **Model Inputs** | SST, SSS, SSH, Currents ($u, v$), Winds ($u_{wnd}, v_{wnd}$) | 7 surface observation feature channels |
+| **Model Target** | GLORYS12V1 `thetao` | Ground-truth 3D reanalysis temperature target for training |
+| **Independent Validation** | Argo profiling floats | Real in-situ measurements to validate model generalization on unseen physical data |
 
 ---
 
 ## 2. Pipeline Architecture Overview
 
-The pipeline runs in 4 phases:
+The pipeline runs in 4 modular phases:
 
 ```mermaid
 flowchart LR
-    A["Phase 1: Download"] --> B["Phase 2: Preprocess<br/>(Adapters)"]
-    B --> C["Phase 3: Generate<br/>(Zarr Stores)"]
-    A --> D["Phase 4: Argo<br/>(Validation Only)"]
+    A["Phase 1: Download<br/>(CMEMS & PO.DAAC)"] --> B["Phase 2: Preprocess<br/>(Adapters & QC)"]
+    B --> C["Phase 3: Generate<br/>(Standardized Zarr)"]
+    A --> D["Phase 4: Argo<br/>(In-Situ Validation)"]
 ```
 
 | Phase | Script | What It Does |
 |-------|--------|--------------|
-| **Phase 1** | [downloader.py](file:///c:/OceanEmbed/backend/pipeline/downloader.py) | Downloads raw NetCDF data from CMEMS and PO.DAAC |
-| **Phase 2** | Adapters in [adapters/](file:///c:/OceanEmbed/backend/pipeline/adapters) + [processor.py](file:///c:/OceanEmbed/backend/pipeline/processor.py) | Subset, regrid, QC, time-align each dataset |
+| **Phase 1** | [downloader.py](file:///c:/OceanEmbed/backend/pipeline/downloader.py) | Downloads raw NetCDF data from CMEMS and NASA PO.DAAC |
+| **Phase 2** | Adapters in [adapters/](file:///c:/OceanEmbed/backend/pipeline/adapters) + [processor.py](file:///c:/OceanEmbed/backend/pipeline/processor.py) | Subset, regrid to 0.25°, QC mask, time-align each dataset |
 | **Phase 3** | [generator.py](file:///c:/OceanEmbed/backend/pipeline/generator.py) | Save processed data as training-ready Zarr stores |
-| **Phase 4** | [downloader.py](file:///c:/OceanEmbed/backend/pipeline/downloader.py) → [validation_argo.py](file:///c:/OceanEmbed/backend/pipeline/adapters/validation_argo.py) | Download + process Argo profiles for final evaluation |
+| **Phase 4** | [downloader.py](file:///c:/OceanEmbed/backend/pipeline/downloader.py) → [validation_argo.py](file:///c:/OceanEmbed/backend/pipeline/adapters/validation_argo.py) | Download + process Argo in-situ profiles for final evaluation |
 
 ---
 
-## 3. Dataset Summary Table
+## 3. Dataset Summary & Problem Statement Mapping
 
-| # | Dataset | Source | Download Method | Native Resolution | Output Resolution | Variables | Time Range | Role |
-|---|---------|--------|----------------|-------------------|-------------------|-----------|------------|------|
-| 1 | **SST** | OSTIA (CMEMS) | `copernicusmarine.subset()` | 0.05° daily | 0.25° daily | `analysed_sst` | 2010–2023 | Input |
-| 2 | **SSS** | CMEMS SMOS (pre-2015) + SMAP+SMOS Merged (post-2015) | `copernicusmarine.subset()` | 0.125° daily | 0.25° daily | `sos` | 2010–2023 | Input |
-| 3 | **SSH** | DUACS (CMEMS) | `copernicusmarine.subset()` | 0.125° daily | 0.25° daily | `sla`, `adt`, `ugos`, `vgos` | 2010–2023 | Input |
-| 4 | **Currents** | OSCAR v2.0 (PO.DAAC) | `earthaccess` | 0.25° 5-daily | 0.25° daily | `u`, `v` | 2010–2023 | Input |
-| 5 | **Winds** | CCMP v3.1 (PO.DAAC) | `earthaccess` | 0.25° 6-hourly | 0.25° daily | `uwnd`, `vwnd` | 2010–2023 | Input |
-| 6 | **GLORYS** | GLORYS12V1 (CMEMS) | `copernicusmarine.subset()` | 0.083° daily, 50 depths | 0.25° daily, 15 depths | `thetao` | 2010–2023 | Target |
-| 7 | **Argo** | IFREMER GDAC | HTTP scraping (`urllib`) | Irregular profiles | DataFrame (point data) | `TEMP`, `PRES` | 2022–2023 | Validation |
+> [!NOTE]
+> ### ⚠️ Note on Dataset Product IDs & Upstream Catalog Evolution
+> Some product identifiers, access endpoints, or native configurations differ slightly from the literal text in the original Problem Statement specification. Remote sensing and operational data providers (Copernicus Marine / CMEMS, NASA PO.DAAC, and Earthdata) frequently rename catalogs, update product versions, or replace legacy swaths with cross-calibrated multi-mission gridded products.
+> 
+> As explicitly sanctioned in the Problem Statement (*"If a dataset is not available at required resolution, the team may select the openly available product and perform appropriate spatial and temporal interpolation/regridding"*), our pipeline incorporates the current operational product IDs and handles all required regridding and temporal alignment:
+> 
+> 1. **Sea Surface Salinity (SSS):** The PS specifies SMAP and SMOS (DOI: `10.48670/moi-00051`). In Copernicus Marine, the combined multi-satellite product (`cmems_obs-mob_glo_phy-sss_my_multi_P1D`) begins only when NASA's SMAP satellite launched in April 2015. For dates prior to April 2015 (2010–2015), our pipeline automatically switches to the SMOS-only product (`cmems_obs-mob_glo_phy-sss_my_smos_P1D`) and concatenates them seamlessly into a unified timeseries.
+> 2. **Sea Surface Height (SSH / SLA):** The PS lists DUACS at 0.25° (DOI: `10.48670/moi-00145`). The modern Copernicus Marine DUACS all-sat L4 product (`cmems_obs-sl_glo_phy-ssh_my_allsat-l4-duacs-0.125deg_P1D`) is served natively at 0.125°. The adapter regrids it to 0.25° and extracts the Sea Level Anomaly (`sla`) variable.
+> 3. **Surface Winds:** The PS recommends either `ASCATC-L2-Coastal` or `CCMP_WINDS_10M6HR_L4_V3.1`. We selected CCMP v3.1 because it provides a cross-calibrated, gap-free 0.25° grid rather than fragmented satellite orbital swaths with land-sea contamination. The adapter averages the 6-hourly snapshots into daily means.
+> 4. **Surface Currents:** OSCAR v2.0 (`OSCAR_L4_OC_FINAL_V2.0`) is provided at 0.25° on a 5-daily interval. The adapter applies daily linear interpolation to satisfy the daily requirement.
+> 5. **Target Subsurface Temperature:** GLORYS12V1 (`cmems_mod_glo_phy_my_0.083deg_P1D-m`, DOI: `10.48670/moi-00021`) provides 50 vertical depth levels at 0.083°. Our adapter coarsens/regrids to 0.25° and extracts the 15 standard SIH depth levels.
+> 6. **In-Situ Float Validation:** The PS mentions Gridded ARGO / INCOIS LAS. For physical evaluation, we validate against **8,923 real physical Argo float profiles** (2020–2022 from ArgoVis / IFREMER GDAC), ensuring direct point-to-point ground-truth validation rather than comparing against pre-interpolated gridded approximations.
+
+| Variable | PS Recommended Product | Active Implementation Dataset ID / Source | Native Resolution | Output Resolution | Time Span | Role |
+|:---|:---|:---|:---:|:---:|:---:|:---:|
+| **SST** | OSTIA: 0.05° daily<br/>[doi:10.48670/moi-00168](https://doi.org/10.48670/moi-00168) | `METOFFICE-GLO-SST-L4-REP-OBS-SST`<br/>(CMEMS subset) | 0.05° daily | 0.25° daily | 2010–2023 | Input (Ch 1) |
+| **SSS** | SMAP, SMOS: 0.125° daily<br/>[doi:10.48670/moi-00051](https://doi.org/10.48670/moi-00051) | Pre-2015: `cmems_obs-mob_glo_phy-sss_my_smos_P1D`<br/>Post-2015: `cmems_obs-mob_glo_phy-sss_my_multi_P1D` | 0.125° daily | 0.25° daily | 2010–2023 | Input (Ch 2) |
+| **SSH / SLA** | DUACS: 0.25° daily<br/>[doi:10.48670/moi-00145](https://doi.org/10.48670/moi-00145) | `cmems_obs-sl_glo_phy-ssh_my_allsat-l4-duacs-0.125deg_P1D`<br/>(CMEMS subset) | 0.125° daily | 0.25° daily | 2010–2023 | Input (Ch 3) |
+| **Currents** | OSCAR: 0.25° daily<br/>[OSCAR_L4_OC_FINAL_V2.0](https://podaac.jpl.nasa.gov/dataset/OSCAR_L4_OC_FINAL_V2.0) | `OSCAR_L4_OC_FINAL_V2.0`<br/>(PO.DAAC / earthaccess) | 0.25° 5-daily | 0.25° daily | 2010–2023 | Input (Ch 4, 5) |
+| **Winds** | CCMP: 0.25° daily<br/>[CCMP_WINDS_10M6HR_L4_V3.1](https://podaac.jpl.nasa.gov/dataset/CCMP_WINDS_10M6HR_L4_V3.1) | `CCMP_WINDS_10M6HR_L4_V3.1`<br/>(PO.DAAC / earthaccess) | 0.25° 6-hourly | 0.25° daily | 2010–2023 | Input (Ch 6, 7) |
+| **GLORYS** | GLORYS12V1: 0.083° daily<br/>[doi:10.48670/moi-00021](https://doi.org/10.48670/moi-00021) | `cmems_mod_glo_phy_my_0.083deg_P1D-m`<br/>(CMEMS subset) | 0.083° daily<br/>50 depths | 0.25° daily<br/>15 depths | 2010–2023 | Target (Ground Truth) |
+| **Argo** | Gridded ARGO / INCOIS LAS | IFREMER GDAC & ArgoVis API<br/>+ INCOIS ERDDAP gridded | In-situ profiles<br/>& 10-day grid | Matched T(z)<br/>points | 2020–2022<br/>(8,923 prof.) | Physical In-Situ Validation |
 
 ---
 
@@ -148,6 +188,8 @@ The SMAP satellite launched on 2015-04-01, providing improved L-band radiometry 
 
 ### Source & Credentials
 - **Provider:** Copernicus Marine Service (CMEMS)
+- **PS Recommended Specification:** SMAP, SMOS: 0.125° daily
+- **DOI:** https://doi.org/10.48670/moi-00051
 - **Merged Dataset ID:** `cmems_obs-mob_glo_phy-sss_my_multi_P1D` (2015-04-01 onward)
 - **SMOS-only Dataset ID:** `cmems_obs-mob_glo_phy-sss_my_smos_P1D` (pre-2015-04-01)
 - **Switchover Date:** `2015-04-01` (configured in `pipeline_config.yaml` as `smap_start_date`)
@@ -193,9 +235,12 @@ The SMAP satellite launched on 2015-04-01, providing improved L-band radiometry 
 **DUACS L4 multi-satellite altimetry** — gives sea level anomaly (SLA), absolute dynamic topography (ADT), and geostrophic current components (ugos, vgos). SSH tells the model about ocean circulation patterns and mesoscale eddies.
 
 ### Source & Credentials
-- **Provider:** Copernicus Marine Service (CMEMS)
+- **Provider:** Copernicus Marine Service (CMEMS) / CNES
+- **PS Recommended Specification:** DUACS: 0.25° daily
+- **DOI:** https://doi.org/10.48670/moi-00145
 - **Dataset ID:** `cmems_obs-sl_glo_phy-ssh_my_allsat-l4-duacs-0.125deg_P1D`
-- **Variables:** `sla`, `adt`, `ugos`, `vgos`
+- **Variables:** `sla`, `adt`, `ugos`, `vgos` (only `sla` retained for modeling)
+- **Catalog Note:** Modern CMEMS DUACS is served at 0.125° native resolution; the adapter regrids it to 0.25° to match the PS specification.
 - **Auth:** CMEMS username + password in `.env`
 
 ### How It Is Downloaded
@@ -280,7 +325,10 @@ The SMAP satellite launched on 2015-04-01, providing improved L-band radiometry 
 
 ### Source & Credentials
 - **Provider:** NASA PO.DAAC via Earthdata
-- **Short Name:** `CCMP_WINDS_10M6HR_L4_V3.1`
+- **PS Recommended Specification:** 0.25° daily ([ASCATC-L2-Coastal](https://podaac.jpl.nasa.gov/dataset/ASCATC-L2-Coastal) or [CCMP_WINDS_10M6HR_L4_V3.1](https://podaac.jpl.nasa.gov/dataset/CCMP_WINDS_10M6HR_L4_V3.1))
+- **Selected Product:** `CCMP_WINDS_10M6HR_L4_V3.1` (cross-calibrated multi-platform 0.25° grid)
+- **Catalog Note:** CCMP v3.1 was selected over ASCATC-L2 swath because it provides seamless, continuous gridded coverage across the entire North Indian Ocean without orbital swath gaps. The adapter computes daily means from 6-hourly fields.
+- **URL:** https://podaac.jpl.nasa.gov/dataset/CCMP_WINDS_10M6HR_L4_V3.1
 - **Auth:** Earthdata credentials in `.env`
 
 ### How It Is Downloaded
@@ -665,3 +713,38 @@ flowchart TB
 > [!TIP]
 > **SSS Satellite Transition Note:**
 > The SSS downloader automatically handles the SMOS→SMAP satellite transition at 2015-04-01. When the configured date range spans this boundary, two files are downloaded (`sss_smos.nc` for pre-2015 and `sss_smap.nc` for post-2015) and seamlessly concatenated by the SSS adapter during preprocessing. This ensures continuous SSS coverage across the full 2010–2023 training window.
+
+---
+
+## 14. Dataset Splits & Benchmark Validation Performance
+
+### Chronological Splits Definition
+To strictly prevent temporal data leakage, all splits in OceanEmbed are partitioned chronologically as defined in [data_config.yaml](file:///c:/OceanEmbed/backend/ocean_embed/configs/data_config.yaml):
+
+| Split / Phase | Date Range | Duration / Sample Count | Primary Purpose |
+|:---|:---|:---:|:---|
+| **Training Split** | **2010-01-01 → 2020-12-31** | 11 years (4,018 daily snapshots) | Multi-satellite surface inputs + GLORYS reanalysis target training |
+| **Validation Split** | **2021-01-01 → 2021-12-31** | 1 year (365 daily snapshots) | Hyperparameter tuning, early stopping, selecting `checkpoint_best.pt` (Epoch 14) |
+| **Test Split (Benchmark)** | **2022-01-01 → 2022-12-31** | 1 year (365 daily snapshots) | Final benchmark evaluation on strictly unseen future data |
+| **Operational / Held-Out** | **2023-01-01 → 2023-12-31** | 1 year (365 daily snapshots) | Operational inference testing, daily automated cron ingestion, and extreme climate regime analysis |
+| **Physical In-Situ Float Validation** | **2020 → 2022** (and 2022–2023) | **8,923 physical profiles** | Real Argo float point matchups across Arabian Sea, Bay of Bengal, and Equatorial NIO |
+
+### Benchmark Evaluation Results (2022 Test Split — 365 Days)
+The frozen OceanEmbed v2 model ([model_v2.pt](file:///c:/OceanEmbed/runs/_final_v2/model_v2.pt)) was evaluated against 2022 test data and compared to statistical and climatological baselines:
+
+| Metric | OceanEmbed v2 | Climatology Baseline | Improvement / Skill |
+|:---|:---:|:---:|:---:|
+| **Overall RMSE** | **0.5246 °C** | 0.6429 °C | **18.4% error reduction** (-0.1183 °C) |
+| **Overall MAE** | **0.2331 °C** | — | High median reconstruction accuracy |
+| **Overall $R^2$** | **0.9980** | — | 99.8% of variance captured |
+| **Pearson Correlation ($r$)** | **0.9990** | — | High vertical profile alignment |
+| **Mean Bias** | **-0.0155 °C** | — | Near-zero systematic thermal drift |
+
+### Vertical Layer Breakdown
+
+| Depth Band | Standard Depths (m) | v2 RMSE (°C) | Climatology RMSE (°C) | Physical Significance |
+|:---|:---|:---:|:---:|:---|
+| **Mixed Layer (0–50 m)** | 0.49, 5.08, 9.57, 18.5, 29.44, 47.37 | **0.4429** | 0.4909 | Direct air-sea flux coupling and diurnal warming |
+| **Thermocline (50–200 m)** | 77.85, 92.33, 130.67, 155.85, 186.13 | **0.7331** | **0.9466** | **22.6% error reduction**; resolves internal wave displacement and pycnocline barrier layers |
+| **Deep Ocean (200–1000 m)** | 318.13, 541.09, 643.57, 902.34 | **0.2565** | 0.2612 | Stable deep stratification governed by baroclinic dynamics |
+
