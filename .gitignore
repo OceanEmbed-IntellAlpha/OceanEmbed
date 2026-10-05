@@ -4,7 +4,7 @@ backend/.env
 frontend/.env
 
 # Data
-data/
+/data/
 *.nc
 *.nc4
 *.zarr/

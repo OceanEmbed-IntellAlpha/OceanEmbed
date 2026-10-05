@@ -20,7 +20,11 @@ from ocean_embed.grid import (
     DOMAIN, SIH_DEPTHS, make_grid,
     normalize_lat, normalize_lon, normalize_depth, normalize_doy, get_region_id,
 )
-from ocean_embed.normalization import NormalizationStats
+from ocean_embed.normalization import (
+    NormalizationStats,
+    load_normalization_stats,
+    denormalize_target,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +54,39 @@ class OceanEmbedDataset(Dataset):
         self.data_dir = Path(data_dir) / split
         self.split = split
         self.temporal_window = temporal_window
-        self.stats = stats or NormalizationStats.from_reference()
+
+        if stats is not None:
+            self.stats = stats
+        else:
+            # Auto-detect precomputed stats file to prevent silent fallback to reference stats
+            candidate_paths = [
+                Path(data_dir) / "normalization_stats_v3.json",
+                Path(data_dir).parent / "normalization_stats_v3.json",
+                Path(data_dir) / "normalization_stats.json",
+                Path(data_dir).parent / "normalization_stats.json",
+                Path("data/processed/normalization_stats_v3.json"),
+                Path("data/processed/normalization_stats.json"),
+                Path("data/interim/normalization_stats.yaml"),
+            ]
+            loaded_stats = None
+            for cp in candidate_paths:
+                if cp.exists():
+                    try:
+                        loaded_stats = NormalizationStats.from_file(cp)
+                        logger.info(f"Automatically loaded precomputed normalization stats from {cp}")
+                        break
+                    except Exception as e:
+                        logger.debug(f"Could not load stats from {cp}: {e}")
+            if loaded_stats is not None:
+                self.stats = loaded_stats
+            else:
+                logger.warning(
+                    "No precomputed normalization statistics file found. "
+                    "Falling back to reference statistics (Issue #12). For optimal training performance, "
+                    "compute dataset statistics using backend/scripts/compute_normalization_stats.py."
+                )
+                self.stats = NormalizationStats.from_reference()
+
         self.depths = depths or SIH_DEPTHS
 
         if not self.data_dir.exists():
