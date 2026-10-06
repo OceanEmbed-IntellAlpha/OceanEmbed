@@ -46,3 +46,33 @@ From Phase 6.2 variable ablation:
 2. **SSS (Sea Surface Salinity):** Refines mixed layer and upper pycnocline ($0.5363 \to 0.5306\ ^\circ\text{C}$).
 3. **Winds & Currents $(u, v, u_{wnd}, v_{wnd})$:** Surface shear and advection boundary layer refinements ($0.5306 \to 0.5246\ ^\circ\text{C}$).
 4. **SST (Sea Surface Temperature):** Foundation layer; insufficient alone for subsurface stratification ($0.6181\ ^\circ\text{C}$).
+
+## ARGO Independent Validation (In-Situ Profiles)
+
+> **Issue #22 fix applied (2026-10-06):** argo_service.py MODEL_DEPTHS channels 11-13 were annotated 85-279 m shallower than their actual GLORYS zarr depths, producing a spurious -1.9 to -2.7 C deep-layer bias. After correction, the real ARGO RMSE is shown below.
+
+- **N profiles:** 8,881 collocated (NIO, 2020-2022)
+- **Overall RMSE:** **0.910 C** (pre-fix was 1.572 C -- measurement artifact, not model deficiency)
+- **Overall Bias:** +0.041 C
+- **Correlation (r):** 0.992
+
+### Per-Band RMSE
+| Band | Depths | RMSE (C) |
+|------|--------|----------|
+| Mixed layer | 0-50 m | 0.954 |
+| Thermocline | 50-200 m | 1.127 |
+| Deep | >200 m | 0.370 |
+
+### Seasonal RMSE (NIO)
+| Season | Period | N | RMSE | Bias |
+|--------|--------|---|------|------|
+| Pre-monsoon | Mar-May | 2,261 | 1.045 C | +0.114 C |
+| Monsoon | Jun-Sep | 3,033 | 0.932 C | +0.004 C |
+| Post-monsoon | Oct-Dec | 2,146 | 0.835 C | +0.033 C |
+| Winter | Jan-Feb | 1,441 | 0.763 C | +0.018 C |
+
+### Regional RMSE
+| Region | Best Season | Best RMSE | Worst Season | Worst RMSE |
+|--------|------------|-----------|--------------|------------|
+| Arabian Sea | Winter | 0.706 C | Pre-monsoon | 1.095 C |
+| Bay of Bengal | Post-monsoon | 0.672 C | Pre-monsoon | 0.953 C |
