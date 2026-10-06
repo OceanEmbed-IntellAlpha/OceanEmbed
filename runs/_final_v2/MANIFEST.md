@@ -25,13 +25,18 @@
   - Test: 2022 (365 samples)
 
 ## Test Results (2022 Test Split — 365 Days)
-- **Test Overall RMSE:** **0.5246 °C**
-- **Test Overall MAE:** **0.2331 °C**
-- **Test Overall R²:** **0.9980**
-- **Test Pearson r:** **0.9990**
-- **Climatology Baseline RMSE:** 0.6429 °C
-- **Improvement over Climatology:** **18.4%** (-0.1183 °C)
-- **Improvement over v1 OceanEmbed (0.6047 °C):** **13.2%** (-0.0801 °C)
+- **Test Overall RMSE (ocean-masked, headline):** **0.8072 °C** ($N = 56,277,525$ valid ocean points)
+- **Test Overall RMSE (full-grid, legacy):** **0.5246 °C** ($N = 133,266,975$ total grid cells)
+- **Ocean Area Fraction:** **42.23%** ($\text{RMSE}_{\text{full}} = \text{RMSE}_{\text{ocean}} \times \sqrt{0.4223} = 0.5246$)
+- **Test Overall MAE:** **0.5520 °C** (ocean-masked) / 0.2331 °C (full-grid)
+- **Test Overall Bias:** **−0.0367 °C** (ocean-masked) / −0.0155 °C (full-grid)
+- **Test Overall R²:** **0.9884** (ocean-masked) / 0.9980 (full-grid)
+- **Test Pearson r:** **0.9942** (ocean-masked) / 0.9990 (full-grid)
+- **Climatology Baseline RMSE:** **0.9893 °C** (ocean-masked) / 0.6429 °C (full-grid)
+- **Improvement over Climatology:** **18.4%** (−0.1821 °C ocean-masked / −0.1183 °C full-grid)
+- **Improvement over v1 OceanEmbed (0.6047 °C full-grid):** **13.2%** (−0.0801 °C full-grid)
+
+> *Footnote*: Full-grid RMSE includes land pixels with zero prediction error. Ocean-masked RMSE is the scientifically meaningful metric that directly compares with in-situ ARGO observations. The 18.4% improvement over climatology holds identically in both domains.
 
 ### Depth Band Performance
 | Depth Band | v2 RMSE (°C) | v1 RMSE (°C) | Climatology (°C) | Δ vs Clim |

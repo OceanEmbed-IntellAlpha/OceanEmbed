@@ -126,27 +126,29 @@ For the structural evaluation of the decoder architectures, see [docs/finding_fo
 All reported metrics are verified directly from tracked experiment checkpoints and evaluation runs in the repository.
 
 ### 1. Test Split Evaluation vs. GLORYS Reanalysis (2022 Split)
-Evaluated across all 365 daily fields of 2022 over the North Indian Ocean at 15 depth levels (133,266,975 valid evaluation points):
+Evaluated across all 365 daily fields of 2022 over the North Indian Ocean at 15 depth levels (56,277,525 valid ocean points; 133,266,975 full-grid points):
 
-| Evaluation Metric | OceanEmbed v2 (All-7 U-Net) | Climatology Baseline | Improvement |
-| :--- | :---: | :---: | :---: |
-| **Overall RMSE** | **0.5246 °C** | 0.6429 °C | **+18.4%** |
-| **Overall MAE** | **0.2331 °C** | 0.2719 °C | +14.3% |
-| **Bias** | -0.0155 °C | — | — |
-| **Coefficient of Determination ($R^2$)** | **0.9980** | 0.9970 | — |
-| **Pearson Correlation ($r$)** | **0.9990** | — | — |
+| Evaluation Metric | OceanEmbed v2 (Ocean-Masked Headline) | OceanEmbed v2 (Full-Grid Legacy*) | Climatology Baseline (Ocean-Masked) | Improvement |
+| :--- | :---: | :---: | :---: | :---: |
+| **Overall RMSE** | **0.8072 °C** | 0.5246 °C | 0.9893 °C | **+18.40%** |
+| **Overall MAE** | **0.5520 °C** | 0.2331 °C | 0.6440 °C | +14.28% |
+| **Bias** | **-0.0367 °C** | -0.0155 °C | -0.1672 °C | — |
+| **Coefficient of Determination ($R^2$)** | **0.9884** | 0.9980 | 0.9826 | — |
+| **Pearson Correlation ($r$)** | **0.9942** | 0.9990 | 0.9915 | — |
 
-#### Error Breakdown by Depth Band
-- **Mixed Layer ($0–50\text{ m}$):** **0.4429 °C** RMSE (vs. 0.4909 °C Climatology)
-- **Thermocline ($50–200\text{ m}$):** **0.7331 °C** RMSE (vs. 0.9466 °C Climatology, **22.6% improvement**)
-- **Deep Ocean ($200–1,000\text{ m}$):** **0.2565 °C** RMSE (vs. 0.2612 °C Climatology)
+*\*Full-grid RMSE (0.5246 °C) includes zero-error land pixels ($\text{RMSE}_{\text{full}} = \text{RMSE}_{\text{ocean}} \times \sqrt{0.4223}$). We report ocean-masked metrics as the primary headline; the 18.4% skill gain holds identically across both domains.*
+
+#### Error Breakdown by Depth Band (Ocean-Masked)
+- **Mixed Layer ($0–50\text{ m}$):** **0.6483 °C** RMSE
+- **Thermocline ($50–200\text{ m}$):** **1.1573 °C** RMSE
+- **Deep Ocean ($200–1,000\text{ m}$):** **0.4150 °C** RMSE
 
 ![OceanEmbed v2 Test RMSE vs Depth](runs/_final_v2/test_rmse_vs_depth_v2.png)
 
 ### 2. Variable Ablation: The SLA Dominance Finding
-Systematic ablation of input channels showed that multi-sensor inputs are beneficial, with Sea Level Anomaly (SLA) contributing the largest share of subsurface skill:
+Systematic ablation of input channels (evaluated on the full-grid benchmark) showed that multi-sensor inputs are beneficial, with Sea Level Anomaly (SLA) contributing the largest share of subsurface skill:
 
-| Variant | Input Variables | Test RMSE (°C) | Improvement vs. Clim | Key Takeaway |
+| Variant | Input Variables | Full-Grid RMSE (°C) | Improvement vs. Clim | Key Takeaway |
 | :--- | :--- | :---: | :---: | :--- |
 | **Climatology** | None *(Historical Day-of-Year Mean)* | 0.6429 | 0.0% | Baseline lookup table |
 | **V1** | SST only | 0.6181 | -3.9% | Surface temperature alone provides weak subsurface constraints (errors reach 1.1 °C at 92 m) |
@@ -157,11 +159,11 @@ Systematic ablation of input channels showed that multi-sensor inputs are benefi
 **Physical Context:** Satellite-derived Sea Level Anomaly reflects vertically integrated density changes (steric height). Under a two-layer ocean approximation, sea surface displacement ($\eta$) is directly proportional to thermocline displacement ($h' \approx -\frac{g}{g'} \eta$). Altimetry provides the model with direct information about thermocline depressions and elevations associated with mesoscale eddies and planetary waves. For detailed ablation analysis, see [docs/phase6_findings.md](docs/phase6_findings.md).
 
 ### 3. Independent In-Situ Argo Float Validation (2020–2022)
-To verify generalization against real in-situ observations rather than reanalysis alone, OceanEmbed predictions were collocated with **8,883 physical Argo float profiles** (120,988 depth measurements) across the North Indian Ocean:
+To verify generalization against real in-situ observations rather than reanalysis alone, OceanEmbed predictions were collocated with **8,881 physical Argo float profiles** across the North Indian Ocean (post-Issue-#22 depth-grid corrected collocation):
 
-- **North Indian Ocean Basin RMSE:** **1.5719 °C** (MAE: 1.1186 °C, Bias: -0.2984 °C, Pearson $r$: 0.9796)
-- **Arabian Sea (5,943 profiles):** **1.6463 °C** RMSE
-- **Bay of Bengal (2,779 profiles):** **1.3903 °C** RMSE
+- **North Indian Ocean Basin RMSE:** **0.913 °C** (Bias: +0.041 °C, Pearson $r$: 0.992)
+- **Arabian Sea (5,699 profiles):** **0.931 °C** RMSE
+- **Bay of Bengal (2,485 profiles):** **0.811 °C** RMSE
 
 For regional and seasonal breakdowns across monsoon regimes, see [docs/FINAL_RESULTS.md](docs/FINAL_RESULTS.md) and [docs/phase7_seasonal_analysis.md](docs/phase7_seasonal_analysis.md).
 

@@ -2,16 +2,23 @@
 
 ## Model Performance Metrics
 
-### Test Set Validation (vs GLORYS 2022)
-- **RMSE**: 0.5246°C
-- **MAE**: 0.2331°C
-- **Bias**: -0.0155°C
-- **R²**: 0.9980
-- **Pearson R**: 0.9990
+### GLORYS 2022 Test Set Performance
 
-### Climatology Baseline
-- **RMSE vs climatology**: 0.6429°C
-- **Improvement vs climatology**: 18.4%
+| Metric | Ocean-Masked (Headline) | Full-Grid (Legacy) | Notes |
+|---|---|---|---|
+| **RMSE** | **0.8072°C** | 0.5246°C | Ocean-masked is the scientifically meaningful headline |
+| **MAE** | **0.5520°C** | 0.2331°C | Valid sea points only |
+| **Bias** | **-0.0367°C** | -0.0155°C | Model is virtually unbiased across basin |
+| **R²** | **0.9884** | 0.9980 | Explained variance over ocean pixels |
+| **Pearson r** | **0.9942** | 0.9990 | Correlation with reanalysis |
+| **N points** | **56,277,525** | 133,266,975 | Ocean fraction = 42.23% of grid |
+
+> **Note on Evaluation Domains**: Full-grid values include land pixels where prediction and target are both zero (which scales RMSE by $\sqrt{N_{\text{ocean}} / N_{\text{grid}}} = \sqrt{0.4223} = 0.6498$). We report **ocean-masked metrics** as the scientifically meaningful headline; full-grid values are included for reproducibility with earlier ablation studies.
+
+### Climatology Baseline Comparison
+- **Climatology Baseline RMSE**: **0.9893°C** (ocean-masked) / 0.6429°C (full-grid)
+- **Improvement vs Climatology**: **18.40%** (delta: −0.1821°C ocean-masked / −0.1183°C full-grid)
+> The 18.4% improvement claim holds identically in both domains because the spatial scale factor cancels out.
 
 ### Argo Validation (Real Independent Profiles, 2020-2022)
 **Note**: All Argo validation metrics are computed from real ArgoVis data with provenance hashes. Prior claim of 0.549°C Argo RMSE was fabricated by an automated agent and withdrawn on 2026-09-22.
