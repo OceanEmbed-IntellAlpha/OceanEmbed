@@ -1,7 +1,7 @@
 # Phase 8: Smooth Thermocline-Weighted MSE Loss (Option A)
 
 > **Experiment ID**: `phase8-weighted-mse`  
-> **Status**: **REJECTED FOR PRODUCTION / KEPT AS RESEARCH ARTIFACT**  
+> **Status**: **REJECTED FOR PRODUCTION / KEPT AS RESEARCH LAB EXPERIMENT**  
 > **Production Model**: Retained `runs/_final_v2/model_v2.pt` (BaselineModel U-Net, 7.85M params)  
 > **Date**: October 2026  
 > **Hardware**: CUDA · 15 epochs (~27 min training)
@@ -12,22 +12,37 @@
 
 Following the Issue #21 diagnostic which revealed the thermocline (50–200 m) as the primary error band (peak error near 100 m with a sharp bias sign reversal at 100 $\rightarrow$ 125 m), we conducted a controlled experiment (**Option A**) applying a smooth Gaussian depth-weighted MSE loss without architectural changes.
 
-### Decision: **DO NOT PROMOTE TO PRODUCTION**
-- **GLORYS Overall RMSE**: Regressed from `0.8072 °C` $\rightarrow$ `0.8197 °C` (+1.5%)
-- **GLORYS Thermocline RMSE**: Regressed from `1.1573 °C` $\rightarrow$ `1.1869 °C` (+2.6%)
-- **ARGO Thermocline RMSE**: Marginally improved from `1.2650 °C` $\rightarrow$ `1.2478 °C` (−1.4% overall NIO, −2.9% in Bay of Bengal)
-- **Scientific Rationale**: GLORYS is a reanalysis product with internal spatial/temporal smoothing. ARGO represents point in-situ observations. When we upweight thermocline loss, the model learns sharper gradients that better match true in-situ profiles (improving ARGO accuracy), but this moves the model away from the smoother GLORYS reanalysis target field. Because GLORYS is our ground truth for full-grid spatial predictions and the ARGO gain is modest, **v2 remains the production standard**.
+### Experiment Framing
+- **Hypothesis**: Upweighting loss near 100 m will reduce thermocline RMSE.
+- **Variant**: Depth-weighted MSE loss with weight profile:
+  $$w(d) = 1.0 + 2.0 \cdot \exp\left(-\frac{(d - 100.0)^2}{2 \cdot 40.0^2}\right)$$
+
+### Results Summary
+| Metric / Domain | Baseline (v2) | Phase 8 (Weighted MSE) | Relative Change ($\Delta$) | Verdict |
+| :--- | :--- | :--- | :--- | :--- |
+| **GLORYS Overall RMSE** | `0.8072 °C` | `0.8197 °C` | **+1.55%** | ❌ Regressed |
+| **GLORYS Thermocline RMSE** | `1.1573 °C` | `1.1869 °C` | **+2.56%** | ❌ Regressed |
+| **ARGO In-Situ Overall RMSE** | `0.9148 °C` | `0.9024 °C` | **−1.37%** | ✅ Improved |
+| **ARGO In-Situ Thermocline RMSE** | `1.1408 °C` | `1.1131 °C` | **−2.43%** | ✅ Improved |
+| **ARGO Bay of Bengal Thermocline** | `1.2286 °C` | `1.1751 °C` | **−4.36%** | ✅ Best gain |
+
+### Interpretation
+GLORYS reanalysis smooths the thermocline; ARGO in-situ floats preserve the sharp physical gradient. The weighted loss matches real in-situ (ARGO) thermoclines better but overfits the smoothed (GLORYS) target field.
+
+### Decision: **REJECTED FOR PRODUCTION**
+- v2 remains the production standard.
+- Phase 8 is kept as a permanent documented experiment in the Research Lab.
 
 ---
 
 ## 2. Formulation & Methodology
 
 ### Loss Profile
-To avoid step-function boundary artifacts at depth interfaces, a smooth Gaussian weighting profile was applied across the 15 discrete standard depth levels:
+To avoid step-function boundary artifacts at depth interfaces, a smooth Gaussian weighting profile was applied across the discrete standard depth levels:
 
 $$w(d) = 1.0 + 2.0 \cdot \exp\left(-\frac{(d - 100.0)^2}{2 \cdot 40.0^2}\right)$$
 
-### Level Weight Breakdown:
+### Discrete Level Weight Breakdown
 | Depth Level ($d$) | Loss Weight ($w$) | Multiplier |
 |---|---|---|
 | 0.49 m | 1.0906 | ~1.1× |
@@ -74,52 +89,28 @@ Evaluated over the 365 daily test snapshots of 2022 ($101 \times 241$ grid):
 | **Mixed Layer (0–50 m)** | 0.6483 | +0.0322 | **0.6447** | **−0.0020** | **−0.0036 °C** (−0.6%) |
 | **Thermocline (50–200 m)** | 1.1573 | −0.1487 | 1.1869 | −0.1709 | +0.0296 °C (+2.6%) |
 | **Deep (200–1000 m)** | 0.4150 | −0.0161 | 0.4176 | −0.0090 | +0.0026 °C (+0.6%) |
-| **Overall** | **0.8072** | **−0.0367** | **0.8197** | **−0.0572** | **+0.0125 °C (+1.5%)** |
+| **Overall** | **0.8072** | **−0.0367** | **0.8197** | **−0.0572** | **+0.0125 °C (+1.55%)** |
 
 ---
 
-## 4. In-Situ ARGO Collocated Validation
+## 4. In-Situ ARGO Collocated Validation ($N = 8,881$)
 
-Evaluated across all 8,883 collocated ARGO profiles in the North Indian Ocean:
+Evaluated across all 8,881 collocated ARGO profiles in the North Indian Ocean using the corrected standard depth grid:
 
 ### Regional & Seasonal Breakdown
-| Subset | Profiles ($N$) | v2 Thermocline RMSE | P8 Thermocline RMSE | $\Delta$ RMSE | $\Delta$ RMSE (%) |
-|---|---|---|---|---|---|
-| **Bay of Bengal** | 2,484 | **1.3484 °C** | **1.3094 °C** | **−0.0390 °C** | **−2.9%** |
-| **2022 Test Year** | 2,643 | **1.2575 °C** | **1.2326 °C** | **−0.0249 °C** | **−2.0%** |
-| **Non-Monsoon (Oct–May)** | 5,850 | 1.2615 °C | 1.2435 °C | −0.0181 °C | −1.4% |
-| **Monsoon (Jun–Sep)** | 3,033 | 1.2717 °C | 1.2561 °C | −0.0155 °C | −1.2% |
-| **Arabian Sea** | 5,702 | 1.1668 °C | 1.1547 °C | −0.0121 °C | −1.0% |
-| **All NIO** | 8,883 | **1.2650 °C** | **1.2478 °C** | **−0.0172 °C** | **−1.4%** |
-
-### Per-Depth Profile vs ARGO (All Profiles)
-| Depth (m) | v2 RMSE (°C) | v2 Bias (°C) | P8 RMSE (°C) | P8 Bias (°C) | $\Delta$ RMSE |
-|---|---|---|---|---|---|
-| 0.49 | 1.4071 | +0.1233 | 1.4136 | −0.0143 | +0.0065 °C |
-| 5.08 | 0.8060 | −0.0732 | 0.8156 | −0.1552 | +0.0096 °C |
-| 14.19 | 0.9408 | +0.0809 | 0.9403 | +0.0008 | −0.0005 °C |
-| 26.84 | 1.2777 | +0.4340 | 1.2639 | +0.3544 | −0.0137 °C |
-| 42.55 | 1.4838 | +0.8259 | 1.4640 | +0.7694 | −0.0198 °C |
-| 59.81 | 1.4560 | +0.8680 | 1.4498 | +0.8631 | −0.0062 °C |
-| 78.49 | 1.1893 | +0.2889 | 1.1902 | +0.3227 | +0.0009 °C |
-| 99.45 | 1.5778 | +0.8533 | 1.5646 | +0.8715 | −0.0132 °C |
-| **123.94** | **1.2436** | **−0.3381** | **1.2067** | **−0.3807** | **−0.0370 °C (−3.0%)** |
-| **153.08** | **1.0712** | **−0.1399** | **1.0390** | **−0.1822** | **−0.0322 °C (−3.0%)** |
-| **188.50** | **0.9354** | **+0.0137** | **0.9119** | **−0.0260** | **−0.0235 °C (−2.5%)** |
-| 233.07 | 2.1180 | −1.9309 | 2.1262 | −1.9413 | +0.0083 °C |
-| 290.24 | 2.9290 | −2.7373 | 2.9306 | −2.7393 | +0.0016 °C |
-| 365.13 | 2.4753 | −2.3716 | 2.4758 | −2.3721 | +0.0006 °C |
-| 902.34 | 0.3003 | −0.0819 | 0.3019 | −0.0852 | +0.0015 °C |
+| Subset | Profiles ($N$) | v2 Overall RMSE | P8 Overall RMSE | v2 Thermocline RMSE | P8 Thermocline RMSE | $\Delta$ Thermocline (%) |
+|---|---|---|---|---|---|---|
+| **All NIO Profiles** | 8,881 | 0.9148 °C | **0.9024 °C** | 1.1408 °C | **1.1131 °C** | **−2.43%** |
+| **2022 Test Year** | 2,644 | 0.9464 °C | **0.9339 °C** | 1.1153 °C | **1.0825 °C** | **−2.94%** |
+| **Arabian Sea** | 5,699 | 0.9313 °C | **0.9208 °C** | 1.0533 °C | **1.0308 °C** | **−2.14%** |
+| **Bay of Bengal** | 2,485 | 0.8107 °C | **0.7850 °C** | 1.2286 °C | **1.1751 °C** | **−4.36%** |
+| **Monsoon (Jun–Sep)** | 3,033 | 0.9316 °C | **0.9193 °C** | 1.1607 °C | **1.1296 °C** | **−2.68%** |
+| **Non-Monsoon (Oct–May)** | 5,848 | 0.9061 °C | **0.8935 °C** | 1.1305 °C | **1.1045 °C** | **−2.30%** |
 
 ---
 
-## 5. Issue Tracking & Next Steps
+## 5. Summary & Archived Artifacts
 
-### Issue #22: Deep-Layer Systematic Bias (233–365 m)
-- **Finding**: Both v2 and Phase 8 exhibit large negative biases vs ARGO at 233–365 m (−1.93 °C at 233 m, −2.74 °C at 290 m, −2.37 °C at 365 m).
-- **Status**: Tracked separately under **Issue #22**. This is an independent systematic issue (likely related to ARGO float interpolation at the lower base of observational coverage or background water mass differences in the Red Sea / Persian Gulf outflow) and is intentionally not altered here.
-
-### Production Artifacts Status
-- **Production Checkpoint**: `runs/_final_v2/model_v2.pt` (Unchanged)
-- **Phase 8 Checkpoint**: `runs/phase8_thermocline_weighted/checkpoint_best.pt` (Preserved as experiment artifact)
+- **Production Checkpoint**: `runs/_final_v2/model_v2.pt` (Retained as production standard)
+- **Phase 8 Checkpoint**: `runs/phase8_thermocline_weighted/checkpoint_best.pt` (Archived research artifact)
 - **Phase 8 Evaluation JSON**: `runs/phase8_thermocline_weighted/eval_results.json`
