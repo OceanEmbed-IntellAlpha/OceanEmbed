@@ -90,6 +90,16 @@ async def get_experiments() -> ExperimentsResponse:
             verdict="SELECTED (Production v2 Model)",
         ),
         ExperimentEntry(
+            id="phase8-weighted-mse",
+            name="Phase 8 — Smooth Thermocline-Weighted MSE",
+            architecture="2D U-Net CNN (BaselineModel)",
+            formulation="Anomaly + Smooth Depth-Weighted Loss (Peak @ 100m, sigma=40m)",
+            test_rmse=0.8197,
+            test_r2=0.9978,
+            delta_vs_clim=0.1768,
+            verdict="REJECTED (ARGO thermocline -1.4%, GLORYS +2.6%; kept as research study)",
+        ),
+        ExperimentEntry(
             id="clim",
             name="Climatology Baseline",
             architecture="Day-of-Year Lookup Table (2010–2020)",
@@ -158,6 +168,7 @@ async def get_experiments() -> ExperimentsResponse:
         "Joint 2D convolutional depth prediction (U-Net) preserves vertical hydrostatic stratification significantly better than point-wise coordinate MLPs.",
         "Anomaly formulation eliminates seasonal cycle dominance and enables deep ocean generalization.",
         "Auxiliary physics-informed losses (thermocline/smoothness) over-regularized gradients; MSE-only on anomalies achieved superior accuracy.",
+        "Smooth thermocline-weighted MSE loss (Phase 8) marginally improved in-situ ARGO thermocline accuracy (-1.4% NIO, -2.9% BoB) but regressed GLORYS fit (+2.6%), confirming misalignment between smoothed reanalysis and in-situ vertical gradients.",
     ]
 
     return ExperimentsResponse(

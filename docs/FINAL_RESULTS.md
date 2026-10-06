@@ -38,6 +38,7 @@
 - **SLA is the dominant variable**: Contributes ~87.5% of total skill gain
 - **Best model**: U-Net + anomaly formulation with all 7 channels
 - **Marginal gains beyond SLA**: SSS and atmospheric variables provide small but consistent improvements
+- **Thermocline Loss Weighting (Phase 8)**: We tested thermocline-weighted loss; it improved ARGO thermocline accuracy marginally (−1.4%) but regressed GLORYS fit (+2.6%). Retained v2 as production.
 
 ## Provenance and Reproducibility
 
