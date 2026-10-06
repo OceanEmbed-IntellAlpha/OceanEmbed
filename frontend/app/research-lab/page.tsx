@@ -29,7 +29,7 @@ const HERO_STATS: StatItem[] = [
       highlights: [
         'Tested SST, SSS, SLA, Wind U/V, Current U/V independently and in hybrid combinations.',
         'Validated against 13 years of data (2010–2023 CMEMS / GLORYS data).',
-        'Achieved 0.525°C overall test RMSE with 7.85M parameter U-Net architecture.'
+        'Achieved 0.8072°C ocean-masked overall test RMSE (0.5246°C full-grid legacy) with 7.85M parameter U-Net architecture.'
       ],
       specs: [
         { label: 'Evaluation Period', value: '2010 – 2023' },

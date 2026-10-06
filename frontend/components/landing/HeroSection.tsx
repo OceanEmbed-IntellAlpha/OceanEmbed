@@ -55,7 +55,7 @@ export function HeroSection() {
             <span className="text-white/20">/</span>
             <span>0.25° Daily Grid</span>
             <span className="text-white/20">/</span>
-            <span className="text-emerald-400 font-medium">Test RMSE = 0.525 °C</span>
+            <span className="text-emerald-400 font-medium">Test RMSE = 0.807 °C (Ocean-Masked)</span>
           </div>
 
           {/* Agency-Grade "Button-in-Button" CTAs */}

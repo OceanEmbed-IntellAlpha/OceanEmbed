@@ -56,7 +56,7 @@ app = FastAPI(
     description=(
         "Production REST API for satellite-based subsurface ocean temperature reconstruction "
         "over the North Indian Ocean (SIH 2026 PS SIH26066). Powered by frozen OceanEmbed v2 "
-        "(7-channel U-Net anomaly formulation, 0.525°C Test RMSE)."
+        "(7-channel U-Net anomaly formulation, 0.807°C ocean-masked / 0.525°C full-grid Test RMSE)."
     ),
     version="2.0.0",
     docs_url="/docs",

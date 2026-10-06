@@ -57,8 +57,11 @@ curl -X GET "http://localhost:8000/api/v1/model/info"
   "training_data": "GLORYS12V1 2010-2020 (anomaly formulation)",
   "validation_data": "GLORYS 2021",
   "test_data": "GLORYS 2022",
-  "test_rmse_celsius": 0.5246,
-  "climatology_rmse_celsius": 0.6429,
+  "test_rmse_celsius": 0.8072,
+  "test_rmse_ocean_masked_celsius": 0.8072,
+  "test_rmse_full_grid_celsius": 0.5246,
+  "climatology_rmse_celsius": 0.9893,
+  "climatology_rmse_full_grid_celsius": 0.6429,
   "improvement_vs_climatology_pct": 18.4,
   "domain": {
     "lat_min": 5.0,
