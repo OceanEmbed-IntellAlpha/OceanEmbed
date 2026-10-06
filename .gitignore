@@ -48,6 +48,10 @@ runs/_final_v1_unet/*.pt
 !runs/_final_v2/*
 runs/_final_v2/*.pt
 
+!runs/phase8_thermocline_weighted/
+!runs/phase8_thermocline_weighted/*
+runs/phase8_thermocline_weighted/*.pt
+
 # Exclude legacy digital twin prototype
 frontend/digital_twin/
 

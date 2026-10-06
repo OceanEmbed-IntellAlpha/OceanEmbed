@@ -27,11 +27,16 @@ logger = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[3]
 ARGO_DIR = ROOT / "data" / "argo"
 
-# Model native depth levels (GLORYS12V1 / SIH_DEPTHS)
+# Model native depth levels — actual GLORYS12V1 target_glorys.zarr levels.
+# These were verified from target_glorys.zarr in the Issue #22 diagnostic.
+# The previous values for channels 11-13 (233.07, 290.24, 365.13 m) were
+# incorrect; the actual depths are 318.13, 541.09, 643.57 m. That mismatch
+# caused a spurious −1.9 to −2.7°C negative bias in deep-layer ARGO
+# validation. Channel 14 at 902.34 m was already correct. (Fix: Issue #22)
 MODEL_DEPTHS = [
-    0.49, 5.08, 14.19, 26.84, 42.55, 59.81,
-    78.49, 99.45, 123.94, 153.08, 188.50,
-    233.07, 290.24, 365.13, 902.34,
+    0.494025, 5.078224, 9.572997, 18.49556, 29.44473,
+    47.37369, 77.85385, 92.32607, 130.6663,  155.8507,
+    186.1256, 318.1274, 541.0889, 643.5704,  902.3393,
 ]
 
 # Empirical per-depth RMSE from test-set evaluation (Phase 6.2)

@@ -1,5 +1,5 @@
 {
-  "_provenance": "computed from 8883 collocated Argo profiles via date-grouped ModelService.predict_full_3d and nearest-cell extraction on 2026-09-22 19:33:38",
+  "_provenance": "computed from 8881 collocated Argo profiles via date-grouped ModelService.predict_full_3d and nearest-cell extraction on 2026-10-06 16:06:31",
   "regions": [
     "arabian_sea",
     "bay_of_bengal",
@@ -14,139 +14,139 @@
   "matrix": {
     "arabian_sea": {
       "pre_monsoon": {
-        "n_profiles": 1386,
-        "rmse": 1.7463,
-        "bias": -0.3208,
-        "correlation": 0.9706,
+        "n_profiles": 1385,
+        "rmse": 1.0952,
+        "bias": 0.0674,
+        "correlation": 0.9864,
         "rmse_by_band": {
-          "mixed_layer": 1.6187,
-          "thermocline": 1.0751,
-          "deep": 2.5523
+          "mixed_layer": 1.4612,
+          "thermocline": 1.0054,
+          "deep": 0.506
         }
       },
       "monsoon": {
         "n_profiles": 2035,
-        "rmse": 1.7055,
-        "bias": -0.366,
-        "correlation": 0.9727,
+        "rmse": 0.9644,
+        "bias": -0.0332,
+        "correlation": 0.9891,
         "rmse_by_band": {
-          "mixed_layer": 1.4301,
-          "thermocline": 1.2131,
-          "deep": 2.5142
+          "mixed_layer": 1.0569,
+          "thermocline": 1.1298,
+          "deep": 0.4153
         }
       },
       "post_monsoon": {
         "n_profiles": 1408,
-        "rmse": 1.6492,
-        "bias": -0.3462,
-        "correlation": 0.9717,
+        "rmse": 0.8251,
+        "bias": -0.0155,
+        "correlation": 0.9914,
         "rmse_by_band": {
-          "mixed_layer": 1.0831,
-          "thermocline": 1.2717,
-          "deep": 2.4943
+          "mixed_layer": 0.8062,
+          "thermocline": 1.0401,
+          "deep": 0.4076
         }
       },
       "winter": {
-        "n_profiles": 873,
-        "rmse": 1.3776,
-        "bias": -0.4955,
-        "correlation": 0.9805,
+        "n_profiles": 871,
+        "rmse": 0.7056,
+        "bias": -0.0415,
+        "correlation": 0.9933,
         "rmse_by_band": {
-          "mixed_layer": 0.6149,
-          "thermocline": 1.0103,
-          "deep": 2.1994
+          "mixed_layer": 0.593,
+          "thermocline": 0.9617,
+          "deep": 0.3472
         }
       }
     },
     "bay_of_bengal": {
       "pre_monsoon": {
-        "n_profiles": 704,
-        "rmse": 1.4487,
-        "bias": -0.0922,
-        "correlation": 0.9879,
+        "n_profiles": 705,
+        "rmse": 0.9534,
+        "bias": 0.1971,
+        "correlation": 0.9939,
         "rmse_by_band": {
-          "mixed_layer": 0.8045,
-          "thermocline": 1.5304,
-          "deep": 1.8123
+          "mixed_layer": 0.5929,
+          "thermocline": 1.4677,
+          "deep": 0.2282
         }
       },
       "monsoon": {
         "n_profiles": 795,
-        "rmse": 1.325,
-        "bias": -0.2641,
-        "correlation": 0.9903,
+        "rmse": 0.7636,
+        "bias": 0.033,
+        "correlation": 0.9958,
         "rmse_by_band": {
-          "mixed_layer": 0.5567,
-          "thermocline": 1.3016,
-          "deep": 1.8482
+          "mixed_layer": 0.534,
+          "thermocline": 1.1504,
+          "deep": 0.214
         }
       },
       "post_monsoon": {
         "n_profiles": 541,
-        "rmse": 1.2789,
-        "bias": -0.1938,
-        "correlation": 0.9911,
+        "rmse": 0.6718,
+        "bias": 0.1019,
+        "correlation": 0.9968,
         "rmse_by_band": {
-          "mixed_layer": 0.6126,
-          "thermocline": 1.2177,
-          "deep": 1.7958
+          "mixed_layer": 0.5253,
+          "thermocline": 0.9831,
+          "deep": 0.1786
         }
       },
       "winter": {
         "n_profiles": 444,
-        "rmse": 1.3528,
-        "bias": -0.2834,
-        "correlation": 0.9867,
+        "rmse": 0.8044,
+        "bias": 0.1189,
+        "correlation": 0.9948,
         "rmse_by_band": {
-          "mixed_layer": 0.8406,
-          "thermocline": 1.273,
-          "deep": 1.8264
+          "mixed_layer": 0.5523,
+          "thermocline": 1.2194,
+          "deep": 0.1955
         }
       }
     },
     "north_indian_ocean": {
       "pre_monsoon": {
         "n_profiles": 2261,
-        "rmse": 1.6346,
-        "bias": -0.2326,
-        "correlation": 0.979,
+        "rmse": 1.0449,
+        "bias": 0.1136,
+        "correlation": 0.99,
         "rmse_by_band": {
-          "mixed_layer": 1.3494,
-          "thermocline": 1.278,
-          "deep": 2.2774
+          "mixed_layer": 1.1956,
+          "thermocline": 1.2058,
+          "deep": 0.4264
         }
       },
       "monsoon": {
         "n_profiles": 3033,
-        "rmse": 1.6134,
-        "bias": -0.3182,
-        "correlation": 0.9794,
+        "rmse": 0.9316,
+        "bias": 0.0044,
+        "correlation": 0.9916,
         "rmse_by_band": {
-          "mixed_layer": 1.2777,
-          "thermocline": 1.2717,
-          "deep": 2.2962
+          "mixed_layer": 0.9623,
+          "thermocline": 1.1607,
+          "deep": 0.3631
         }
       },
       "post_monsoon": {
         "n_profiles": 2146,
-        "rmse": 1.5785,
-        "bias": -0.2702,
-        "correlation": 0.9786,
+        "rmse": 0.8354,
+        "bias": 0.0332,
+        "correlation": 0.9928,
         "rmse_by_band": {
-          "mixed_layer": 1.1029,
-          "thermocline": 1.3155,
-          "deep": 2.2555
+          "mixed_layer": 0.8173,
+          "thermocline": 1.069,
+          "deep": 0.3702
         }
       },
       "winter": {
-        "n_profiles": 1443,
-        "rmse": 1.3616,
-        "bias": -0.4012,
-        "correlation": 0.9831,
+        "n_profiles": 1441,
+        "rmse": 0.7626,
+        "bias": 0.0182,
+        "correlation": 0.9936,
         "rmse_by_band": {
-          "mixed_layer": 0.6843,
-          "thermocline": 1.1483,
-          "deep": 2.0257
+          "mixed_layer": 0.569,
+          "thermocline": 1.0968,
+          "deep": 0.3255
         }
       }
     }

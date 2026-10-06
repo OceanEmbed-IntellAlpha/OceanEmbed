@@ -59,7 +59,7 @@ export function LiveBenchmarksBand({ onSelectBenchmark }: LiveBenchmarksBandProp
 
         <div className="relative z-10 flex items-center gap-2 text-xs font-medium text-zinc-400 bg-zinc-900 px-3 py-1.5 rounded-lg border border-zinc-800/80 mt-2 md:mt-0">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-          <span>v2 Frozen Model Active (0.5246°C RMSE)</span>
+          <span>v2 Frozen Model Active (0.8072°C Ocean-Masked / 0.5246°C Full-Grid)</span>
         </div>
       </div>
 

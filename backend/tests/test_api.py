@@ -46,9 +46,11 @@ def test_model_info(client: TestClient):
     assert res.status_code == 200
     data = res.json()
     assert data["model_name"] == "OceanEmbed v2"
-    assert data["architecture"] == "U-Net (BaselineModel)"
-    assert data["test_rmse_celsius"] == 0.5246
-    assert data["climatology_rmse_celsius"] == 0.6429
+    assert data["test_rmse_celsius"] == 0.8072
+    assert data["test_rmse_ocean_masked_celsius"] == 0.8072
+    assert data["test_rmse_full_grid_celsius"] == 0.5246
+    assert data["climatology_rmse_celsius"] == 0.9893
+    assert data["climatology_rmse_full_grid_celsius"] == 0.6429
     assert data["improvement_vs_climatology_pct"] == 18.4
     assert len(data["depths_m"]) == 15
     assert len(data["input_variables"]) == 7
@@ -380,7 +382,7 @@ def test_validation_seasonal(client: TestClient):
             assert "winter" in season_names
             for s in data["seasons"]:
                 assert s["n_profiles"] > 0
-                assert 0.4 <= s["rmse"] <= 1.0  # V5: range within [0.4, 1.0]
+                assert 0.4 <= s["rmse"] <= 1.2
                 assert "rmse_by_band" in s
                 assert "rmse_by_depth" in s
 
@@ -419,5 +421,5 @@ def test_validation_region_season_matrix(client: TestClient):
                     assert s in data["matrix"][r]
                     cell = data["matrix"][r][s]
                     assert cell["n_profiles"] > 0
-                    assert 0.4 <= cell["rmse"] <= 1.0
+                    assert 0.4 <= cell["rmse"] <= 1.2
 

@@ -50,9 +50,9 @@ const STAT_CARDS = [
     bg: 'bg-amber-400/5',
   },
   {
-    value: '0.525 °C',
-    label: 'Test RMSE (2022)',
-    sub: '18.4% better than climatology',
+    value: '0.807 °C',
+    label: 'Test RMSE (Ocean-Masked)',
+    sub: '18.4% better than climatology (0.525 °C full-grid)',
     color: 'text-purple-400',
     border: 'border-purple-400/20',
     bg: 'bg-purple-400/5',

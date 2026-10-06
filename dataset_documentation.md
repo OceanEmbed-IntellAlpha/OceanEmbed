@@ -732,13 +732,15 @@ To strictly prevent temporal data leakage, all splits in OceanEmbed are partitio
 ### Benchmark Evaluation Results (2022 Test Split — 365 Days)
 The frozen OceanEmbed v2 model ([model_v2.pt](file:///c:/OceanEmbed/runs/_final_v2/model_v2.pt)) was evaluated against 2022 test data and compared to statistical and climatological baselines:
 
-| Metric | OceanEmbed v2 | Climatology Baseline | Improvement / Skill |
-|:---|:---:|:---:|:---:|
-| **Overall RMSE** | **0.5246 °C** | 0.6429 °C | **18.4% error reduction** (-0.1183 °C) |
-| **Overall MAE** | **0.2331 °C** | — | High median reconstruction accuracy |
-| **Overall $R^2$** | **0.9980** | — | 99.8% of variance captured |
-| **Pearson Correlation ($r$)** | **0.9990** | — | High vertical profile alignment |
-| **Mean Bias** | **-0.0155 °C** | — | Near-zero systematic thermal drift |
+| Metric | OceanEmbed v2 (Ocean-Masked) | OceanEmbed v2 (Full-Grid Legacy) | Climatology Baseline (Ocean-Masked) | Improvement / Skill |
+|:---|:---:|:---:|:---:|:---:|
+| **Overall RMSE** | **0.8072 °C** | 0.5246 °C | 0.9893 °C | **18.4% error reduction** (-0.1821 °C) |
+| **Overall MAE** | **0.5520 °C** | 0.2331 °C | 0.6440 °C | High median reconstruction accuracy |
+| **Overall $R^2$** | **0.9884** | 0.9980 | 0.9826 | 98.8% of spatial variance captured |
+| **Pearson Correlation ($r$)** | **0.9942** | 0.9990 | 0.9915 | High vertical profile alignment |
+| **Mean Bias** | **-0.0367 °C** | -0.0155 °C | -0.1672 °C | Near-zero systematic thermal drift |
+
+*Note: Ocean-masked metrics reflect valid ocean pixels only ($N=56,277,525$). Full-grid values include land pixels where prediction and target are zero ($N=133,266,975$).*
 
 ### Vertical Layer Breakdown
 

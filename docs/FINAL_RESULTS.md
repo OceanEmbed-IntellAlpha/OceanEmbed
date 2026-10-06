@@ -2,29 +2,55 @@
 
 ## Model Performance Metrics
 
-### Test Set Validation (vs GLORYS 2022)
-- **RMSE**: 0.5246°C
-- **MAE**: 0.2331°C
-- **Bias**: -0.0155°C
-- **R²**: 0.9980
-- **Pearson R**: 0.9990
+### GLORYS 2022 Test Set Performance
 
-### Climatology Baseline
-- **RMSE vs climatology**: 0.6429°C
-- **Improvement vs climatology**: 18.4%
+| Metric | Ocean-Masked (Headline) | Full-Grid (Legacy) | Notes |
+|---|---|---|---|
+| **RMSE** | **0.8072°C** | 0.5246°C | Ocean-masked is the scientifically meaningful headline |
+| **MAE** | **0.5520°C** | 0.2331°C | Valid sea points only |
+| **Bias** | **-0.0367°C** | -0.0155°C | Model is virtually unbiased across basin |
+| **R²** | **0.9884** | 0.9980 | Explained variance over ocean pixels |
+| **Pearson r** | **0.9942** | 0.9990 | Correlation with reanalysis |
+| **N points** | **56,277,525** | 133,266,975 | Ocean fraction = 42.23% of grid |
+
+> **Note on Evaluation Domains**: Full-grid values include land pixels where prediction and target are both zero (which scales RMSE by $\sqrt{N_{\text{ocean}} / N_{\text{grid}}} = \sqrt{0.4223} = 0.6498$). We report **ocean-masked metrics** as the scientifically meaningful headline; full-grid values are included for reproducibility with earlier ablation studies.
+
+### Climatology Baseline Comparison
+- **Climatology Baseline RMSE**: **0.9893°C** (ocean-masked) / 0.6429°C (full-grid)
+- **Improvement vs Climatology**: **18.40%** (delta: −0.1821°C ocean-masked / −0.1183°C full-grid)
+> The 18.4% improvement claim holds identically in both domains because the spatial scale factor cancels out.
 
 ### Argo Validation (Real Independent Profiles, 2020-2022)
 **Note**: All Argo validation metrics are computed from real ArgoVis data with provenance hashes. Prior claim of 0.549°C Argo RMSE was fabricated by an automated agent and withdrawn on 2026-09-22.
 
-#### Regional Argo Validation (NIO, 2020-2022)
-- **Overall NIO RMSE**: 1.5719°C
-- **Arabian Sea RMSE**: 1.6463°C
-- **Bay of Bengal RMSE**: 1.3903°C
-- **Number of profiles**: 8,883 collocated Argo profiles
+> **Issue #22 Fix (2026-10-06)**: A depth-grid mismatch bug in `argo_service.py` was found and fixed. Channels 11–13 were annotated at 233/290/365 m but their actual GLORYS depths are 318/541/644 m. This caused a spurious −1.9 to −2.7°C deep-layer bias. Correcting `MODEL_DEPTHS` eliminated the artifact and reduced overall ARGO RMSE from 1.572°C to **0.913°C** (−42%). All numbers below reflect the corrected collocation.
 
-#### Seasonal Analysis
-- Monsoon regimes analyzed (NE monsoon, SW monsoon, inter-monsoon)
-- Regional seasonal grid computed for all NIO regions
+#### Overall ARGO Validation (NIO, 8,881 profiles)
+- **Overall NIO RMSE**: **0.913°C** *(was 1.572°C before Issue #22 fix)*
+- **Correlation (r)**: 0.992
+- **Bias**: +0.04°C
+
+#### Per-Band RMSE (NIO overall)
+| Band | Depths | RMSE |
+|------|--------|------|
+| Mixed layer | 0–50m | 0.954°C |
+| Thermocline | 50–200m | 1.127°C |
+| Deep | >200m | 0.370°C |
+
+#### Seasonal Analysis (NIO, all regions)
+| Season | Period | N Profiles | RMSE | Bias | r |
+|--------|--------|-----------|------|------|---|
+| Pre-monsoon | Mar–May | 2,261 | 1.045°C | +0.114 | 0.990 |
+| Monsoon | Jun–Sep | 3,033 | 0.932°C | +0.004 | 0.992 |
+| Post-monsoon | Oct–Dec | 2,146 | 0.835°C | +0.033 | 0.993 |
+| Winter | Jan–Feb | 1,441 | 0.763°C | +0.018 | 0.994 |
+
+#### Regional × Seasonal RMSE Matrix (°C)
+| Region | Pre-monsoon | Monsoon | Post-monsoon | Winter |
+|--------|------------|---------|--------------|--------|
+| Arabian Sea | 1.095 | 0.964 | 0.825 | 0.706 |
+| Bay of Bengal | 0.953 | 0.764 | 0.672 | 0.804 |
+| **NIO Overall** | **1.045** | **0.932** | **0.835** | **0.763** |
 
 ## Variable Alation Results
 
@@ -38,6 +64,7 @@
 - **SLA is the dominant variable**: Contributes ~87.5% of total skill gain
 - **Best model**: U-Net + anomaly formulation with all 7 channels
 - **Marginal gains beyond SLA**: SSS and atmospheric variables provide small but consistent improvements
+- **Thermocline Loss Weighting (Phase 8)**: We tested thermocline-weighted loss; it improved ARGO thermocline accuracy marginally (−1.4%) but regressed GLORYS fit (+2.6%). Retained v2 as production.
 
 ## Provenance and Reproducibility
 
@@ -45,7 +72,8 @@ All numbers in this document are computed from real data with provenance hashes:
 
 - **Test metrics**: Computed via `backend/ocean_embed/baselines/run_variable_ablation.py` with provenance tracking
 - **Argo validation**: Computed via `backend/scripts/compute_real_argo_validation.py` and `backend/scripts/compute_real_regional_argo.py` with SHA-256 hash tracking
-- **Seasonal/monsoon stats**: Computed from 8,883 collocated Argo profiles via date-grouped ModelService.predict_full_3d
+- **Seasonal/monsoon stats**: Computed from 8,881 collocated Argo profiles via date-grouped ModelService.predict_full_3d
+- **Issue #22 fix**: `backend/api/services/argo_service.py` → `MODEL_DEPTHS` corrected to actual GLORYS zarr levels; diagnostic in `runs/issue22_deep_bias_diagnostic.json`
 
 ### Important Correction
 Prior claim of 0.549°C Argo RMSE was fabricated by an automated agent using `np.random`-based generators. This was corrected on 2026-09-22, and all Argo metrics shown above are now computed from real ArgoVis data with full provenance.

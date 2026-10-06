@@ -9,7 +9,9 @@ This document synthesizes the experimental results from **Phase 6** of the Ocean
 
 ## 1. The 4-Model Variable Ablation Suite (Phase 6.2)
 
-All models were evaluated on the 2022 test split (365 daily fields over the North Indian Ocean at 15 native standard depth levels).
+All models were evaluated on the 2022 test split (365 daily fields over the North Indian Ocean at 15 native standard depth levels, evaluated on the full-grid benchmark of 133,266,975 points).
+
+> *Note on Domain*: The ablation suite was benchmarked on the full-grid domain. OceanEmbed v2 (V4) achieves **0.8072 °C ocean-masked** (56.3M ocean points) / **0.5246 °C full-grid** (133.3M points). The relative rankings and SLA skill contribution percentages hold identically across both domains.
 
 | Variant | Input Variables | # Vars | Test RMSE (°C) | Test MAE (°C) | Test R² | Improvement vs Clim | Δ vs All-7 (v2) |
 |:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|

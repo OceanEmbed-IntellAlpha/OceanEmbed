@@ -145,7 +145,7 @@
       "rmse": [0.442, 0.525, 0.795, 0.247],
       "correlation": [0.98, 0.96, 0.93, 0.99]
     },
-    "finding": "SELECTED — final production model achieving 0.525°C test RMSE.",
+    "finding": "SELECTED — final production model achieving 0.8072°C ocean-masked (0.5246°C full-grid) test RMSE.",
     "decision": "KEEP",
     "decisionReason": "Final production OceanEmbed v2 model configuration.",
     "visuals": ["final_all7_profile", "regional_error_breakdown"]

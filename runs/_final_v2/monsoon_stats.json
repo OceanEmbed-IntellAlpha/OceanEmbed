@@ -1,73 +1,73 @@
 {
-  "_provenance": "computed from 8883 collocated Argo profiles via date-grouped ModelService.predict_full_3d and nearest-cell extraction on 2026-09-22 19:33:38",
-  "overall_profiles": 8883,
+  "_provenance": "computed from 8881 collocated Argo profiles via date-grouped ModelService.predict_full_3d and nearest-cell extraction on 2026-10-06 16:06:31",
+  "overall_profiles": 8881,
   "regimes": [
     {
       "n_profiles": 3033,
-      "rmse": 1.6134,
-      "bias": -0.3182,
-      "correlation": 0.9794,
+      "rmse": 0.9316,
+      "bias": 0.0044,
+      "correlation": 0.9916,
       "rmse_by_band": {
-        "mixed_layer": 1.2777,
-        "thermocline": 1.2717,
-        "deep": 2.2962
+        "mixed_layer": 0.9623,
+        "thermocline": 1.1607,
+        "deep": 0.3631
       },
       "rmse_by_depth": [
         {
           "depth": 0.49,
-          "rmse": 0.3889
+          "rmse": 0.3887
         },
         {
           "depth": 5.08,
-          "rmse": 0.7066
+          "rmse": 0.7065
         },
         {
-          "depth": 14.19,
-          "rmse": 0.9795
+          "depth": 9.57,
+          "rmse": 0.7937
         },
         {
-          "depth": 26.84,
-          "rmse": 1.5109
+          "depth": 18.5,
+          "rmse": 1.0622
         },
         {
-          "depth": 42.55,
-          "rmse": 1.6874
+          "depth": 29.44,
+          "rmse": 1.1409
         },
         {
-          "depth": 59.81,
-          "rmse": 1.4746
+          "depth": 47.37,
+          "rmse": 1.0618
         },
         {
-          "depth": 78.49,
-          "rmse": 1.155
+          "depth": 77.85,
+          "rmse": 1.1451
         },
         {
-          "depth": 99.45,
-          "rmse": 1.4835
+          "depth": 92.33,
+          "rmse": 1.2302
         },
         {
-          "depth": 123.94,
-          "rmse": 1.2637
+          "depth": 130.67,
+          "rmse": 1.2315
         },
         {
-          "depth": 153.08,
-          "rmse": 1.1457
+          "depth": 155.85,
+          "rmse": 1.1416
         },
         {
-          "depth": 188.5,
-          "rmse": 1.0358
+          "depth": 186.13,
+          "rmse": 1.0427
         },
         {
-          "depth": 233.07,
-          "rmse": 2.2654
+          "depth": 318.13,
+          "rmse": 0.5659
         },
         {
-          "depth": 290.24,
-          "rmse": 2.9758
+          "depth": 541.09,
+          "rmse": 0.2498
         },
         {
-          "depth": 365.13,
-          "rmse": 2.4692
+          "depth": 643.57,
+          "rmse": 0.2596
         },
         {
           "depth": 902.34,
@@ -79,71 +79,71 @@
       "period": "Jun-Sep"
     },
     {
-      "n_profiles": 5850,
-      "rmse": 1.5502,
-      "bias": -0.2882,
-      "correlation": 0.9798,
+      "n_profiles": 5848,
+      "rmse": 0.9061,
+      "bias": 0.0605,
+      "correlation": 0.9918,
       "rmse_by_band": {
-        "mixed_layer": 1.1242,
-        "thermocline": 1.2615,
-        "deep": 2.2086
+        "mixed_layer": 0.9355,
+        "thermocline": 1.1305,
+        "deep": 0.3829
       },
       "rmse_by_depth": [
         {
           "depth": 0.49,
-          "rmse": 1.6981
+          "rmse": 1.6909
         },
         {
           "depth": 5.08,
           "rmse": 0.8539
         },
         {
-          "depth": 14.19,
-          "rmse": 0.92
+          "depth": 9.57,
+          "rmse": 0.9533
         },
         {
-          "depth": 26.84,
-          "rmse": 1.138
+          "depth": 18.5,
+          "rmse": 0.8816
         },
         {
-          "depth": 42.55,
-          "rmse": 1.3662
+          "depth": 29.44,
+          "rmse": 0.9053
         },
         {
-          "depth": 59.81,
-          "rmse": 1.4462
+          "depth": 47.37,
+          "rmse": 0.9125
         },
         {
-          "depth": 78.49,
-          "rmse": 1.2067
+          "depth": 77.85,
+          "rmse": 1.1883
         },
         {
-          "depth": 99.45,
-          "rmse": 1.6244
+          "depth": 92.33,
+          "rmse": 1.2984
         },
         {
-          "depth": 123.94,
-          "rmse": 1.2331
+          "depth": 130.67,
+          "rmse": 1.2085
         },
         {
-          "depth": 153.08,
-          "rmse": 1.0308
+          "depth": 155.85,
+          "rmse": 1.0348
         },
         {
-          "depth": 188.5,
-          "rmse": 0.8795
+          "depth": 186.13,
+          "rmse": 0.8703
         },
         {
-          "depth": 233.07,
-          "rmse": 2.0393
+          "depth": 318.13,
+          "rmse": 0.5569
         },
         {
-          "depth": 290.24,
-          "rmse": 2.9051
+          "depth": 541.09,
+          "rmse": 0.2959
         },
         {
-          "depth": 365.13,
-          "rmse": 2.4783
+          "depth": 643.57,
+          "rmse": 0.276
         },
         {
           "depth": 902.34,

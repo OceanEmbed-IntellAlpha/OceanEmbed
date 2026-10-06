@@ -3,12 +3,15 @@ OceanEmbed — Loss functions.
 
 Implements:
 - MSE loss (baseline)
+- WeightedMSELoss — depth-weighted MSE (Issue #21 Option A)
 - Gaussian NLL loss (heteroscedastic uncertainty; Spec §14)
 - Thermocline depth regularization loss (configurable; Spec §16)
 - Depth smoothness regularization
 """
 
 from __future__ import annotations
+
+import math
 
 import torch
 import torch.nn as nn
@@ -41,6 +44,84 @@ class MSELoss(nn.Module):
             diff_sq = diff_sq * valid.float()
             n_valid = valid.float().sum().clamp(min=1)
             return diff_sq.sum() / n_valid
+
+
+def smooth_thermocline_weight(depth_m: float) -> float:
+    """Per-depth loss weight: Gaussian bump centred at 100 m, sigma=40 m.
+
+    Profile (approximate):
+        depth   weight
+        0 m     1.02
+        30 m    1.15
+        50 m    1.42
+        75 m    2.09
+        100 m   3.00   ← peak
+        125 m   2.09
+        150 m   1.42
+        200 m   1.04
+        300 m+  ~1.00
+
+    Args:
+        depth_m: Depth in metres (positive downward).
+
+    Returns:
+        Scalar weight >= 1.0.
+    """
+    return 1.0 + 2.0 * math.exp(-((depth_m - 100.0) ** 2) / (2.0 * 40.0 ** 2))
+
+
+class WeightedMSELoss(nn.Module):
+    """Depth-weighted MSE loss for Issue #21 Option A.
+
+    Applies a smooth per-depth weight (Gaussian bump at 100 m) so the
+    thermocline region receives higher gradient signal without step artifacts.
+
+    Args:
+        depth_levels: Sequence of depth values in metres (e.g. SIH_DEPTHS or
+                      GLORYS_NATIVE_DEPTHS).  The weight vector is pre-computed
+                      once in __init__ and registered as a buffer so it moves
+                      with the module's device.
+    """
+
+    def __init__(self, depth_levels: list[float]) -> None:
+        super().__init__()
+        weights = torch.tensor(
+            [smooth_thermocline_weight(d) for d in depth_levels],
+            dtype=torch.float32,
+        ).view(1, -1, 1, 1)  # (1, D, 1, 1) — broadcasts over (B, D, H, W)
+        self.register_buffer("depth_weights", weights)
+        self.depth_levels = list(depth_levels)
+
+    def forward(
+        self,
+        pred: torch.Tensor,
+        target: torch.Tensor,
+        mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """
+        Args:
+            pred:   (B, D, H, W)  — model anomaly predictions
+            target: (B, D, H, W)  — GLORYS anomaly targets
+            mask:   (B, D, H, W)  — float, 1=valid ocean pixel, 0=missing
+
+        Returns:
+            Weighted mean squared error (scalar).
+        """
+        diff_sq = (pred - target) ** 2
+
+        if mask is not None:
+            diff_sq = diff_sq * mask
+            n_valid = mask.sum().clamp(min=1)
+            # weight denominator by same mask so normalisation is correct
+            weighted = (diff_sq * self.depth_weights).sum()
+            weight_sum = (mask * self.depth_weights).sum().clamp(min=1)
+            return weighted / weight_sum
+        else:
+            valid = torch.isfinite(target)
+            diff_sq = diff_sq * valid.float()
+            weighted = (diff_sq * self.depth_weights).sum()
+            weight_sum = (valid.float() * self.depth_weights).sum().clamp(min=1)
+            return weighted / weight_sum
 
 
 class GaussianNLLLoss(nn.Module):
