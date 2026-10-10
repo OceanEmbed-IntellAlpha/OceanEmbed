@@ -81,3 +81,15 @@ From Phase 6.2 variable ablation:
 |--------|------------|-----------|--------------|------------|
 | Arabian Sea | Winter | 0.706 C | Pre-monsoon | 1.095 C |
 | Bay of Bengal | Post-monsoon | 0.672 C | Pre-monsoon | 0.953 C |
+
+## Architecture Comparisons (Phase 9)
+
+OceanEmbed v2 U-Net was evaluated against three alternative baseline architectures in Phase 9. Detailed results are documented in [`docs/phase9_architecture_ablation.md`](file:///C:/Users/DELL/Documents/oceanembed/OceanEmbed/docs/phase9_architecture_ablation.md) and [`docs/FINAL_RESULTS.md`](file:///C:/Users/DELL/Documents/oceanembed/OceanEmbed/docs/FINAL_RESULTS.md).
+
+| Model | Params | GLORYS (ocean-masked) | ARGO | Verdict | Link |
+|---|---|:---:|:---:|:---:|---|
+| **v2 U-Net** | 7.85M | **0.807°C** | **0.881°C** | **PRODUCTION** | [v2 MANIFEST](file:///C:/Users/DELL/Documents/oceanembed/OceanEmbed/runs/_final_v2/MANIFEST.md) |
+| ViT Baseline (9A) | 5.89M | 0.851°C | 1.536°C | REJECTED | [Phase 9A Report](file:///C:/Users/DELL/Documents/oceanembed/OceanEmbed/runs/phase9a_vit/report.md) |
+| GNN Baseline (9B) | 0.089M | 0.806°C | 1.589°C | REJECTED | [Phase 9B Report](file:///C:/Users/DELL/Documents/oceanembed/OceanEmbed/runs/phase9b_gnn/report.md) |
+| AE Baseline (9C) | 1.12M | 0.962°C | 0.899°C | REJECTED | [Phase 9C Report](file:///C:/Users/DELL/Documents/oceanembed/OceanEmbed/runs/phase9c_ae/report.md) |
+

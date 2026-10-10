@@ -66,6 +66,20 @@
 - **Marginal gains beyond SLA**: SSS and atmospheric variables provide small but consistent improvements
 - **Thermocline Loss Weighting (Phase 8)**: We tested thermocline-weighted loss; it improved ARGO thermocline accuracy marginally (−1.4%) but regressed GLORYS fit (+2.6%). Retained v2 as production.
 
+## Architecture Ablation
+
+| Model | Params | GLORYS (ocean-masked) | ARGO | Notes |
+|-------|--------|-----------------------|------|-------|
+| **v2 U-Net** | 7.85M | **0.807°C** | **0.881°C** | Production |
+| AE (Phase 9C) | 1.12M | 0.962°C | 0.899°C | Bottleneck smoothing |
+| ViT (Phase 9A) | 5.89M | 0.851°C | 1.536°C | Patch tokenization loses mesoscale |
+| GNN (Phase 9B) | 0.089M | 0.806°C | 1.589°C | Matches GLORYS, fails ARGO |
+
+### Key Findings
+1. **U-Net wins on both metrics**: Three alternative architectures show distinct failure modes when evaluated across full grid depth profiles and independent in-situ profiles.
+2. **Reanalysis fit does not imply in-situ skill**: The GNN matches U-Net on GLORYS (0.806°C) but performs 80% worse on ARGO (1.589°C); the AE is 19% worse on GLORYS (0.962°C) but only 2% worse on ARGO (0.899°C).
+3. **Continuous Seasonal Trajectory**: The AE's 256-d latent space encodes a continuous seasonal trajectory (PC1 = 57% variance, correlated with SST and month).
+
 ## Provenance and Reproducibility
 
 All numbers in this document are computed from real data with provenance hashes:
