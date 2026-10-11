@@ -147,10 +147,19 @@ export function useExperiments() {
   return useQuery<ExperimentsResponse, Error>({
     queryKey: ['experiments'],
     queryFn: async () => {
-      const res = await fetch(`${BASE_URL}/api/experiments`);
-      if (!res.ok) throw new Error(`Experiments fetch failed: ${res.status}`);
-      return res.json();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      try {
+        const res = await fetch(`${BASE_URL}/api/experiments`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!res.ok) throw new Error(`Experiments fetch failed: ${res.status}`);
+        return res.json();
+      } catch (err) {
+        clearTimeout(timeoutId);
+        throw err;
+      }
     },
+    retry: false,
     staleTime: 1000 * 60 * 60, // 1 hour
   });
 }
