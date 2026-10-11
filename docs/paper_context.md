@@ -27,10 +27,12 @@ Our v2 model achieves **RMSE 0.8072 °C** on the ocean-masked 2022 GLORYS test s
 
 OceanEmbed v2 was rigorously validated against **8,881 physical in-situ ARGO float profiles** throughout the North Indian Ocean ($2020$–$2022$):
 
-- **Overall NIO Basin In-Situ RMSE:** **0.913 °C** (Correlation $r = 0.992$, Bias $= +0.041\ ^\circ\text{C}$)
-- **Mixed Layer Band ($0$–$50\text{ m}$):** $0.954\ ^\circ\text{C}$ RMSE
-- **Thermocline Band ($50$–$200\text{ m}$):** $1.127\ ^\circ\text{C}$ RMSE
-- **Deep Ocean Band ($200$–$1000\text{ m}$):** $0.370\ ^\circ\text{C}$ RMSE
+- **Overall NIO Basin In-Situ RMSE:** **0.915 °C** (0.9148 °C, Correlation $r = 0.992$, Bias $= +0.042\ ^\circ\text{C}$)
+- **Arabian Sea In-Situ RMSE (5,940 profiles):** **0.943 °C** (0.9431 °C)
+- **Bay of Bengal In-Situ RMSE (2,780 profiles):** **0.844 °C** (0.8437 °C)
+- **Mixed Layer Band ($0$–$50\text{ m}$):** $0.945\ ^\circ\text{C}$ RMSE
+- **Thermocline Band ($50$–$200\text{ m}$):** $1.141\ ^\circ\text{C}$ RMSE
+- **Deep Ocean Band ($200$–$1000\text{ m}$):** $0.376\ ^\circ\text{C}$ RMSE
 
 ---
 

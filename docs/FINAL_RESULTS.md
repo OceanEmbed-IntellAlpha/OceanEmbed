@@ -23,19 +23,21 @@
 ### Argo Validation (Real Independent Profiles, 2020-2022)
 **Note**: All Argo validation metrics are computed from real ArgoVis data with provenance hashes. Prior claim of 0.549°C Argo RMSE was fabricated by an automated agent and withdrawn on 2026-09-22.
 
-> **Issue #22 Fix (2026-10-06)**: A depth-grid mismatch bug in `argo_service.py` was found and fixed. Channels 11–13 were annotated at 233/290/365 m but their actual GLORYS depths are 318/541/644 m. This caused a spurious −1.9 to −2.7°C deep-layer bias. Correcting `MODEL_DEPTHS` eliminated the artifact and reduced overall ARGO RMSE from 1.572°C to **0.913°C** (−42%). All numbers below reflect the corrected collocation.
+> **Issue #22 Fix (2026-10-06)**: A depth-grid mismatch bug in `argo_service.py` was found and fixed. Channels 11–13 were annotated at 233/290/365 m but their actual GLORYS depths are 318/541/644 m. This caused a spurious −1.9 to −2.7°C deep-layer bias. Correcting `MODEL_DEPTHS` eliminated the artifact and reduced overall ARGO RMSE from 1.572°C to **0.915°C** (0.9148°C, −42%). All numbers below reflect the corrected collocation.
 
 #### Overall ARGO Validation (NIO, 8,881 profiles)
-- **Overall NIO RMSE**: **0.913°C** *(was 1.572°C before Issue #22 fix)*
-- **Correlation (r)**: 0.992
-- **Bias**: +0.04°C
+- **Overall NIO RMSE**: **0.915°C** (0.9148°C) *(was 1.572°C before Issue #22 fix)*
+- **Arabian Sea RMSE (5,940 profiles)**: **0.943°C** (0.9431°C)
+- **Bay of Bengal RMSE (2,780 profiles)**: **0.844°C** (0.8437°C)
+- **Correlation (r)**: 0.992 (0.9917)
+- **Bias**: +0.042°C
 
 #### Per-Band RMSE (NIO overall)
 | Band | Depths | RMSE |
 |------|--------|------|
-| Mixed layer | 0–50m | 0.954°C |
-| Thermocline | 50–200m | 1.127°C |
-| Deep | >200m | 0.370°C |
+| Mixed layer | 0–50m | 0.945°C |
+| Thermocline | 50–200m | 1.141°C |
+| Deep | >200m | 0.376°C |
 
 #### Seasonal Analysis (NIO, all regions)
 | Season | Period | N Profiles | RMSE | Bias | r |
