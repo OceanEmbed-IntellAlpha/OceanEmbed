@@ -116,6 +116,90 @@ const SPATIAL_HEATMAP_GRID = [
 ];
 const LON_LABELS = ['50°E', '58°E', '66°E', '74°E', '82°E', '90°E', '98°E', '105°E'];
 
+const ModelBenchmarkTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const item = payload[0].payload;
+    return (
+      <div className="rounded-xl bg-zinc-950 border border-zinc-700 p-3.5 shadow-2xl backdrop-blur-xl max-w-xs text-xs z-50 pointer-events-none">
+        <div className="font-semibold text-white text-sm flex items-center justify-between gap-2">
+          <span>{item.name}</span>
+          {item.isFinal && (
+            <span className="text-[10px] font-mono bg-biolume/20 text-biolume border border-biolume/40 px-1.5 py-0.5 rounded font-semibold">
+              Production
+            </span>
+          )}
+        </div>
+        <div className="mt-2.5 flex items-baseline gap-2">
+          <span className="text-zinc-400 text-xs font-medium">Test RMSE:</span>
+          <span className="font-mono text-base font-bold text-white">
+            {item.rmse}°C
+          </span>
+          {item.r2 && (
+            <span className="font-mono text-xs text-emerald-400 font-medium">
+              (R² = {item.r2})
+            </span>
+          )}
+        </div>
+        {item.domainNote && (
+          <div className="mt-2 pt-2 border-t border-zinc-800 text-[11px] text-zinc-300 leading-snug">
+            {item.domainNote}
+          </div>
+        )}
+      </div>
+    );
+  }
+  return null;
+};
+
+const DepthLineTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="rounded-xl bg-zinc-950 border border-zinc-700 p-3.5 shadow-2xl backdrop-blur-xl text-xs z-50 min-w-[210px] pointer-events-none">
+        <p className="font-semibold text-white text-sm border-b border-zinc-800 pb-1.5">
+          {data.depthLabel} Depth Level
+        </p>
+        <div className="mt-2.5 space-y-1.5 font-mono text-xs">
+          <div className="flex justify-between items-center text-indigo-300">
+            <span className="text-zinc-400 font-sans">OceanEmbed v2:</span>
+            <span className="font-bold text-white text-sm">{data.oceanEmbed}°C</span>
+          </div>
+          <div className="flex justify-between items-center text-emerald-400">
+            <span className="text-zinc-400 font-sans">Ridge Baseline:</span>
+            <span>{data.ridge}°C</span>
+          </div>
+          <div className="flex justify-between items-center text-zinc-300">
+            <span className="text-zinc-400 font-sans">Climatology:</span>
+            <span>{data.climatology}°C</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+const AblationTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="rounded-xl bg-zinc-950 border border-zinc-700 p-3.5 shadow-2xl backdrop-blur-xl text-xs z-50 pointer-events-none">
+        <p className="font-semibold text-white text-sm">{data.name}</p>
+        <div className="mt-2 flex items-baseline gap-2">
+          <span className="text-zinc-400 font-medium">Full-Grid Test RMSE:</span>
+          <span className="font-mono text-base font-bold text-white">{data.rmse}°C</span>
+        </div>
+        {data.pctGain && data.pctGain !== '0%' && (
+          <p className="text-[11px] text-emerald-400 mt-1 font-mono">
+            {data.pctGain} skill gain vs SST-only ({data.delta}°C)
+          </p>
+        )}
+      </div>
+    );
+  }
+  return null;
+};
+
 export function ResearchChartsSuite() {
   const [activeTab, setActiveTab] = useState<'depth' | 'benchmark' | 'ablation' | 'loss' | 'argo' | 'spatial'>('depth');
   const [selectedChartPoint, setSelectedChartPoint] = useState<any | null>(null);
@@ -275,17 +359,9 @@ export function ResearchChartsSuite() {
                       }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                      <XAxis dataKey="depthLabel" stroke="#71717a" tick={{ fontSize: 11 }} tickMargin={10} axisLine={false} tickLine={false} />
-                      <YAxis stroke="#71717a" tick={{ fontSize: 11 }} unit="°" domain={[0, 1.4]} tickMargin={10} axisLine={false} tickLine={false} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#18181b',
-                          borderColor: '#27272a',
-                          borderRadius: '8px',
-                          color: '#fff',
-                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                        }}
-                      />
+                      <XAxis dataKey="depthLabel" stroke="#a1a1aa" tick={{ fill: '#d4d4d8', fontSize: 11 }} tickMargin={10} axisLine={false} tickLine={false} />
+                      <YAxis stroke="#a1a1aa" tick={{ fill: '#d4d4d8', fontSize: 11 }} unit="°" domain={[0, 1.4]} tickMargin={10} axisLine={false} tickLine={false} />
+                      <Tooltip content={<DepthLineTooltip />} />
                       <Line type="monotone" dataKey="oceanEmbed" name="OceanEmbed v2" stroke="#6366f1" strokeWidth={2} dot={{ r: 4, fill: '#6366f1', strokeWidth: 0 }} activeDot={{ r: 6 }} />
                       <Line type="monotone" dataKey="ridge" name="Ridge Regression" stroke="#10b981" strokeWidth={2} strokeDasharray="4 4" dot={{ r: 3, fill: '#10b981', strokeWidth: 0 }} />
                       <Line type="monotone" dataKey="climatology" name="Climatology" stroke="#71717a" strokeWidth={2} strokeDasharray="2 2" dot={{ r: 3, fill: '#71717a', strokeWidth: 0 }} />
@@ -309,7 +385,7 @@ export function ResearchChartsSuite() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-white">Model Architecture Benchmarks (2022 GLORYS Test Set)</span>
-                    <span className="text-zinc-500 font-mono text-[11px]">· Lower RMSE is better</span>
+                    <span className="text-zinc-300 font-mono text-[11px]">· Lower RMSE is better</span>
                   </div>
 
                   {/* Domain Mode Pill Toggle */}
@@ -356,46 +432,35 @@ export function ResearchChartsSuite() {
                   </span>
                 </div>
 
-                <div className="h-[340px] w-full">
+                <div className="h-[400px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={domainMode === 'ocean' ? MODEL_BENCHMARK_OCEAN_DATA : MODEL_BENCHMARK_FULL_DATA}
-                      margin={{ top: 15, right: 10, left: -20, bottom: 35 }}
+                      margin={{ top: 15, right: 15, left: -15, bottom: 20 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
                       <XAxis 
                         dataKey="name" 
-                        stroke="#71717a" 
-                        tick={{ fontSize: 11 }} 
-                        tickMargin={10} 
-                        axisLine={false} 
+                        stroke="#a1a1aa" 
+                        tick={{ fill: '#e4e4e7', fontSize: 11, fontWeight: 500 }} 
+                        tickMargin={12} 
+                        axisLine={{ stroke: '#3f3f46' }} 
                         tickLine={false}
                         interval={0}
-                        angle={-12}
+                        angle={-18}
                         textAnchor="end"
+                        height={65}
                       />
                       <YAxis 
-                        stroke="#71717a" 
-                        tick={{ fontSize: 11 }} 
+                        stroke="#a1a1aa" 
+                        tick={{ fill: '#d4d4d8', fontSize: 11 }} 
                         unit="°C" 
                         domain={domainMode === 'ocean' ? [0, 1.1] : [0, 0.75]} 
                         tickMargin={10} 
-                        axisLine={false} 
+                        axisLine={{ stroke: '#3f3f46' }} 
                         tickLine={false} 
                       />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#18181b',
-                          borderColor: '#27272a',
-                          borderRadius: '8px',
-                          color: '#fff',
-                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                        }}
-                        formatter={(value: any, name: any, item: any) => [
-                          `${value}°C (R² = ${item?.payload?.r2 ?? '—'}) · ${item?.payload?.domainNote ?? ''}`,
-                          'Test RMSE'
-                        ]}
-                      />
+                      <Tooltip content={<ModelBenchmarkTooltip />} />
                       <Bar dataKey="rmse" radius={[4, 4, 0, 0]}>
                         {(domainMode === 'ocean' ? MODEL_BENCHMARK_OCEAN_DATA : MODEL_BENCHMARK_FULL_DATA).map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.isFinal ? '#4CE0D2' : entry.color || '#3f3f46'} />
@@ -433,18 +498,9 @@ export function ResearchChartsSuite() {
                       margin={{ top: 15, right: 10, left: -20, bottom: 25 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                      <XAxis dataKey="name" stroke="#71717a" tick={{ fontSize: 11 }} tickMargin={10} axisLine={false} tickLine={false} />
-                      <YAxis stroke="#71717a" tick={{ fontSize: 11 }} unit="°" domain={[0, 0.7]} tickMargin={10} axisLine={false} tickLine={false} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#18181b',
-                          borderColor: '#27272a',
-                          borderRadius: '8px',
-                          color: '#fff',
-                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                        }}
-                        formatter={(value: any) => [`${value}°C`, 'Test RMSE']}
-                      />
+                      <XAxis dataKey="name" stroke="#a1a1aa" tick={{ fill: '#d4d4d8', fontSize: 11 }} tickMargin={10} axisLine={false} tickLine={false} />
+                      <YAxis stroke="#a1a1aa" tick={{ fill: '#d4d4d8', fontSize: 11 }} unit="°" domain={[0, 0.7]} tickMargin={10} axisLine={false} tickLine={false} />
+                      <Tooltip content={<AblationTooltip />} />
                       <Bar dataKey="rmse" radius={[4, 4, 0, 0]}>
                         {ABLATION_BAR_DATA.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={index === ABLATION_BAR_DATA.length - 1 ? '#6366f1' : '#3f3f46'} />

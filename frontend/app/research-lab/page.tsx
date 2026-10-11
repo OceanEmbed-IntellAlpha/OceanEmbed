@@ -134,7 +134,7 @@ export default function ResearchLabPage() {
     <main className="min-h-screen bg-[#09090b] text-zinc-300 flex flex-col selection:bg-indigo-500/30 selection:text-white">
       <GlobalNav />
 
-      <div className="flex-1 flex overflow-hidden pt-[72px]">
+      <div className="flex-1 flex overflow-hidden pt-20 sm:pt-24">
         {/* Sidebar Navigation */}
         <aside className="w-[280px] border-r border-zinc-800/50 bg-[#09090b]/80 backdrop-blur-xl flex flex-col hidden md:flex shrink-0">
           <div className="p-6">
