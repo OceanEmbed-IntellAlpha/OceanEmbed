@@ -1,0 +1,13 @@
+# Git LFS tracking rules
+# Added in feat/architecture-ablation to prevent large binary files
+# from bloating regular Git history in future phases.
+# Phase 9 checkpoints (already committed) are NOT migrated.
+
+*.pt    filter=lfs diff=lfs merge=lfs -text
+*.pth   filter=lfs diff=lfs merge=lfs -text
+*.onnx  filter=lfs diff=lfs merge=lfs -text
+*.zarr  filter=lfs diff=lfs merge=lfs -text
+*.nc    filter=lfs diff=lfs merge=lfs -text
+
+# Evaluation figures stored under runs/
+runs/**/*.png filter=lfs diff=lfs merge=lfs -text

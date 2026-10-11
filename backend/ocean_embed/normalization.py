@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 CHANNEL_NAMES = ["sst", "sss", "ssh", "current_u", "current_v", "wind_u", "wind_v"]
+TARGET_VAR = "thetao"
 
 # Fallback reference ranges (used only if no stats file exists yet).
 # These are scientifically motivated approximations for the North Indian Ocean.
