@@ -53,12 +53,26 @@ const DEPTH_PERFORMANCE_DATA = [
   { depth: 902.34, depthLabel: '902.3m', oceanEmbed: 0.247, climatology: 0.330, ridge: 0.298 },
 ];
 
-// 2. Model Benchmark Comparison Dataset (REAL TEST NUMBERS ONLY)
-const MODEL_BENCHMARK_DATA = [
-  { name: 'Climatology baseline', rmse: 0.643, r2: 0.997, color: '#64748B', isFinal: false },
-  { name: 'Ridge regression', rmse: 0.586, r2: 0.998, color: '#38BDF8', isFinal: false },
-  { name: 'U-Net baseline (anomaly)', rmse: 0.531, r2: 0.998, color: '#A855F7', isFinal: false },
-  { name: 'OceanEmbed v2 (final)', rmse: 0.525, r2: 0.998, color: '#4CE0D2', isFinal: true },
+// 2. Model Benchmark Comparison Datasets (CANONICAL DUAL-DOMAIN EVALUATIONS)
+const MODEL_BENCHMARK_OCEAN_DATA = [
+  { name: 'Climatology baseline', rmse: 0.9893, r2: 0.9826, color: '#64748B', isFinal: false, domainNote: 'Ocean pixels (N = 56.3M)' },
+  { name: 'Autoencoder (Phase 9C)', rmse: 0.9620, r2: 0.9840, color: '#818CF8', isFinal: false, domainNote: '256-d bottleneck smoothing' },
+  { name: 'Ridge regression', rmse: 0.9020, r2: 0.9852, color: '#38BDF8', isFinal: false, domainNote: 'Linear baseline' },
+  { name: 'ViT baseline (Phase 9A)', rmse: 0.8510, r2: 0.9870, color: '#FB7185', isFinal: false, domainNote: '16x16 patch transformer' },
+  { name: 'Thermocline weighted (P8)', rmse: 0.8197, r2: 0.9880, color: '#FBBF24', isFinal: false, domainNote: 'Gaussian w(100m) MSE' },
+  { name: 'GNN baseline (Phase 9B)', rmse: 0.8060, r2: 0.9882, color: '#C084FC', isFinal: false, domainNote: 'GraphSAGE k=8 (89K params)' },
+  { name: 'OceanEmbed v2 U-Net (final)', rmse: 0.8072, r2: 0.9884, color: '#4CE0D2', isFinal: true, domainNote: 'Production standard (7.85M params)' },
+];
+
+const MODEL_BENCHMARK_FULL_DATA = [
+  { name: 'Climatology baseline', rmse: 0.6429, r2: 0.9970, color: '#64748B', isFinal: false, domainNote: 'Full-grid cells (N = 133.3M)' },
+  { name: 'Autoencoder (Phase 9C)', rmse: 0.6250, r2: 0.9975, color: '#818CF8', isFinal: false, domainNote: '256-d bottleneck' },
+  { name: 'Ridge regression', rmse: 0.5860, r2: 0.9980, color: '#38BDF8', isFinal: false, domainNote: 'Linear baseline' },
+  { name: 'ViT baseline (Phase 9A)', rmse: 0.5530, r2: 0.9982, color: '#FB7185', isFinal: false, domainNote: '16x16 patch transformer' },
+  { name: 'Thermocline weighted (P8)', rmse: 0.5330, r2: 0.9984, color: '#FBBF24', isFinal: false, domainNote: 'Gaussian w(100m)' },
+  { name: 'U-Net baseline (anomaly)', rmse: 0.5310, r2: 0.9982, color: '#A855F7', isFinal: false, domainNote: 'Early U-Net ablation' },
+  { name: 'GNN baseline (Phase 9B)', rmse: 0.5240, r2: 0.9985, color: '#C084FC', isFinal: false, domainNote: 'GraphSAGE k=8' },
+  { name: 'OceanEmbed v2 U-Net (final)', rmse: 0.5246, r2: 0.9980, color: '#4CE0D2', isFinal: true, domainNote: 'Production standard (18.4% gain)' },
 ];
 
 // 3. Variable Ablation Ladder
@@ -77,11 +91,11 @@ const CONVERGENCE_DATA = Array.from({ length: 20 }, (_, i) => {
   return { epoch: `Epoch ${epoch}`, trainLoss, valLoss };
 });
 
-// 5. Regional Validation Metrics
+// 5. Regional Validation Metrics (POST-ISSUE-#22 VERIFIED IN-SITU ARGO VALUES)
 const REGIONAL_VALIDATION_STATS = [
-  { name: 'North Indian Ocean', rmse: 1.572, profiles: '8,883 profiles', color: 'text-biolume' },
-  { name: 'Arabian Sea', rmse: 1.646, profiles: '5,943 profiles', color: 'text-cyan-400' },
-  { name: 'Bay of Bengal', rmse: 1.390, profiles: '2,779 profiles', color: 'text-purple-400' },
+  { name: 'North Indian Ocean', rmse: 0.913, profiles: '8,881 profiles', color: 'text-biolume' },
+  { name: 'Arabian Sea',        rmse: 0.931, profiles: '5,699 profiles', color: 'text-cyan-400' },
+  { name: 'Bay of Bengal',      rmse: 0.811, profiles: '2,485 profiles', color: 'text-purple-400' },
 ];
 
 // 6. Argo In-situ Matchup Scatter Points
@@ -105,6 +119,7 @@ const LON_LABELS = ['50°E', '58°E', '66°E', '74°E', '82°E', '90°E', '98°E
 export function ResearchChartsSuite() {
   const [activeTab, setActiveTab] = useState<'depth' | 'benchmark' | 'ablation' | 'loss' | 'argo' | 'spatial'>('depth');
   const [selectedChartPoint, setSelectedChartPoint] = useState<any | null>(null);
+  const [domainMode, setDomainMode] = useState<'ocean' | 'full'>('ocean');
 
   return (
     <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/30 overflow-hidden shadow-sm">
@@ -265,20 +280,84 @@ export function ResearchChartsSuite() {
                 transition={{ duration: 0.2 }}
                 className="w-full flex flex-col gap-4"
               >
-                <div className="flex items-center justify-between text-xs font-medium text-zinc-500">
-                  <span>Model Architecture Test Benchmark (2022 GLORYS Test Set)</span>
-                  <span className="text-zinc-400">Lower RMSE is better</span>
+                {/* Domain Switcher & Control Header */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-white">Model Architecture Benchmarks (2022 GLORYS Test Set)</span>
+                    <span className="text-zinc-500 font-mono text-[11px]">· Lower RMSE is better</span>
+                  </div>
+
+                  {/* Domain Mode Pill Toggle */}
+                  <div className="flex items-center gap-1 p-1 bg-zinc-950 rounded-lg border border-zinc-800">
+                    <button
+                      onClick={() => setDomainMode('ocean')}
+                      className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                        domainMode === 'ocean'
+                          ? 'bg-biolume/20 text-biolume border border-biolume/40 shadow-sm'
+                          : 'text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      Ocean-Masked (Headline)
+                    </button>
+                    <button
+                      onClick={() => setDomainMode('full')}
+                      className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                        domainMode === 'full'
+                          ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/40 shadow-sm'
+                          : 'text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      Full-Grid (Legacy Benchmark)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Domain Explanation & Tooltip Callout */}
+                <div className="p-3.5 rounded-lg bg-zinc-900/60 border border-zinc-800 text-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2">
+                    <Info size={15} className="text-biolume shrink-0" />
+                    {domainMode === 'ocean' ? (
+                      <span className="text-zinc-300">
+                        <strong className="text-white">Ocean-Masked Mode:</strong> Evaluated on valid ocean pixels (N = 56.3M). Canonical metric matching ARGO in-situ validation. v2 = <strong className="text-emerald-400">0.8072 °C</strong> vs Climatology = <strong className="text-zinc-400">0.9893 °C</strong>.
+                      </span>
+                    ) : (
+                      <span className="text-zinc-300">
+                        <strong className="text-white">Full-Grid Mode (Legacy):</strong> Evaluated across full 101×241 bounding box (N = 133.3M) including zero-error land pixels (RMSE × √0.4223). v2 = <strong className="text-indigo-400">0.5246 °C</strong> vs Climatology = <strong className="text-zinc-400">0.6429 °C</strong>.
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-emerald-400 font-mono text-[11px] bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 shrink-0 font-semibold">
+                    18.40% Skill Improvement
+                  </span>
                 </div>
 
                 <div className="h-[340px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={MODEL_BENCHMARK_DATA}
-                      margin={{ top: 15, right: 10, left: -20, bottom: 25 }}
+                      data={domainMode === 'ocean' ? MODEL_BENCHMARK_OCEAN_DATA : MODEL_BENCHMARK_FULL_DATA}
+                      margin={{ top: 15, right: 10, left: -20, bottom: 35 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                      <XAxis dataKey="name" stroke="#71717a" tick={{ fontSize: 11 }} tickMargin={10} axisLine={false} tickLine={false} />
-                      <YAxis stroke="#71717a" tick={{ fontSize: 11 }} unit="°" domain={[0, 0.7]} tickMargin={10} axisLine={false} tickLine={false} />
+                      <XAxis 
+                        dataKey="name" 
+                        stroke="#71717a" 
+                        tick={{ fontSize: 11 }} 
+                        tickMargin={10} 
+                        axisLine={false} 
+                        tickLine={false}
+                        interval={0}
+                        angle={-12}
+                        textAnchor="end"
+                      />
+                      <YAxis 
+                        stroke="#71717a" 
+                        tick={{ fontSize: 11 }} 
+                        unit="°C" 
+                        domain={domainMode === 'ocean' ? [0, 1.1] : [0, 0.75]} 
+                        tickMargin={10} 
+                        axisLine={false} 
+                        tickLine={false} 
+                      />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: '#18181b',
@@ -287,11 +366,14 @@ export function ResearchChartsSuite() {
                           color: '#fff',
                           boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                         }}
-                        formatter={(value: any) => [`${value}°C`, 'Test RMSE']}
+                        formatter={(value: any, name: any, item: any) => [
+                          `${value}°C (R² = ${item?.payload?.r2 ?? '—'}) · ${item?.payload?.domainNote ?? ''}`,
+                          'Test RMSE'
+                        ]}
                       />
                       <Bar dataKey="rmse" radius={[4, 4, 0, 0]}>
-                        {MODEL_BENCHMARK_DATA.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.isFinal ? '#6366f1' : '#3f3f46'} />
+                        {(domainMode === 'ocean' ? MODEL_BENCHMARK_OCEAN_DATA : MODEL_BENCHMARK_FULL_DATA).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.isFinal ? '#4CE0D2' : entry.color || '#3f3f46'} />
                         ))}
                       </Bar>
                     </BarChart>
@@ -406,7 +488,7 @@ export function ResearchChartsSuite() {
                     <div key={i} className="p-4 rounded-lg bg-zinc-900 border border-zinc-800 flex flex-col">
                       <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">{stat.name}</span>
                       <div className="flex items-baseline justify-between mt-2">
-                        <span className={`text-xl font-bold ${stat.color.replace('text-biolume', 'text-indigo-400')}`}>{stat.rmse.toFixed(3)}°C</span>
+                        <span className={`text-xl font-bold ${stat.color === 'text-biolume' ? 'text-teal-300' : stat.color}`}>{stat.rmse.toFixed(3)}°C</span>
                         <span className="text-[10px] text-zinc-500 font-medium">{stat.profiles}</span>
                       </div>
                     </div>
@@ -414,8 +496,8 @@ export function ResearchChartsSuite() {
                 </div>
 
                 <div className="flex items-center justify-between text-xs font-medium text-zinc-500 mt-2">
-                  <span>In-situ Argo Float Temperature Matchup (Observed vs Predicted °C)</span>
-                  <span className="text-indigo-400 font-medium bg-indigo-500/10 px-2 py-1 rounded-md">Improvement vs Climatology: 18.4%</span>
+                  <span>In-situ Argo Float Temperature Matchup (Observed vs Predicted °C, 8,881 Collocated Profiles)</span>
+                  <span className="text-emerald-400 font-medium bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20">Post-Issue-#22 Collocation Verified: 18.4% Skill</span>
                 </div>
 
                 <div className="h-[270px] w-full">

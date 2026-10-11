@@ -148,6 +148,82 @@
     "finding": "SELECTED — final production model achieving 0.8072°C ocean-masked (0.5246°C full-grid) test RMSE.",
     "decision": "KEEP",
     "decisionReason": "Final production OceanEmbed v2 model configuration.",
+    "nextExperiment": "EXP-09",
     "visuals": ["final_all7_profile", "regional_error_breakdown"]
+  },
+  {
+    "id": "EXP-09",
+    "category": "Loss ablation",
+    "title": "EXP-09: Smooth thermocline-weighted MSE (Phase 8)",
+    "question": "Does upweighting loss across the 50–200m thermocline boundary reduce peak vertical error?",
+    "motivation": "Issue #21 diagnostic revealed the 50–200m thermocline as the primary error band (peak near 100m). Testing Gaussian depth-weighting w(d) = 1.0 + 2.0 * exp(-(d-100)^2 / (2 * 40^2)).",
+    "baseline": "v2 U-Net standard MSE (0.8072°C ocean / 0.5246°C full-grid)",
+    "variant": "Gaussian thermocline-weighted MSE loss",
+    "purpose": "Evaluate physics-guided loss weighting centered at 100m depth.",
+    "metrics": {
+      "rmse": [0.645, 0.8197, 1.1869, 0.4176],
+      "correlation": [0.98, 0.96, 0.92, 0.99]
+    },
+    "finding": "REJECTED FOR PRODUCTION — Improves ARGO in-situ RMSE (0.9024°C vs 0.9148°C, -2.43% thermocline error) but regresses GLORYS ocean RMSE to 0.8197°C (+1.55%).",
+    "decision": "REJECTED",
+    "decisionReason": "GLORYS reanalysis smooths the thermocline; weighted loss matches in-situ floats better but overfits the smoothed reanalysis target. v2 U-Net retained as production standard.",
+    "nextExperiment": "EXP-10",
+    "visuals": ["thermocline_weight_profile", "depth_rmse_comparison"]
+  },
+  {
+    "id": "EXP-10",
+    "category": "Architecture",
+    "title": "EXP-10: Vision Transformer baseline (Phase 9A ViT)",
+    "question": "Can a patch-based Vision Transformer match U-Net multi-scale spatial representations?",
+    "motivation": "Evaluating non-convolutional global attention paradigms. 5.89M parameters, 16x16 patch tokens, 4-layer MHSA transformer encoder with 15-channel anomaly prediction head.",
+    "baseline": "v2 U-Net (0.807°C ocean / 0.881°C ARGO)",
+    "variant": "Patch-based Vision Transformer (ViT, 5.89M params)",
+    "purpose": "Test transformer self-attention for long-range oceanic correlations.",
+    "metrics": {
+      "rmse": [0.655, 0.851, 1.258, 0.415],
+      "correlation": [0.96, 0.94, 0.88, 0.97]
+    },
+    "finding": "REJECTED — GLORYS ocean RMSE is 0.851°C, but in-situ ARGO degrades severely to 1.536°C (+74.3%). Patch tokenization destroys high-frequency mesoscale gradients.",
+    "decision": "REJECTED",
+    "decisionReason": "Tokenizing surface fields into 16x16 patches discards localized ocean fronts and eddies essential for vertical hydrodynamics.",
+    "nextExperiment": "EXP-11",
+    "visuals": ["vit_patch_attention", "thermocline_failure_curve"]
+  },
+  {
+    "id": "EXP-11",
+    "category": "Architecture",
+    "title": "EXP-11: Graph Neural Network baseline (Phase 9B GNN)",
+    "question": "Does modeling ocean pixels as spatial graph nodes improve irregular basin handling?",
+    "motivation": "Testing geometric deep learning: valid ocean pixels as nodes connected to k=8 nearest Euclidean neighbors with a 3-layer GraphSAGE message passing network (89K params).",
+    "baseline": "v2 U-Net (0.807°C ocean / 0.881°C ARGO)",
+    "variant": "GraphSAGE message passing (k=8, 0.089M params)",
+    "purpose": "Evaluate discrete graph topology inductive biases for ocean temperature.",
+    "metrics": {
+      "rmse": [0.640, 0.806, 1.189, 0.414],
+      "correlation": [0.98, 0.96, 0.92, 0.99]
+    },
+    "finding": "REJECTED — Matches GLORYS ocean RMSE (0.806°C vs 0.807°C) with only 89K parameters, but degrades by 80.4% on ARGO float validation (1.589°C vs 0.881°C).",
+    "decision": "REJECTED",
+    "decisionReason": "Message passing over a static discrete grid over-fits to reanalysis grid topology, failing to generalize to arbitrary in-situ float coordinates.",
+    "nextExperiment": "EXP-12",
+    "visuals": ["graph_topology_mesh", "argo_generalization_gap"]
+  },
+  {
+    "id": "EXP-12",
+    "category": "Architecture",
+    "title": "EXP-12: Supervised Autoencoder baseline (Phase 9C AE)",
+    "question": "Can a 256-d latent spatial bottleneck compress ocean thermodynamic structure?",
+    "motivation": "Testing continuous representation learning: 14-channel input compressed via 3-stage conv encoder into 256-d latent space via AdaptiveAvgPool2d(2,3) without skip connections (1.12M params).",
+    "baseline": "v2 U-Net (0.807°C ocean / 0.881°C ARGO)",
+    "variant": "Supervised bottleneck Autoencoder (1.12M params, 256-d latent)",
+    "purpose": "Evaluate low-dimensional thermodynamic manifold representation.",
+    "metrics": {
+      "rmse": [0.725, 0.962, 1.482, 0.428],
+      "correlation": [0.95, 0.91, 0.85, 0.96]
+    },
+    "finding": "REJECTED FOR PRODUCTION / VALUABLE BASELINE — Reanalysis RMSE regresses to 0.962°C due to bottleneck smoothing, but ARGO in-situ error degrades by only 2.0% (0.899°C vs 0.881°C). Discovers seasonal thermodynamic manifold (PC1 explains 56.87% variance).",
+    "decision": "REJECTED",
+    "decisionReason": "Bottleneck smoothing limits fine-scale reconstruction accuracy compared to U-Net skip connections, but provides an interpretable latent representation of basin thermodynamics.",
+    "visuals": ["latent_pca_seasonal_manifold", "bottleneck_reconstruction"]
   }
 ]

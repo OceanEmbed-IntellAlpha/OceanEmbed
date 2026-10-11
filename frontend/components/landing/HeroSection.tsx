@@ -36,7 +36,17 @@ export function HeroSection() {
       <div className="relative z-10 max-w-7xl mx-auto w-full flex flex-col lg:flex-row items-center justify-between px-6 lg:min-h-[860px] h-full pointer-events-none">
         {/* Left Side: Editorial Typography & Problem Statement (pointer-events-auto for clicks) */}
         <div className="flex flex-col items-center lg:items-start text-center lg:text-left w-full lg:w-[48%] z-20 pt-8 lg:pt-0 pointer-events-auto">
-          
+          {/* Canonical Benchmark Headline Badge */}
+          <div className="inline-flex flex-wrap items-center gap-2 px-3.5 py-1.5 rounded-full border border-biolume/30 bg-biolume/10 backdrop-blur-md mb-6 shadow-[0_0_20px_rgba(76,224,210,0.15)]">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-mono text-xs text-white">
+              Primary Test RMSE: <strong className="text-emerald-400 font-bold">0.807 °C</strong> <span className="text-white/60">(Ocean-Masked)</span>
+            </span>
+            <span className="text-white/20 text-xs hidden sm:inline">|</span>
+            <span className="font-mono text-[11px] text-foam/80">
+              <span className="text-white/90 font-medium">0.525 °C</span> (Full-Grid) <span className="text-emerald-300 font-semibold">+18.4% vs Climatology</span>
+            </span>
+          </div>
 
           {/* Majestic Editorial Headline */}
           <h1 className="font-outfit text-4xl sm:text-5xl md:text-6xl lg:text-[4.3rem] font-bold tracking-tight text-white leading-[1.06] mb-6">
@@ -55,7 +65,9 @@ export function HeroSection() {
             <span className="text-white/20">/</span>
             <span>0.25° Daily Grid</span>
             <span className="text-white/20">/</span>
-            <span className="text-emerald-400 font-medium">Test RMSE = 0.807 °C (Ocean-Masked)</span>
+            <span className="text-emerald-400 font-medium">0.807 °C (Ocean-Masked)</span>
+            <span className="text-white/20">/</span>
+            <span className="text-foam/60 text-[11px]">+18.4% vs Climatology (0.525 °C full-grid benchmark)</span>
           </div>
 
           {/* Agency-Grade "Button-in-Button" CTAs */}
