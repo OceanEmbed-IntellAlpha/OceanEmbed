@@ -86,10 +86,10 @@ export function LiveBenchmarksBand({ onSelectBenchmark }: LiveBenchmarksBandProp
   // If backend is down, provide a mock layout so the tab still looks good
   const experiments = data?.experiments || [];
   const ablations = data?.variable_ablation || (error ? [
-    { variant_id: 'ab_1', name: 'SST Only', n_variables: 1, test_rmse: 1.25, ml_rmse: 1.1, thermocline_rmse: 1.4, deep_rmse: 1.3, description: '' },
-    { variant_id: 'ab_2', name: 'SST + SLA', n_variables: 2, test_rmse: 0.85, ml_rmse: 0.7, thermocline_rmse: 0.95, deep_rmse: 0.9, description: '' },
-    { variant_id: 'ab_3', name: 'SST + SLA + SSS', n_variables: 3, test_rmse: 0.65, ml_rmse: 0.55, thermocline_rmse: 0.75, deep_rmse: 0.65, description: '' },
-    { variant_id: 'ab_4', name: 'All Variables', n_variables: 7, test_rmse: 0.5246, ml_rmse: 0.45, thermocline_rmse: 0.62, deep_rmse: 0.50, description: '' }
+    { variant_id: 'ab_1', name: 'SST Only', n_variables: 1, test_rmse: 0.6181, ml_rmse: 0.4670, thermocline_rmse: 0.9110, deep_rmse: 0.2613, description: 'SST skin surface observation only' },
+    { variant_id: 'ab_2', name: 'SST + SLA', n_variables: 2, test_rmse: 0.5363, ml_rmse: 0.4599, thermocline_rmse: 0.7461, deep_rmse: 0.2562, description: 'Altimetry SLA captures steric height & thermocline displacement' },
+    { variant_id: 'ab_3', name: 'SST + SLA + SSS', n_variables: 3, test_rmse: 0.5306, ml_rmse: 0.4493, thermocline_rmse: 0.7415, deep_rmse: 0.2560, description: 'Salinity resolves Bay of Bengal barrier layers' },
+    { variant_id: 'ab_4', name: 'All Variables', n_variables: 7, test_rmse: 0.5246, ml_rmse: 0.4429, thermocline_rmse: 0.7331, deep_rmse: 0.2565, description: 'Full 7 surface physical variables (Production v2 U-Net)' }
   ] : []);
 
   if (error && ablations.length === 0) {

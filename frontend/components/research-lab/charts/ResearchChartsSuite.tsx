@@ -226,6 +226,31 @@ export function ResearchChartsSuite() {
                 transition={{ duration: 0.2 }}
                 className="w-full flex flex-col gap-4"
               >
+                {/* 50–200m Thermocline Band Aggregate Telemetry Callout */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-xl bg-zinc-900/80 border border-zinc-800 text-xs">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] uppercase font-mono tracking-wider text-zinc-400">Thermocline Band (50–200m) Full-Grid</span>
+                    <div className="flex items-baseline gap-1.5 mt-0.5">
+                      <span className="font-mono text-base font-bold text-emerald-400">0.7331 °C</span>
+                      <span className="text-[10px] text-emerald-500/80 font-medium">+22.6% vs Clim (0.9466°)</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col border-t sm:border-t-0 sm:border-l border-zinc-800 pt-2 sm:pt-0 sm:pl-3">
+                    <span className="text-[10px] uppercase font-mono tracking-wider text-zinc-400">Thermocline Ocean-Masked</span>
+                    <div className="flex items-baseline gap-1.5 mt-0.5">
+                      <span className="font-mono text-base font-bold text-amber-400">1.1573 °C</span>
+                      <span className="text-[10px] text-zinc-400 font-medium">N = 56.3M (18.9% gain)</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col border-t sm:border-t-0 sm:border-l border-zinc-800 pt-2 sm:pt-0 sm:pl-3">
+                    <span className="text-[10px] uppercase font-mono tracking-wider text-zinc-400">In-Situ ARGO (50–200m)</span>
+                    <div className="flex items-baseline gap-1.5 mt-0.5">
+                      <span className="font-mono text-base font-bold text-indigo-400">1.1408 °C</span>
+                      <span className="text-[10px] text-zinc-400 font-medium">8,881 Profiles (P8: 1.1131°)</span>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-between text-xs font-medium text-zinc-500">
                   <span className="flex items-center gap-3">
                     <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-indigo-500" /> OceanEmbed v2 (1.026°C Peak)</span>
@@ -647,6 +672,19 @@ export function ResearchChartsSuite() {
                     <span>OceanEmbed v2 RMSE:</span>
                     <span className="text-indigo-400 font-bold font-mono">{selectedChartPoint.data.oceanEmbed}°C</span>
                   </div>
+                  <div className="flex justify-between py-1 border-b border-zinc-900">
+                    <span>Ridge Regression RMSE:</span>
+                    <span className="text-emerald-400 font-mono">{selectedChartPoint.data.ridge}°C</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-zinc-900">
+                    <span>Climatology Baseline RMSE:</span>
+                    <span className="text-zinc-400 font-mono">{selectedChartPoint.data.climatology}°C</span>
+                  </div>
+                  {selectedChartPoint.data.depth >= 47 && selectedChartPoint.data.depth <= 200 && (
+                    <div className="mt-1 text-center font-mono text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/20 py-1 px-2 rounded-md">
+                      ⚡ Main Thermocline Interface Band (50–200m)
+                    </div>
+                  )}
                 </div>
               )}
 
