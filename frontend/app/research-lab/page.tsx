@@ -30,13 +30,13 @@ const HERO_STATS: StatItem[] = [
         'Tested SST, SSS, SLA, Wind U/V, Current U/V independently and in hybrid combinations.',
         'Benchmarked 4 deep learning architectures: U-Net (7.85M), ViT (5.89M), GNN (89K), and AE (1.12M).',
         'Achieved 0.807 °C ocean-masked primary test RMSE (0.525 °C full-grid benchmark, +18.4% vs Climatology).',
-        'In-situ ARGO validation across 8,881 physical float profiles (0.913 °C NIO basin RMSE).'
+        'In-situ ARGO validation across 8,881 physical float profiles (0.915 °C NIO basin RMSE).'
       ],
       specs: [
         { label: 'Evaluation Period', value: '2010 – 2023' },
         { label: 'Primary Test RMSE', value: '0.807 °C (Ocean)' },
         { label: 'Secondary Benchmark', value: '0.525 °C (Full)' },
-        { label: 'ARGO In-Situ RMSE', value: '0.913 °C (8,881)' }
+        { label: 'ARGO In-Situ RMSE', value: '0.915 °C (8,881)' }
       ]
     }
   },

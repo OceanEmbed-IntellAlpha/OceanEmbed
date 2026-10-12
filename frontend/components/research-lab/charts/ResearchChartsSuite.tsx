@@ -91,11 +91,11 @@ const CONVERGENCE_DATA = Array.from({ length: 20 }, (_, i) => {
   return { epoch: `Epoch ${epoch}`, trainLoss, valLoss };
 });
 
-// 5. Regional Validation Metrics (POST-ISSUE-#22 VERIFIED IN-SITU ARGO VALUES)
+// 5. Regional Validation Metrics (POST-ISSUE-#22 VERIFIED IN-SITU ARGO VALUES - CANONICAL SIH BOUNDS)
 const REGIONAL_VALIDATION_STATS = [
-  { name: 'North Indian Ocean', rmse: 0.913, profiles: '8,881 profiles', color: 'text-biolume' },
-  { name: 'Arabian Sea',        rmse: 0.931, profiles: '5,699 profiles', color: 'text-cyan-400' },
-  { name: 'Bay of Bengal',      rmse: 0.811, profiles: '2,485 profiles', color: 'text-purple-400' },
+  { name: 'North Indian Ocean', rmse: 0.915, profiles: '8,881 profiles', color: 'text-biolume' },
+  { name: 'Arabian Sea',        rmse: 0.943, profiles: '5,940 profiles', color: 'text-cyan-400' },
+  { name: 'Bay of Bengal',      rmse: 0.844, profiles: '2,780 profiles', color: 'text-purple-400' },
 ];
 
 // 6. Argo In-situ Matchup Scatter Points
