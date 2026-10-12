@@ -1,0 +1,46 @@
+{
+  "_provenance": {
+    "generated_at_utc": "2026-10-11T20:03:11.437488+00:00",
+    "script": "backend/scripts/compute_real_regional_argo.py",
+    "source_file": "data/argo/regional_stats.json",
+    "source_file_sha256": "0a82ab85c8c538e0c50a772022e9de649d17845ddd7280f1ffff3600567946df",
+    "source_profile_count": 8923,
+    "model_checkpoint": "runs/_final_v2/model_v2.pt",
+    "method": "date-grouped ModelService.predict_full_3d; nearest grid cell; Argo interpolated to MODEL_DEPTHS; finite collocations require >=3 depths",
+    "domain_bounds": {
+      "arabian_sea":         { "lat": [5.0, 25.0], "lon": [45.0,  75.0] },
+      "bay_of_bengal":       { "lat": [5.0, 25.0], "lon": [80.0, 100.0] },
+      "north_indian_ocean":  { "lat": [5.0, 30.0], "lon": [45.0, 105.0] }
+    },
+    "note": "Canonical SIH-standard domain bounds. Some earlier analyses (evaluate_phase8_vs_v2.py) used tighter bounds that excluded equatorial waters; those values are not used here."
+  },
+  "north_indian_ocean": {
+    "n_profiles": 8881,
+    "n_measurements": 120498,
+    "rmse": 0.9148,
+    "mae": 0.5807,
+    "bias": 0.0415,
+    "correlation": 0.9917,
+    "rmse_by_band": {
+      "mixed_layer_0_50m":   0.9447,
+      "thermocline_50_200m": 1.1408,
+      "deep_200_1000m":      0.3764
+    }
+  },
+  "arabian_sea": {
+    "n_profiles": 5940,
+    "n_measurements": 79756,
+    "rmse": 0.9431,
+    "mae": 0.6004,
+    "bias": 0.0148,
+    "correlation": 0.9894
+  },
+  "bay_of_bengal": {
+    "n_profiles": 2780,
+    "n_measurements": 38742,
+    "rmse": 0.8437,
+    "mae": 0.5331,
+    "bias": 0.1099,
+    "correlation": 0.9949
+  }
+}

@@ -161,9 +161,9 @@ Systematic ablation of input channels (evaluated on the full-grid benchmark) sho
 ### 3. Independent In-Situ Argo Float Validation (2020–2022)
 To verify generalization against real in-situ observations rather than reanalysis alone, OceanEmbed predictions were collocated with **8,881 physical Argo float profiles** across the North Indian Ocean (post-Issue-#22 depth-grid corrected collocation):
 
-- **North Indian Ocean Basin RMSE:** **0.913 °C** (Bias: +0.041 °C, Pearson $r$: 0.992)
-- **Arabian Sea (5,699 profiles):** **0.931 °C** RMSE
-- **Bay of Bengal (2,485 profiles):** **0.811 °C** RMSE
+- **North Indian Ocean Basin RMSE:** **0.915 °C** (0.9148 °C, Bias: +0.042 °C, Pearson $r$: 0.992)
+- **Arabian Sea (5,940 profiles):** **0.943 °C** (0.9431 °C) RMSE
+- **Bay of Bengal (2,780 profiles):** **0.844 °C** (0.8437 °C) RMSE
 
 For regional and seasonal breakdowns across monsoon regimes, see [docs/FINAL_RESULTS.md](docs/FINAL_RESULTS.md) and [docs/phase7_seasonal_analysis.md](docs/phase7_seasonal_analysis.md).
 
