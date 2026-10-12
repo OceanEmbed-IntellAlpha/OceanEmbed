@@ -9,6 +9,7 @@ import type {
   DatasetCard,
   ExperimentsResponse
 } from './types';
+import telemetryExperimentsData from '../fixtures/telemetry_experiments.json';
 
 // Connect to the FastAPI backend dynamically via environment variable or local default
 export const BASE_URL =
@@ -147,11 +148,11 @@ export function useExperiments() {
   return useQuery<ExperimentsResponse, Error>({
     queryKey: ['experiments'],
     queryFn: async () => {
-      const res = await fetch(`${BASE_URL}/api/experiments`);
-      if (!res.ok) throw new Error(`Experiments fetch failed: ${res.status}`);
-      return res.json();
+      // Instant client-side resolution from frontend fixtures — 0ms latency
+      return telemetryExperimentsData as unknown as ExperimentsResponse;
     },
-    staleTime: 1000 * 60 * 60, // 1 hour
+    initialData: telemetryExperimentsData as unknown as ExperimentsResponse,
+    staleTime: Infinity,
   });
 }
 

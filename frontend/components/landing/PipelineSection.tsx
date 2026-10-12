@@ -52,7 +52,7 @@ const STAT_CARDS = [
   {
     value: '0.807 °C',
     label: 'Test RMSE (Ocean-Masked)',
-    sub: '18.4% better than climatology (0.525 °C full-grid)',
+    sub: '+18.4% vs Climatology (0.525 °C full-grid benchmark)',
     color: 'text-purple-400',
     border: 'border-purple-400/20',
     bg: 'bg-purple-400/5',

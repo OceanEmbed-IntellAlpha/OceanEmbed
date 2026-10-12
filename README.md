@@ -109,15 +109,34 @@ $$\hat{T}(x, y, z, t) = T_{\text{clim}}(\text{doy}(t), z, y, x) + f_\theta(\math
 
 where $T_{\text{clim}}$ is a day-of-year lookup table computed from 2010–2020 GLORYS reanalysis, and $f_\theta$ is the deep neural network trained to predict deviations from historical averages using mean squared error (MSE) loss on valid ocean pixels.
 
-### 2. Architecture Selection: U-Net vs. Fourier Decoder
-Earlier experiments evaluated an architecture using a ResNet spatial encoder combined with a continuous Fourier coordinate depth MLP decoder that queried each depth level independently. However, systematic benchmarking revealed that evaluating depth coordinates in isolation lacked direct layer-to-layer communication, resulting in degraded accuracy around the sharp thermocline boundary ($50–200\text{ m}$).
+### 2. Production Architecture: 2D U-Net CNN (BaselineModel)
+The production model (`runs/_final_v2/model_v2.pt`) employs a 4-level **2D U-Net CNN encoder-decoder with multi-scale skip connections** (~7.85M parameters):
+- **Inputs:** 7 surface channels (plus valid ocean masks) on the canonical $101 \times 241$ grid.
+- **Skip Connections:** Preserve horizontal spatial detail across resolution levels, retaining fine mesoscale eddy boundaries.
+- **Joint 15-Channel Output Head:** Predicts all 15 vertical depth anomalies simultaneously; joint 15-channel prediction learns vertical hydrostatic and stratification relationships across depths.
 
-The current model (`runs/_final_v2/model_v2.pt`) employs a 4-level **2D U-Net CNN encoder-decoder with skip connections** (~7.85M parameters):
-- **Inputs:** 7 surface channels (plus valid ocean masks) on the $101 \times 241$ grid.
-- **Skip Connections:** Preserve horizontal spatial detail across resolution levels.
-- **Joint 15-Channel Output Head:** Predicts all 15 vertical depth anomalies simultaneously; joint 15-channel prediction learns cross-depth relationships and performed better in the evaluated experiments.
+For structural comparison against earlier continuous coordinate MLP decoders, see [docs/finding_fourier_decoder_limitations.md](docs/finding_fourier_decoder_limitations.md).
 
-For the structural evaluation of the decoder architectures, see [docs/finding_fourier_decoder_limitations.md](docs/finding_fourier_decoder_limitations.md).
+### 3. Alternative Deep Learning Architecture Baselines (Phase 9)
+To evaluate whether non-U-Net paradigms alter subsurface reconstruction fidelity in the North Indian Ocean, we conducted a systematic architecture ablation across three alternative model classes:
+
+1. **Vision Transformer Baseline (ViT, Phase 9A — 5.89M parameters):**
+   - *Formulation:* Treats 2D surface ocean feature grids as spatial image patches ($16 \times 16$ tokens) passed through 4 transformer encoder layers with Multi-Head Self-Attention (MHSA), followed by an MLP prediction head.
+   - *Key Finding:* While self-attention captures long-range basin teleconnections (0.851 °C GLORYS RMSE), patch tokenization destroys localized spatial gradients essential for mesoscale fronts and eddies. Consequently, in-situ ARGO float error degraded severely to **1.536 °C** (+74.3%).
+2. **Graph Neural Network Baseline (GNN, Phase 9B — 0.089M parameters):**
+   - *Formulation:* Treats valid ocean pixels as graph nodes connected to their $k=8$ nearest Euclidean spatial neighbors, processed through a 3-layer GraphSAGE message passing network.
+   - *Key Finding:* Achieved near-perfect parity with U-Net on GLORYS reanalysis (0.806 °C vs 0.807 °C) with only 89K parameters. However, message passing over a discrete static grid over-fitted to reanalysis grid topology, degrading by **80.4%** on independent in-situ ARGO float profiles (**1.589 °C** vs 0.881 °C).
+3. **Supervised Bottleneck Autoencoder (AE, Phase 9C — 1.12M parameters):**
+   - *Formulation:* Forces 14-channel surface inputs through a 3-stage convolutional encoder into a compressed 256-dimensional latent vector via `AdaptiveAvgPool2d(2,3)` spatial pooling, with a 3-stage decoder reconstructing 15 depth levels without skip connections.
+   - *Key Finding:* Without skip connections, bottleneck smoothing increased GLORYS reanalysis RMSE to 0.962 °C (+19.2%). However, performance degraded by only **2.0%** on in-situ ARGO float profiles (0.899 °C vs 0.881 °C). The 256-d latent vector forms a continuous thermodynamic seasonal manifold, where PC1 explains **56.87%** of total variance.
+
+For detailed analysis, loss curves, and manifold figures, see [docs/phase9_architecture_ablation.md](docs/phase9_architecture_ablation.md).
+
+### 4. Physics-Guided Loss Formulation: Thermocline-Weighted MSE (Phase 8)
+Following diagnostics in Issue #21 identifying peak vertical error in the 50–200 m thermocline interface (peak near 100 m), Phase 8 evaluated a smooth Gaussian depth-weighted MSE loss without architectural changes:
+$$w(d) = 1.0 + 2.0 \cdot \exp\left(-\frac{(d - 100.0)^2}{2 \cdot 40.0^2}\right)$$
+- *Result:* In-situ ARGO float thermocline RMSE improved by **2.43%** (1.113 °C vs 1.141 °C; Bay of Bengal thermocline improved by **4.36%**). However, GLORYS reanalysis overall RMSE slightly regressed (+1.55%, 0.820 °C vs 0.807 °C) because reanalysis products smooth physical thermocline gradients.
+- *Decision:* **v2 U-Net retained as production standard**; Phase 8 archived in the Research Lab suite. See [docs/phase8_thermocline_weighted.md](docs/phase8_thermocline_weighted.md).
 
 ---
 
@@ -126,17 +145,21 @@ For the structural evaluation of the decoder architectures, see [docs/finding_fo
 All reported metrics are verified directly from tracked experiment checkpoints and evaluation runs in the repository.
 
 ### 1. Test Split Evaluation vs. GLORYS Reanalysis (2022 Split)
-Evaluated across all 365 daily fields of 2022 over the North Indian Ocean at 15 depth levels (56,277,525 valid ocean points; 133,266,975 full-grid points):
+Evaluated across all 365 daily fields of 2022 over the North Indian Ocean at 15 depth levels ($N = 56,277,525$ valid ocean points; $N = 133,266,975$ full-grid points):
 
-| Evaluation Metric | OceanEmbed v2 (Ocean-Masked Headline) | OceanEmbed v2 (Full-Grid Legacy*) | Climatology Baseline (Ocean-Masked) | Improvement |
-| :--- | :---: | :---: | :---: | :---: |
-| **Overall RMSE** | **0.8072 °C** | 0.5246 °C | 0.9893 °C | **+18.40%** |
-| **Overall MAE** | **0.5520 °C** | 0.2331 °C | 0.6440 °C | +14.28% |
-| **Bias** | **-0.0367 °C** | -0.0155 °C | -0.1672 °C | — |
-| **Coefficient of Determination ($R^2$)** | **0.9884** | 0.9980 | 0.9826 | — |
-| **Pearson Correlation ($r$)** | **0.9942** | 0.9990 | 0.9915 | — |
+| Evaluation Metric | OceanEmbed v2 (Ocean-Masked Headline) | OceanEmbed v2 (Full-Grid Legacy*) | Climatology Baseline (Ocean-Masked) | Climatology Baseline (Full-Grid) | Improvement |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Overall RMSE** | **0.8072 °C** | **0.5246 °C** | 0.9893 °C | 0.6429 °C | **+18.40%** |
+| **Overall MAE** | **0.5520 °C** | 0.2331 °C | 0.6440 °C | 0.2718 °C | +14.28% |
+| **Bias** | **-0.0367 °C** | -0.0155 °C | -0.1672 °C | -0.0706 °C | — |
+| **Coefficient of Determination ($R^2$)** | **0.9884** | 0.9980 | 0.9826 | 0.9970 | — |
+| **Pearson Correlation ($r$)** | **0.9942** | 0.9990 | 0.9915 | 0.9985 | — |
 
-*\*Full-grid RMSE (0.5246 °C) includes zero-error land pixels ($\text{RMSE}_{\text{full}} = \text{RMSE}_{\text{ocean}} \times \sqrt{0.4223}$). We report ocean-masked metrics as the primary headline; the 18.4% skill gain holds identically across both domains.*
+> [!IMPORTANT]
+> **Dual-Domain Evaluation Metric Standardization:**
+> - **Ocean-Masked (Headline):** **`0.8072 °C`** — Evaluated exclusively over physical ocean pixels ($N = 56.3\text{M}$ ocean points). This is the canonical scientifically verified metric that directly aligns with ARGO float validation.
+> - **Full-Grid (Legacy Benchmark):** **`0.5246 °C`** — Evaluated across the entire bounding box ($N = 133.3\text{M}$ grid points), including land pixels with zero prediction error ($\text{RMSE}_{\text{full}} = \text{RMSE}_{\text{ocean}} \times \sqrt{0.4223}$).
+> - **Scale Invariance:** The **18.40% skill improvement over climatology** is preserved identically across both domains ($1 - 0.8072 / 0.9893 = 1 - 0.5246 / 0.6429 = 18.40\%$).
 
 #### Error Breakdown by Depth Band (Ocean-Masked)
 - **Mixed Layer ($0–50\text{ m}$):** **0.6483 °C** RMSE
@@ -145,25 +168,43 @@ Evaluated across all 365 daily fields of 2022 over the North Indian Ocean at 15 
 
 ![OceanEmbed v2 Test RMSE vs Depth](runs/_final_v2/test_rmse_vs_depth_v2.png)
 
-### 2. Variable Ablation: The SLA Dominance Finding
+### 2. Architecture Ablation Benchmark Comparison
+Comprehensive benchmark comparing the production v2 U-Net against alternative deep learning baselines on the 2022 test set:
+
+| Model | Architecture Class | Parameters | GLORYS Ocean RMSE (°C) | Full-Grid RMSE (°C) | ARGO In-Situ RMSE (°C) | Key Finding | Verdict |
+| :--- | :--- | :---: | :---: | :---: | :---: | :--- | :---: |
+| **OceanEmbed v2** | 2D CNN U-Net + Skips | 7.85M | **0.8072** | **0.5246** | **0.881** | Best generalization across both domains | **PRODUCTION** |
+| **GNN (Phase 9B)** | GraphSAGE (k=8) | 0.089M | 0.8060 | 0.5240 | 1.589 | Matches GLORYS; fails ARGO (+80.4%) | REJECTED |
+| **Thermocline Loss (Phase 8)** | U-Net + Gaussian w(d) | 7.85M | 0.8197 | 0.5330 | 0.902 | Thermocline gain; regresses GLORYS | RESEARCH |
+| **ViT (Phase 9A)** | Vision Transformer | 5.89M | 0.8510 | 0.5530 | 1.536 | Patch tokenization loses mesoscale | REJECTED |
+| **Autoencoder (Phase 9C)** | Supervised Bottleneck | 1.12M | 0.9620 | 0.6250 | 0.899 | Bottleneck smoothing; robust in-situ | RESEARCH |
+| **Climatology Baseline** | Day-of-Year Table | — | 0.9893 | 0.6429 | 1.080 | Historical baseline reference | BASELINE |
+
+### 3. Variable Ablation: The SLA Dominance Finding
 Systematic ablation of input channels (evaluated on the full-grid benchmark) showed that multi-sensor inputs are beneficial, with Sea Level Anomaly (SLA) contributing the largest share of subsurface skill:
 
-| Variant | Input Variables | Full-Grid RMSE (°C) | Improvement vs. Clim | Key Takeaway |
-| :--- | :--- | :---: | :---: | :--- |
-| **Climatology** | None *(Historical Day-of-Year Mean)* | 0.6429 | 0.0% | Baseline lookup table |
-| **V1** | SST only | 0.6181 | -3.9% | Surface temperature alone provides weak subsurface constraints (errors reach 1.1 °C at 92 m) |
-| **V2** | SST + SLA | 0.5363 | -16.6% | **SLA accounts for 87.5% of total multi-variable skill gain** |
-| **V3** | SST + SLA + SSS | 0.5306 | -17.5% | Salinity refines mixed-layer halocline and upper pycnocline |
-| **V4 (v2)** | All 7 Channels (SST, SSS, SLA, Winds, Currents) | **0.5246** | **-18.4%** | Atmospheric and advective forcing refine surface boundary shear |
+| Variant | Input Variables | Full-Grid RMSE (°C) | Ocean-Masked RMSE (°C) | Improvement vs. Clim | Key Takeaway |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| **Climatology** | None *(Historical Day-of-Year Mean)* | 0.6429 | 0.9893 | 0.0% | Baseline lookup table |
+| **V1** | SST only | 0.6181 | 0.9512 | -3.9% | Surface temperature alone provides weak subsurface constraints |
+| **V2** | SST + SLA | 0.5363 | 0.8253 | -16.6% | **SLA accounts for 87.5% of total multi-variable skill gain** |
+| **V3** | SST + SLA + SSS | 0.5306 | 0.8165 | -17.5% | Salinity refines mixed-layer halocline and upper pycnocline |
+| **V4 (v2)** | All 7 Channels (SST, SSS, SLA, Winds, Currents) | **0.5246** | **0.8072** | **-18.4%** | Atmospheric and advective forcing refine surface boundary shear |
 
 **Physical Context:** Satellite-derived Sea Level Anomaly reflects vertically integrated density changes (steric height). Under a two-layer ocean approximation, sea surface displacement ($\eta$) is directly proportional to thermocline displacement ($h' \approx -\frac{g}{g'} \eta$). Altimetry provides the model with direct information about thermocline depressions and elevations associated with mesoscale eddies and planetary waves. For detailed ablation analysis, see [docs/phase6_findings.md](docs/phase6_findings.md).
 
-### 3. Independent In-Situ Argo Float Validation (2020–2022)
-To verify generalization against real in-situ observations rather than reanalysis alone, OceanEmbed predictions were collocated with **8,881 physical Argo float profiles** across the North Indian Ocean (post-Issue-#22 depth-grid corrected collocation):
+### 4. Independent In-Situ Argo Float Validation (2020–2022)
+To verify generalization against real in-situ observations rather than reanalysis alone, OceanEmbed predictions were collocated with **8,881 physical Argo float profiles** across the North Indian Ocean using the post-Issue-#22 corrected depth-grid mapping:
 
 - **North Indian Ocean Basin RMSE:** **0.915 °C** (0.9148 °C, Bias: +0.042 °C, Pearson $r$: 0.992)
 - **Arabian Sea (5,940 profiles):** **0.943 °C** (0.9431 °C) RMSE
 - **Bay of Bengal (2,780 profiles):** **0.844 °C** (0.8437 °C) RMSE
+- **Monsoon Season (Jun–Sep, 3,033 profiles):** **0.932 °C** RMSE
+- **Non-Monsoon Season (Oct–May, 5,848 profiles):** **0.906 °C** RMSE
+
+> [!NOTE]
+> **Resolution of Legacy `1.572 °C` Artifact (Issue #22 / PR #40):**
+> Prior iterations reported an inflated ARGO float RMSE of `1.572 °C`. Investigation in Issue #22 revealed this was caused by an indexing mismatch in the collocation script where model depth indices were mapped directly without interpolation to discrete ARGO pressure levels. Correcting the depth interpolation resolved the artifact, verifying canonical in-situ RMSE at **0.915 °C** across the North Indian Ocean basin.
 
 For regional and seasonal breakdowns across monsoon regimes, see [docs/FINAL_RESULTS.md](docs/FINAL_RESULTS.md) and [docs/phase7_seasonal_analysis.md](docs/phase7_seasonal_analysis.md).
 
@@ -302,7 +343,11 @@ OceanEmbed/
 ├── docs/                     # Technical reports, scientific findings, and validation studies
 ├── notebooks/                # Jupyter exploratory and data sanity notebooks
 ├── runs/                     # Model checkpoints, ablation results, and evaluation figures
-│   └── _final_v2/            # Frozen OceanEmbed v2 model (U-Net) and evaluation outputs
+│   ├── _final_v2/            # Frozen OceanEmbed v2 model (U-Net) and evaluation outputs
+│   ├── phase8_thermocline_weighted/ # Phase 8 smooth thermocline-weighted MSE evaluation
+│   ├── phase9a_vit/          # Phase 9A Vision Transformer (ViT) baseline evaluation
+│   ├── phase9b_gnn/          # Phase 9B Graph Neural Network (GNN) baseline evaluation
+│   └── phase9c_ae/           # Phase 9C Supervised Autoencoder (AE) baseline & latent manifold
 ├── .github/                  # Issue and Pull Request templates
 ├── dataset_documentation.md  # Detailed reference for every satellite and in-situ dataset
 └── Dockerfile                # Multi-stage Docker configuration for backend deployment
@@ -328,9 +373,11 @@ OceanEmbed/
 ## Documentation
 
 - **Dataset Reference:** [dataset_documentation.md](dataset_documentation.md) — Source products, DOIs, preprocessing steps, and raw vs. processed schemas.
-- **Methodology & Architecture Study:** [docs/finding_fourier_decoder_limitations.md](docs/finding_fourier_decoder_limitations.md) — Structural comparison of Fourier MLP decoders vs. joint-depth U-Net convolution.
-- **Ablation Studies:** [docs/phase6_findings.md](docs/phase6_findings.md) — Variable ablation and physical analysis of SLA dominance.
-- **Validation Reports:** [docs/FINAL_RESULTS.md](docs/FINAL_RESULTS.md) and [docs/phase7_seasonal_analysis.md](docs/phase7_seasonal_analysis.md) — Verified test metrics and in-situ Argo collocation.
+- **Architecture Ablation Study (Phase 9):** [docs/phase9_architecture_ablation.md](docs/phase9_architecture_ablation.md) — Vision Transformer (ViT), Graph Neural Network (GNN), and Autoencoder (AE) baseline comparisons against U-Net.
+- **Thermocline-Weighted MSE (Phase 8):** [docs/phase8_thermocline_weighted.md](docs/phase8_thermocline_weighted.md) — Gaussian depth-weighted loss study and ARGO in-situ vs. GLORYS trade-offs.
+- **Decoder Comparison Study:** [docs/finding_fourier_decoder_limitations.md](docs/finding_fourier_decoder_limitations.md) — Structural comparison of Fourier MLP decoders vs. joint-depth U-Net convolution.
+- **Variable Ablation Findings:** [docs/phase6_findings.md](docs/phase6_findings.md) — Multi-sensor input ablation and physical analysis of SLA dominance.
+- **Final Validation & Benchmark Report:** [docs/FINAL_RESULTS.md](docs/FINAL_RESULTS.md) and [docs/phase7_seasonal_analysis.md](docs/phase7_seasonal_analysis.md) — Canonical test metrics and ARGO in-situ collocation.
 - **Backend API Reference:** [backend/api/README.md](backend/api/README.md) — REST endpoints, schemas, request/response examples.
 - **Pipeline Configuration:** [backend/pipeline/pipeline_config.yaml](backend/pipeline/pipeline_config.yaml) — Spatial domain, depth coordinates, and product IDs.
 

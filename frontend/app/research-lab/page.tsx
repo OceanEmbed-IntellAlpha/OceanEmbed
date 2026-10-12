@@ -20,22 +20,23 @@ const ALL_EXPERIMENTS = experimentsData as Experiment[];
 const HERO_STATS: StatItem[] = [
   {
     id: 'stat-studies',
-    title: '8 Systemic Ablation Studies',
-    subtitle: 'Systematic Ablation Suite',
+    title: '12 Systematic Ablation Studies',
+    subtitle: 'Ablation Suite & Architectures',
     iconName: 'beaker',
     color: 'text-indigo-400',
     details: {
-      description: 'Eight isolated ablation experiments testing data formulations, loss objectives, model architectures, and input variable selection across the North Indian Ocean basin.',
+      description: 'Twelve isolated ablation experiments testing data formulations, loss objectives, deep architecture paradigms (U-Net, ViT, GNN, AE), and input variable selection across the North Indian Ocean basin.',
       highlights: [
         'Tested SST, SSS, SLA, Wind U/V, Current U/V independently and in hybrid combinations.',
-        'Validated against 13 years of data (2010–2023 CMEMS / GLORYS data).',
-        'Achieved 0.8072°C ocean-masked overall test RMSE (0.5246°C full-grid legacy) with 7.85M parameter U-Net architecture.'
+        'Benchmarked 4 deep learning architectures: U-Net (7.85M), ViT (5.89M), GNN (89K), and AE (1.12M).',
+        'Achieved 0.807 °C ocean-masked primary test RMSE (0.525 °C full-grid benchmark, +18.4% vs Climatology).',
+        'In-situ ARGO validation across 8,881 physical float profiles (0.915 °C NIO basin RMSE).'
       ],
       specs: [
         { label: 'Evaluation Period', value: '2010 – 2023' },
-        { label: 'Canonical Grid', value: '0.25° × 0.25°' },
-        { label: 'Lat/Lon Bounding', value: '5°N-30°N, 45°E-105°E' },
-        { label: 'Basin Resolution', value: '101 × 241 Points' }
+        { label: 'Primary Test RMSE', value: '0.807 °C (Ocean)' },
+        { label: 'Secondary Benchmark', value: '0.525 °C (Full)' },
+        { label: 'ARGO In-Situ RMSE', value: '0.915 °C (8,881)' }
       ]
     }
   },
@@ -133,7 +134,7 @@ export default function ResearchLabPage() {
     <main className="min-h-screen bg-[#09090b] text-zinc-300 flex flex-col selection:bg-indigo-500/30 selection:text-white">
       <GlobalNav />
 
-      <div className="flex-1 flex overflow-hidden pt-[72px]">
+      <div className="flex-1 flex overflow-hidden pt-20 sm:pt-24">
         {/* Sidebar Navigation */}
         <aside className="w-[280px] border-r border-zinc-800/50 bg-[#09090b]/80 backdrop-blur-xl flex flex-col hidden md:flex shrink-0">
           <div className="p-6">
@@ -200,12 +201,25 @@ export default function ResearchLabPage() {
                   <div className="flex flex-col gap-10">
                     <header className="relative">
                       <div className="absolute -inset-x-6 -top-10 h-40 bg-indigo-500/5 blur-[100px] pointer-events-none" />
+                      
+                      {/* Canonical Dual-Domain Telemetry Badge */}
+                      <div className="inline-flex flex-wrap items-center gap-2.5 px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-mono mb-4 shadow-sm">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="text-zinc-400">Canonical Test RMSE:</span>
+                        <span className="text-white font-bold">0.807 °C</span>
+                        <span className="text-emerald-400 font-medium bg-emerald-500/10 px-1.5 py-0.5 rounded text-[11px]">(Ocean-Masked)</span>
+                        <span className="text-zinc-600 hidden sm:inline">|</span>
+                        <span className="text-zinc-400 hidden sm:inline">Full-Grid:</span>
+                        <span className="text-zinc-200 font-medium hidden sm:inline">0.525 °C</span>
+                        <span className="text-indigo-400 font-medium bg-indigo-500/10 px-1.5 py-0.5 rounded text-[11px]">+18.4% vs Climatology</span>
+                      </div>
+
                       <motion.h1 
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="text-3xl md:text-4xl font-semibold text-white tracking-tight mb-4"
                       >
-                        Research Overview
+                        Research Lab & Benchmark Suite
                       </motion.h1>
                       <motion.p 
                         initial={{ opacity: 0, y: 10 }}
@@ -213,7 +227,7 @@ export default function ResearchLabPage() {
                         transition={{ delay: 0.1 }}
                         className="text-zinc-400 max-w-3xl leading-relaxed text-sm md:text-base"
                       >
-                        Empirical neural architecture isolation, variable ablation ladders, and U-Net encoder-decoder skip connections for subsurface temperature reconstruction in the North Indian Ocean. Explore our systemic studies and model performance benchmarks.
+                        Empirical neural architecture isolation, multi-sensor variable ablation ladders, and U-Net encoder-decoder skip connections for subsurface temperature reconstruction in the North Indian Ocean. Explore our 12 systematic studies, architecture baselines (ViT, GNN, AE), and in-situ ARGO validation.
                       </motion.p>
                     </header>
                     
