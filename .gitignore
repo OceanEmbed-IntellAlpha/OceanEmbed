@@ -55,3 +55,12 @@ runs/phase8_thermocline_weighted/*.pt
 # Exclude legacy digital twin prototype
 frontend/digital_twin/
 
+# Virtual envs
+.venv*/
+venv*/
+
+# Local debug logs & test outputs
+*.log
+git_*_phase*.txt
+data.zip
+scratch/
